@@ -4,6 +4,7 @@
     python -m building_ops inspect <data_dir>
     python -m building_ops check decisions.jsonl
     python -m building_ops report decisions.jsonl [--actions actions.jsonl] [--out out/report.html]
+    python -m building_ops dashboard <data_dir> decisions.jsonl [--actions actions.jsonl] [--out out/dashboard.html]
     python -m building_ops sample [--out out/sample]
 """
 from __future__ import annotations
@@ -13,6 +14,7 @@ import json
 import sys
 
 from .check import check
+from .dashboard import build as build_dashboard
 from .dataset import Dataset, inspect
 from .pipeline import run
 from .report import build
@@ -35,6 +37,11 @@ def main() -> None:
     p.add_argument("decisions")
     p.add_argument("--actions", default=None)
     p.add_argument("--out", default="out/report.html")
+    d = sub.add_parser("dashboard", help="write the dashboard with every case and its evidence as one HTML file")
+    d.add_argument("data_dir")
+    d.add_argument("decisions")
+    d.add_argument("--actions", default=None)
+    d.add_argument("--out", default="out/dashboard.html")
     s = sub.add_parser("sample", help="write hand-made sample decisions and their viewer, labelled as sample")
     s.add_argument("--out", default="out/sample")
     args = ap.parse_args()
@@ -46,6 +53,8 @@ def main() -> None:
         sys.exit(0 if result["ok"] else 1)
     elif args.cmd == "report":
         print(build(args.decisions, args.out, args.actions))
+    elif args.cmd == "dashboard":
+        print(build_dashboard(args.data_dir, args.decisions, args.out, args.actions))
     elif args.cmd == "sample":
         print(write_sample(args.out))
     else:

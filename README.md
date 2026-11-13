@@ -23,7 +23,8 @@ Level 2 beyond the surge days, Level 3 (`insights.md`) and the dashboard are not
 | S01 turnaround (requests, day capacity, waiting guests; covers surge days) | implemented, tested, run on quickstart and dev |
 | S03 energy vs comfort (heat pump degradation, cold-snap pre-heating, cold-room reports) | implemented, tested, run on quickstart and dev |
 | S04 maintenance cascade, logistics, energy optimisation beyond pre-heating | not started |
-| Level 3 (`insights.md`), dashboard per scenario | not started |
+| Dashboard: every case with its evidence, decisions and autonomy level (`dashboard`) | working; checked by screenshot on dev |
+| Level 3 (`insights.md`) | not started |
 
 ## Run
 
@@ -46,6 +47,7 @@ python -m building_ops inspect <data_dir>                 # files, columns, row 
 python -m building_ops run <data_dir> --actions out/actions.jsonl   # also the simulated action trail
 python -m building_ops check decisions.jsonl              # contract and autonomy rules; exit code 1 on errors
 python -m building_ops report decisions.jsonl --actions out/actions.jsonl --out out/report.html
+python -m building_ops dashboard <data_dir> decisions.jsonl --actions out/actions.jsonl --out out/dashboard.html
 python -m building_ops sample                             # viewer on invented sample decisions, labelled as sample
 python -m unittest discover -s tests -t .                 # tests
 ```
@@ -70,6 +72,7 @@ building_ops/
   signals.py      meter differences, robust baseline, episode grouping, Europe/Vienna time
   check.py        checks a decisions file against the contract and the autonomy rules
   report.py       decision viewer as one self-contained HTML file
+  dashboard.py    dashboard: per case the raw-data slice behind the decision, the decision chain, the later work order
   sample.py       invented sample decisions for the viewer; never a result
 ```
 
@@ -128,6 +131,17 @@ not fitted on: 1 flagged, service 62 hours later.
 
 Cold-snap pre-heating uses the newest forecast issued at the decision time (minimum of
 -8 °C or colder) and only prices already published. Savings are never claimed.
+
+## Dashboard
+
+`python -m building_ops dashboard data/dev decisions.jsonl --actions out/actions.jsonl` writes one
+HTML file that opens from disk and makes no network request. Overview, one tab per scenario and
+the full decision log. Each case shows the slice of raw data the decision rests on (meter flow,
+COP against the model, the forecast that was issued, the room's readings or its events of the
+day), the decisions in order with autonomy level, evidence and verification, and the mock
+executor's status. Where the dataset has a later corrective work order it is shown as a check
+and labelled as such; detectors never read it. Deep links work: `dashboard.html#S02` or
+`#S02:<episode id>`. Dark by default with a light theme toggle.
 
 ## Local time
 

@@ -10,6 +10,7 @@ from building_ops.decisions import Decision
 from building_ops.detectors import REGISTRY
 from building_ops.executor import execute
 from building_ops.pipeline import run
+from building_ops.dashboard import build as build_dashboard
 
 
 def write_fixture(root: Path) -> None:
@@ -83,6 +84,9 @@ class PipelineTest(unittest.TestCase):
             trail = [json.loads(l) for l in actions.read_text().splitlines()]
             self.assertTrue(trail[0]["simulated"])
             self.assertEqual(trail[0]["status"], "awaiting_guest_consent_and_approval")
+            page = build_dashboard(root, out, root / "out" / "dashboard.html", actions).read_text()
+            self.assertIn("water_leak", page)                    # the case is embedded
+            self.assertNotIn("http://", page.split("<script>")[0].replace("http://www.w3.org", ""))   # no external requests
 
     def test_executor_runs_only_autonomous(self):
         d = Decision(timestamp_utc="2026-01-05T06:30:00Z", affected_assets=["room_101"],
