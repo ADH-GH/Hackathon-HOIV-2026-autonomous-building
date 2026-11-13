@@ -1,4 +1,9 @@
-"""S01 The Perfect Checkout: turnaround conflicts (also covers the S05 surge days).
+"""S01 The Perfect Checkout and S05 The Unexpected Weekend.
+
+S01 is the single room: a guest wants in before the room is ready (triggers A and C).
+S05 is the whole house: an event weekend fills it while cleaners are short (trigger B on a
+surge day, issue type `occupancy_surge`), planned the day before from the bookings and again
+on the morning itself.
 
 Three triggers, each deciding only on what was known at that moment:
 
@@ -244,10 +249,65 @@ def _requests(w: _World) -> Iterable[Decision]:
 
 
 # --- B: day capacity --------------------------------------------------------------
+def _ahead(w: _World, day: date, first: datetime, last: datetime) -> Iterable[Decision]:
+    """S05, the day before: the bookings already show the surge, so plan it while there is time."""
+    at = local_day_time(day - timedelta(days=1), 7)
+    if not first <= at <= last:
+        return
+    arrivals = [b for b in w.by_day_arr[day] if b["created"] <= at]
+    cleaners = w.staff_for_day(day, at, "cleaner")
+    absent = sorted({s["resource_id"] for s in w.shifts if s["role"] == "cleaner"
+                     and local(s["start"]).date() == day and w._status(s, at) != "scheduled"})
+    turnovers = w.turnovers(day, at)
+    capacity = len(cleaners) * ROOMS_BY_CHECKIN
+    if len(arrivals) < SURGE_ARRIVALS or len(turnovers) <= capacity:
+        return
+    episode = f"occupancy_surge:day:{day.isoformat()}"
+    weekday = day.strftime("%A")
+    fact = (f"{len(arrivals)} arrivals are booked for {weekday} {day.isoformat()} and {len(turnovers)} rooms change guests that day; "
+            f"{len(cleaners)} cleaner(s) are scheduled ({', '.join(cleaners) or 'none'})"
+            + (f", {', '.join(absent)} absent" if absent else "") + f", enough for about {capacity} rooms by 15:00")
+    evidence = [f"bookings.csv: {len(arrivals)} arrivals and {len(turnovers)} same-day turnovers on {day.isoformat()}, as known at {fmt_local(at)}",
+                f"staff_roster.csv: cleaners scheduled {', '.join(cleaners) or 'none'}; absent {', '.join(absent) or 'none'}; as known at {fmt_local(at)}"]
+    short = len(turnovers) - capacity
+    yield Decision(
+        timestamp_utc=at, affected_assets=["BUILDING"], issue_type="occupancy_surge", action="flag_anomaly",
+        priority="high", episode_id=episode, stage="ahead",
+        reason=(f"A full house is coming tomorrow: {fact}. That leaves about {short} room(s) that the shift cannot finish before check-in. "
+                "Planning starts now, a day ahead; no capacity is assumed that the roster does not show."),
+        evidence=evidence, confidence=0.75,
+        expected_outcome="The shortfall is known a day early instead of at the first closed door.",
+        verification_plan="Tomorrow's arrival_waiting_room events; the plan is revised at 07:00 tomorrow and whenever an absence becomes known.")
+    yield Decision(
+        timestamp_utc=at, affected_assets=["ONCALL_1", "BUILDING"], issue_type="occupancy_surge", action="request_human_approval",
+        priority="high", episode_id=episode, stage="ahead", notable_cost=True,
+        reason=(f"Ask today for approval to cover tomorrow's shortfall of about {short} room(s): an extra cleaner shift if someone can take it, "
+                "otherwise the on-call housekeeper ONCALL_1 on notice from 15:30 local. Both cost money, so a person decides. "
+                "Nothing is scheduled until that person confirms who is really available."),
+        evidence=evidence, confidence=0.7,
+        expected_outcome="Cover is arranged a day ahead, or the shortfall is consciously accepted.",
+        verification_plan="The roster shows the extra shift, or oncall_housekeeping_called appears tomorrow only for waiting guests.")
+    early = sorted({r["room_id"] for r in w.requests if r["request_type"] == "early_checkin" and r["ts"] <= at
+                    and (b := w.bookings.get(r.get("booking_id") or "")) and local(b["arrival"]).date() == day})
+    yield Decision(
+        timestamp_utc=at, affected_assets=sorted({b["room_id"] for b in arrivals}), issue_type="occupancy_surge", action="notify_guest",
+        priority="medium", episode_id=episode, stage="ahead",
+        reason=(f"Tell tomorrow's {len(arrivals)} arriving guests today, each in their own language, that the house is full: rooms are ready from "
+                f"15:00 and an earlier check-in cannot be promised"
+                + (f" (early check-in was already requested for {', '.join(early)})" if early else "")
+                + ". Proposed messages, not confirmed deliveries."),
+        evidence=evidence, expected_outcome="Guests plan their arrival for 15:00 instead of waiting in the lobby.",
+        verification_plan="Fewer early arrivals and waiting_for_room requests tomorrow than on other full days.",
+        extra={"proposed_message": "Tomorrow we are fully booked. Your room will be ready from 15:00; an earlier check-in is unfortunately not possible. "
+                                   "We will let you know as soon as your room is released.", "message_language": "per guest"})
+
+
 def _capacity(w: _World) -> Iterable[Decision]:
     days = sorted(set(w.by_day_dep) | set(w.by_day_arr))
     first, last = (w.events[0]["ts"], w.events[-1]["ts"]) if w.events else (None, None)
     for day in days:
+        if first is not None:
+            yield from _ahead(w, day, first, last)
         moments = [local_day_time(day, 7)]
         moments += [s["known"] for s in w.shifts if s["role"] == "cleaner" and s["status"] != "scheduled"
                     and s["known"] and local(s["start"]).date() == day and moments[0] < s["known"] < s["end"]]

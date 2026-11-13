@@ -10,7 +10,7 @@ Nothing here is a statement about real PLATO buildings or about what CLARA does 
 
 ## Status
 
-**Status.** S01 to S04 and logistics are implemented and tested, Level 3 (`insights.md`) is computed
+**Status.** S01 to S05 and logistics are implemented and tested, Level 3 (`insights.md`) is computed
 from the dev year, and the dashboard shows every case. Not done: battery and PV scheduling, and
 robot transport of floor waste bins.
 
@@ -23,7 +23,8 @@ robot transport of floor waste bins.
 | Decision viewer, one offline HTML file (`report`) | working on hand-made sample decisions only |
 | Signal helpers: cumulative meters, robust baseline, episode grouping, local time | working, tested; not used by a detector yet |
 | S02 water leak (burst, quiet, hidden) | implemented, tested, run on quickstart and dev |
-| S01 turnaround (requests, day capacity, waiting guests; covers surge days) | implemented, tested, run on quickstart and dev |
+| S01 turnaround (early check-in requests, waiting guests, day capacity) | implemented, tested, run on quickstart and dev |
+| S05 event weekend (full house with cleaners short: plan the day before from the bookings, again on the morning) | implemented, tested, run on quickstart and dev |
 | S03 energy vs comfort (heat pump degradation, cold-snap pre-heating, cold-room reports) | implemented, tested, run on quickstart and dev |
 | S04 maintenance cascade (fast filter loading, sensor gap, technician away) | implemented, tested, run on quickstart and dev |
 | Logistics: extra waste pickup and vending restock ordered ahead from the bookings | implemented, tested, run on quickstart and dev |
@@ -125,6 +126,18 @@ which the room really was clean, 8 were too early by 15 to 90 minutes, all on da
 guests ended up waiting. Day plans were raised on 8 days; 5 of them are among the 16 days
 on which a guest waited, and they cover 13 of the 24 waiting guests. The other 11 waiting
 days have one guest each who arrived before a single room was cleaned.
+
+## Event weekend (S05)
+
+A surge day is one with at least 18 booked arrivals and more same-day turnovers than the
+scheduled cleaners can finish by 15:00. It is planned twice. At 07:00 the day before, from the
+bookings and the roster as known then: flag the shortfall, ask for approval to arrange cover (an
+extra shift if someone can take it, otherwise the on-call housekeeper on notice), and tell the
+arriving guests that an early check-in cannot be promised. At 07:00 on the day, and again when an
+absence becomes known: the cleaning order, robots ahead, on-call for the rooms beyond capacity.
+Cover always needs approval; no capacity is assumed that the roster does not show. Dev: 7 surge
+days flagged, 3 of them already the day before; the replay shows 13 of the year's 24 waiting guests
+on those days. Dashboard tab "S05 Event weekend".
 
 ## Energy vs comfort (S03)
 

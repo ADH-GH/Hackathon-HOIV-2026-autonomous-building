@@ -25,7 +25,7 @@ html{color-scheme:dark}:root[data-theme="light"]{color-scheme:light}
 body{margin:0;background:var(--bg);color:var(--ink);font:14.5px/1.55 var(--sans);-webkit-font-smoothing:antialiased}
 h1,h2,h3,h4{font-family:var(--display);letter-spacing:-.01em}
 :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
-header{padding:20px 16px 0;max-width:1440px;margin:0 auto}
+header{padding:24px 48px 0;max-width:1536px;margin:0 auto}
 .top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap}
 .kicker{font:500 11px/1 var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--accent)}
 .kicker::before{content:"";display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 4px var(--glow);margin-right:9px;vertical-align:1px}
@@ -38,8 +38,8 @@ nav button{height:36px;font:500 14px/1 var(--sans);color:var(--ink2);background:
 nav button:hover{background:var(--raise)}
 nav button.on{color:var(--ink);background:var(--raise);border-color:var(--line)}
 nav button span{font:500 11.5px/1 var(--mono);color:var(--mute);margin-left:7px}
-.wrap{max-width:1440px;margin:0 auto;padding:16px}
-.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(158px,1fr));gap:10px}
+.wrap{max-width:1536px;margin:0 auto;padding:20px 48px}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px}
 .tile{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:12px 14px}
 .tile b{display:block;font:500 30px/1.1 var(--mono);letter-spacing:-.02em;color:var(--series)}
 .tile span{display:block;font:500 11px/1.4 var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--mute);margin-top:8px}
@@ -113,7 +113,7 @@ input[type=search]{height:36px;font:inherit;color:var(--ink);background:var(--bg
 .act .state.approved{color:var(--auto)}.act .state.rejected{color:var(--crit)}
 .act small{flex-basis:100%;color:var(--mute);font-size:11.5px}
 @media (max-width:700px){
-  header{padding:16px 12px 0}.wrap{padding:12px}h1{font-size:22px}
+  header{padding:16px 16px 0}.wrap{padding:14px 16px}footer{padding:4px 16px 28px}h1{font-size:22px}
   nav{flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none}nav::-webkit-scrollbar{display:none}nav button{white-space:nowrap;flex:0 0 auto}
   .tiles{grid-template-columns:repeat(2,minmax(0,1fr))}.tile b{font-size:23px}
   .card{padding:12px}.scroll table{min-width:680px}
@@ -157,7 +157,7 @@ kbd{font:600 10.5px/1 var(--mono);border:1px solid var(--line);border-bottom-wid
 #vpanel .cap{margin-top:8px;font-size:13px;max-height:150px;overflow:auto;color:var(--ink2)}
 #vpanel .cap p{margin:4px 0}#vpanel .cap p.me{color:var(--ink)}
 #vpanel small{display:block;margin-top:8px;color:var(--mute);font-size:11px}
-footer{max-width:1440px;margin:0 auto;padding:4px 16px 28px;color:var(--mute);font-size:12px}
+footer{max-width:1536px;margin:0 auto;padding:4px 48px 32px;color:var(--mute);font-size:12px}
 </style>
 </head>
 <body>
@@ -193,7 +193,7 @@ const lt = ms => F_FULL.format(new Date(ms));
 const dhm = ms => F_DHM.format(new Date(ms));
 const level = d => d.autonomy || (d.requires_guest_consent ? 'approval_and_consent' : d.requires_human_approval ? 'human_approval' : 'autonomous');
 const LEVEL = {autonomous: 'autonomous', human_approval: 'human approval', approval_and_consent: 'approval + guest consent'};
-const SC = {S01: 'S01 Turnaround', S02: 'S02 Water', S03: 'S03 Heating', S04: 'S04 Maintenance', LOG: 'Logistics'};
+const SC = {S01: 'S01 Turnaround', S02: 'S02 Water', S03: 'S03 Heating', S04: 'S04 Maintenance', S05: 'S05 Event weekend', LOG: 'Logistics'};
 const KIND = {room_flow: 'Water leak in a room', main_gap: 'Water loss outside the rooms', room_meter: 'Unreliable water meter',
   cop: 'Heat pump degradation', forecast: 'Cold snap ahead', room_temp: 'Guest reports a cold room',
   room_day: 'Room turnaround', day_plan: 'Day capacity shortfall', ahu: 'Ventilation filter', logistics: 'Extra service ordered'};
@@ -260,7 +260,7 @@ function niceTicks(lo, hi, n) { const span = hi - lo || 1, step0 = Math.pow(10, 
   const step = [1, 2, 5, 10].map(m => m * step0).find(s => span / s <= n) || step0 * 10; const out = [];
   for (let v = Math.ceil(lo / step) * step; v <= hi + 1e-9; v += step) out.push(+v.toFixed(6)); return out; }
 function lineChart(host, o) {
-  const narrow = window.innerWidth < 700, W = narrow ? Math.max(300, window.innerWidth - 66) : 820, H = narrow ? 230 : 250, m = {l: narrow ? 34 : 46, r: narrow ? 8 : 14, t: 14, b: 26};
+  const narrow = window.innerWidth < 700, W = narrow ? Math.max(300, window.innerWidth - 74) : 820, H = narrow ? 230 : 250, m = {l: narrow ? 34 : 46, r: narrow ? 8 : 14, t: 14, b: 26};
   const t = o.t, lines = o.lines.filter(l => l.v && l.v.some(v => v != null)).map(l => o.cap ? Object.assign({}, l, {raw: l.v, v: l.v.map(v => v == null ? null : Math.min(v, o.cap))}) : l);
   if (!t || !t.length || !lines.length) { host.append(el('div', 'empty', 'No readings in this window.')); return; }
   const vals = lines.flatMap(l => l.v.filter(v => v != null)).concat(o.band || []).concat(o.zero ? [0] : []);
@@ -360,7 +360,7 @@ function evidenceCard(e) {
         b.append(el('span', null, w.room), holder, el('span', null, w.min + ' min')); bs.append(b); } c.append(bs); } }
   return c;
 }
-function episodeTitle(e) { if (e.kind === 'logistics') return (e.subject.startsWith('WASTE') ? 'Extra waste pickup' : 'Extra vending restock') + ' · ' + e.subject.replace(':', ' ').replace('_', ' '); if (e.kind === 'ahu') return e.issue_type === 'data_quality' ? 'Filter sensor gap, plant healthy' : 'Ventilation filter cascade'; return (KIND[e.kind] || e.issue_type) + (e.subject && e.subject !== 'BUILDING' && e.kind !== 'cop' && e.kind !== 'main_gap' ? ' · ' + e.subject : ''); }
+function episodeTitle(e) { if (e.kind === 'day_plan') return (e.scenario === 'S05' ? 'Event weekend, cleaners short' : 'Day capacity shortfall') + ' · ' + e.id.split(':').pop(); if (e.kind === 'logistics') return (e.subject.startsWith('WASTE') ? 'Extra waste pickup' : 'Extra vending restock') + ' · ' + e.subject.replace(':', ' ').replace('_', ' '); if (e.kind === 'ahu') return e.issue_type === 'data_quality' ? 'Filter sensor gap, plant healthy' : 'Ventilation filter cascade'; return (KIND[e.kind] || e.issue_type) + (e.subject && e.subject !== 'BUILDING' && e.kind !== 'cop' && e.kind !== 'main_gap' ? ' · ' + e.subject : ''); }
 function detail(e) {
   const box = el('div', 'detail');
   if (!e) { box.append(el('div', 'empty', 'Select a case.')); return box; }
@@ -388,7 +388,7 @@ function overview(root) {
   const checked = E.filter(e => e.check), leads = checked.map(e => e.check.lead_h).sort((a, b) => a - b);
   const tl = el('div', 'tiles');
   tl.append(tile(inc.length, 'cases that needed a decision', E.length - inc.length + ' routine guest answers besides'),
-    tile(by('S01'), 'S01 turnaround cases', null, false, 'S01'), tile(by('S02'), 'S02 water cases', null, false, 'S02'), tile(by('S03'), 'S03 heating cases', null, false, 'S03'), tile(by('S04'), 'S04 maintenance cases', null, false, 'S04'), tile(by('LOG'), 'logistics orders', null, false, 'LOG'),
+    tile(by('S01'), 'S01 turnaround cases', null, false, 'S01'), tile(by('S02'), 'S02 water cases', null, false, 'S02'), tile(by('S03'), 'S03 heating cases', null, false, 'S03'), tile(by('S04'), 'S04 maintenance cases', null, false, 'S04'), tile(by('S05'), 'S05 event weekends', null, false, 'S05'), tile(by('LOG'), 'logistics orders', null, false, 'LOG'),
     tile(all.filter(d => level(d) !== 'autonomous').length, 'decisions wait for a person', pending().length + ' still open', false, 'queue'),
     tile(leads.length ? Math.round(leads[Math.floor(leads.length / 2)]) + ' h' : 'n/a', 'median lead over the repair', leads.length ? checked.length + ' cases with a later work order' : 'no work order to compare', true));
   root.append(tl);
@@ -400,7 +400,7 @@ function overview(root) {
   sb.append(bar, lgd); root.append(sb);
   // time strip
   const c = el('div', 'card'); c.append(el('h2', null, 'When the cases happened'), el('p', 'note', 'One dot per case, one lane per scenario; red dots are critical. Hover for details, click to open.'));
-  const narrow = window.innerWidth < 700, W = narrow ? Math.max(300, window.innerWidth - 66) : 1000, gap = narrow ? 46 : 38, H = narrow ? 282 : 226, m = {l: narrow ? 4 : 110, r: narrow ? 8 : 14, t: 10, b: 24}, lanes = ['S01', 'S02', 'S03', 'S04', 'LOG'];
+  const narrow = window.innerWidth < 700, W = narrow ? Math.max(300, window.innerWidth - 74) : 1000, gap = narrow ? 46 : 38, H = narrow ? 328 : 264, m = {l: narrow ? 4 : 110, r: narrow ? 8 : 14, t: 10, b: 24}, lanes = ['S01', 'S02', 'S03', 'S04', 'S05', 'LOG'];
   const t0 = Math.min(...E.map(e => e.start)), t1 = Math.max(...E.map(e => e.start), t0 + 1);
   const x = v => m.l + (v - t0) / (t1 - t0) * (W - m.l - m.r), s = svg('svg', {viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': 'Cases over time'});
   lanes.forEach((ln, i) => { const y = m.t + (narrow ? 30 : 20) + i * gap; s.append(svg('line', {x1: m.l, x2: W - m.r, y1: y, y2: y, stroke: 'var(--grid)'})); s.append(svg('text', {x: narrow ? m.l : 0, y: narrow ? y - 12 : y + 4, class: 'lbl'}, SC[ln]));
@@ -477,14 +477,14 @@ function render() {
 /* ---------- voice control (opt-in): the agent's tools run here, in the page ---------- */
 let VQ = [];
 const short = (t, n) => t.length > n ? t.slice(0, n) + '…' : t;
-const VIEW = {overview: 'overview', turnaround: 'S01', water: 'S02', heating: 'S03', maintenance: 'S04', logistics: 'LOG', approvals: 'queue', decisions: 'trail'};
+const VIEW = {overview: 'overview', turnaround: 'S01', water: 'S02', heating: 'S03', maintenance: 'S04', weekend: 'S05', logistics: 'LOG', approvals: 'queue', decisions: 'trail'};
 function summary(e) { const main = e.decisions.find(d => d.action === 'flag_anomaly') || e.decisions[0];
   return {title: episodeTitle(e), when: lt(e.start), risk: e.priority, decisions: e.decisions.length, actions: [...new Set(e.decisions.map(d => d.action.replace(/_/g, ' ')))],
     oversight: [...new Set(e.decisions.map(d => LEVEL[level(d)]))], finding: short(main.reason, 320),
     checked_against_dataset: e.check ? 'A work order was written ' + e.check.lead_h + ' hours after our decision: ' + e.check.text : 'no later work order to compare' }; }
 const VT = {
   get_status() { const inc = E.filter(e => !e.routine), by = s => inc.filter(e => e.scenario === s).length, p = pending(), rank = {critical: 0, high: 1, medium: 2, low: 3};
-    return {dataset: D.profile, decisions_total: all.length, cases: {turnaround: by('S01'), water: by('S02'), heating: by('S03'), maintenance: by('S04'), logistics_orders: by('LOG')}, routine_guest_answers: E.length - inc.length,
+    return {dataset: D.profile, decisions_total: all.length, cases: {turnaround: by('S01'), water: by('S02'), heating: by('S03'), maintenance: by('S04'), event_weekends: by('S05'), logistics_orders: by('LOG')}, routine_guest_answers: E.length - inc.length,
       waiting_for_a_person: p.length, of_these_need_guest_consent: p.filter(d => level(d) === 'approval_and_consent').length,
       most_urgent_open: p.slice().sort((a, b) => rank[a.priority] - rank[b.priority] || tsOf(a) - tsOf(b)).slice(0, 3).map(d => ({action: d.action.replace(/_/g, ' '), assets: (d.affected_assets || []).slice(0, 3), risk: d.priority, when: lt(tsOf(d))})),
       note: 'Replay of a fictional building. Effects of actions are simulated.'}; },

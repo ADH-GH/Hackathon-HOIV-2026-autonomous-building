@@ -84,6 +84,40 @@ class WaitingGuestTest(unittest.TestCase):
         self.assertFalse(any(d["action"] == "schedule_cleaning" for d in found))   # no capacity is invented
 
 
+class EventWeekendTest(unittest.TestCase):
+    """S05: twenty rooms change guests on a Saturday, two cleaners are scheduled."""
+
+    def run_weekend(self, rooms):
+        day, eve = "2026-09-19", "2026-09-18"
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            base(root)
+            bookings = []
+            for i in range(rooms):
+                r = f"R{101 + i}"
+                bookings.append((f"OUT{i}", r, "2026-08-01T10:00:00Z", "2026-09-17T13:00:00Z", f"{day}T09:00:00Z", 1, "web", "confirmed"))
+                bookings.append((f"IN{i}", r, "2026-08-01T10:00:00Z", f"{day}T13:00:00Z", "2026-09-21T09:00:00Z", 2, "web", "confirmed"))
+            write(root, "bookings.csv", "booking_id,room_id,created_utc,arrival_utc,departure_utc,guest_count,channel,status", bookings)
+            roster = [(f"S{c}", f"CLEANER_{c}", "cleaner", f"{day}T05:00:00Z", f"{day}T13:30:00Z", "scheduled", "2026-08-01T00:00:00Z") for c in (1, 2)]
+            write(root, "staff_roster.csv", "shift_id,resource_id,role,start_utc,end_utc,status,status_known_utc", roster)
+            events = [{"event_id": "E0", "timestamp_utc": f"{eve}T00:00:00Z", "type": "checkin", "room_id": "R101", "booking_id": "OUT0"},
+                      {"event_id": "E9", "timestamp_utc": f"{day}T20:00:00Z", "type": "checkout", "room_id": "R101", "booking_id": "OUT0"}]
+            (root / "events.jsonl").write_text("".join(json.dumps(e) + "\n" for e in events))
+            return [d.finalize() for d in s01.detect(Dataset(root))]
+
+    def test_full_house_is_planned_the_day_before_and_cover_needs_approval(self):
+        found = [d for d in self.run_weekend(20) if d["issue_type"] == "occupancy_surge"]
+        ahead = [d for d in found if d["stage"] == "ahead"]
+        self.assertEqual([d["action"] for d in ahead], ["flag_anomaly", "request_human_approval", "notify_guest"])
+        self.assertTrue(all(d["timestamp_utc"] == "2026-09-18T05:00:00Z" for d in ahead))          # 07:00 Vienna, the day before
+        self.assertTrue(next(d for d in ahead if d["action"] == "request_human_approval")["requires_human_approval"])
+        self.assertEqual(len({d["episode_id"] for d in found}), 1)                                 # ahead and day plan are one case
+        self.assertTrue(any(d["stage"] == "day_plan" for d in found))
+
+    def test_a_normal_saturday_is_not_an_event_weekend(self):
+        self.assertEqual([d for d in self.run_weekend(8) if d["issue_type"] == "occupancy_surge"], [])
+
+
 class HeatPumpTest(unittest.TestCase):
     def run_hp(self, factor_by_step, blank_from=None, steps=96 * 3, outdoor=-5.0):
         t0 = datetime(2026, 1, 10, 0, 0, tzinfo=timezone.utc)

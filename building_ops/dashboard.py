@@ -24,7 +24,7 @@ from .detectors.s03_energy_comfort import COP_A, COP_B, HEATING_SEASON_BELOW_C
 from .signals import local
 
 PRIORITY_RANK = {"critical": 0, "high": 1, "medium": 2, "low": 3}
-SCENARIO = {"room_turnaround": "S01", "occupancy_surge": "S01", "water_leak": "S02",
+SCENARIO = {"room_turnaround": "S01", "occupancy_surge": "S05", "water_leak": "S02",
             "data_quality": "S02", "heating_comfort": "S03", "ventilation_maintenance": "S04", "logistics": "LOG"}
 
 
