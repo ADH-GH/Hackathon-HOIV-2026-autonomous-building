@@ -76,7 +76,7 @@ nav button span{font:500 11.5px/1 var(--mono);color:var(--mute);margin-left:7px}
 svg{display:block;width:100%;height:auto;overflow:visible}
 svg text{font:10.5px var(--mono);fill:var(--mute)}
 svg .lbl{fill:var(--ink2)}
-#tip{position:fixed;pointer-events:none;background:var(--ink);color:var(--bg);font-size:12px;line-height:1.4;padding:7px 9px;border-radius:6px;max-width:300px;z-index:9;display:none}
+#tip{position:fixed;left:0;top:0;width:max-content;pointer-events:none;background:var(--ink);color:var(--bg);font-size:12px;line-height:1.4;padding:7px 9px;border-radius:6px;max-width:300px;z-index:9;display:none}
 .log{margin:6px 0 0;padding:0;list-style:none;font-size:13.5px}
 .log li{display:grid;grid-template-columns:104px 1fr;gap:8px;padding:5px 0;border-bottom:1px solid var(--grid)}
 .log time{font:400 11.5px/1.7 var(--mono);color:var(--mute)}
@@ -217,9 +217,16 @@ $('source').textContent = 'Dataset: ' + D.profile + ' · ' + all.length + ' deci
 
 /* ---------- tooltip ---------- */
 const tip = $('tip');
-function showTip(ev, html) { tip.innerHTML = html; tip.style.display = 'block'; const w = tip.offsetWidth, h = tip.offsetHeight;
-  tip.style.left = Math.max(4, Math.min(window.innerWidth - w - 4, ev.clientX + 12)) + 'px';
-  tip.style.top = Math.max(4, ev.clientY - h - 10) + 'px'; }
+function showTip(ev, html) { tip.innerHTML = html; tip.style.display = 'block';
+  // Measure at the left edge first: a fixed box near the right edge shrinks to the space that is left
+  // there and would be measured too narrow, then stick out of the window once it is placed.
+  tip.style.left = '0px'; tip.style.top = '0px';
+  const w = tip.offsetWidth, h = tip.offsetHeight, vw = document.documentElement.clientWidth, vh = window.innerHeight, gap = 12;
+  let x = ev.clientX + gap; if (x + w > vw - 6) x = ev.clientX - gap - w;          // no room on the right: open to the left of the pointer
+  x = Math.max(6, Math.min(vw - w - 6, x));
+  let y = ev.clientY - h - 10; if (y < 6) y = ev.clientY + 18;                      // no room above: open below
+  y = Math.max(6, Math.min(vh - h - 6, y));
+  tip.style.left = x + 'px'; tip.style.top = y + 'px'; }
 function hideTip() { tip.style.display = 'none'; }
 const esc = s => String(s).replace(/[&<>"]/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c]));
 
@@ -539,6 +546,8 @@ document.addEventListener('keydown', ev => { if (/^(INPUT|TEXTAREA|SELECT)$/.tes
     const i = list.indexOf(selected[tab]), j = Math.max(0, Math.min(list.length - 1, i + (ev.key === 'ArrowDown' ? 1 : -1))); if (list[j] && j !== i) { selected[tab] = list[j]; history.replaceState(null, '', '#' + tab + ':' + encodeURIComponent(list[j].id)); render(); } ev.preventDefault(); } });
 let lastW = window.innerWidth, timer = null;
 if (/[?&]voicetest\b/.test(location.search)) setTimeout(voiceTest, 0);
+// ?tiptest pins a tooltip at the right edge, for a screenshot check of the placement
+if (/[?&]tiptest\b/.test(location.search)) setTimeout(() => { const vw = document.documentElement.clientWidth; showTip({clientX: vw - 8, clientY: 300}, '<b>Water leak in a room · R208</b><br>2026-11-10 16:30 CET<br>risk: high'); const r = tip.getBoundingClientRect(); document.title = 'tip ' + Math.round(r.left) + '..' + Math.round(r.right) + ' of ' + vw; const m = document.createElement('div'); m.style.cssText = 'position:fixed;left:' + (vw - 9) + 'px;top:294px;width:6px;height:12px;background:#ffb020;z-index:20'; document.body.append(m); }, 50);
 window.addEventListener('resize', () => { clearTimeout(timer); timer = setTimeout(() => { if (Math.abs(window.innerWidth - lastW) > 40) { lastW = window.innerWidth; render(); } }, 150); });
 render();
 </script>
