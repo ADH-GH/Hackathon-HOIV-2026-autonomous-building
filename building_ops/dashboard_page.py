@@ -398,12 +398,26 @@ function overview(root) {
   const lgd = el('div', 'legend'); [[na, 'l-autonomous', 'autonomous'], [nh, 'l-human_approval', 'human approval'], [nc, 'l-approval_and_consent', 'approval + guest consent']].forEach(([n, cls, name]) => { const sp = el('span', 'tag ' + cls, name + ' · ' + n); sp.title = HINT[cls.slice(2)]; lgd.append(sp); });
   sb.append(bar, lgd); root.append(sb);
   // time strip
-  const c = el('div', 'card'); c.append(el('h2', null, 'When the cases happened'), el('p', 'note', 'One dot per case, one lane per scenario; red dots are critical. Hover for details, click to open.'));
-  const narrow = window.innerWidth < 700, W = narrow ? Math.max(300, window.innerWidth - 74) : 1000, gap = narrow ? 46 : 38, H = narrow ? 328 : 264, m = {l: narrow ? 4 : 110, r: narrow ? 8 : 14, t: 10, b: 24}, lanes = ['S01', 'S02', 'S03', 'S04', 'S05', 'LOG'];
+  const c = el('div', 'card'); c.append(el('h2', null, 'When the cases happened'), el('p', 'note', 'One dot per case, one lane per scenario; red dots are critical. The curve behind each lane shows how many cases fall around that time. Hover for details, click a dot to open.'));
+  const narrow = window.innerWidth < 700, W = narrow ? Math.max(300, window.innerWidth - 74) : 1000, lanes = ['S01', 'S02', 'S03', 'S04', 'S05', 'LOG'];
+  const gap = narrow ? 58 : 50, rise = narrow ? 26 : 30, m = {l: narrow ? 4 : 168, r: narrow ? 8 : 14, t: narrow ? 44 : 38, b: 26}, H = m.t + (lanes.length - 1) * gap + 14 + m.b;
   const t0 = Math.min(...E.map(e => e.start)), t1 = Math.max(...E.map(e => e.start), t0 + 1);
   const x = v => m.l + (v - t0) / (t1 - t0) * (W - m.l - m.r), s = svg('svg', {viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': 'Cases over time'});
-  lanes.forEach((ln, i) => { const y = m.t + (narrow ? 30 : 20) + i * gap; s.append(svg('line', {x1: m.l, x2: W - m.r, y1: y, y2: y, stroke: 'var(--grid)'})); s.append(svg('text', {x: narrow ? m.l : 0, y: narrow ? y - 12 : y + 4, class: 'lbl'}, SC[ln]));
-    for (const e of inc.filter(q => q.scenario === ln)) { const cc = svg('circle', {cx: x(e.start), cy: y, r: (e.priority === 'critical' ? 6 : 4.5) + (narrow ? 1 : 0), fill: e.priority === 'critical' ? 'var(--crit)' : 'var(--series)', stroke: 'var(--panel)', 'stroke-width': 2, style: 'cursor:pointer', class: 'dot'});
+  // Density curve behind each lane: how many cases happen around that time. A Gaussian window of about
+  // ten days, the same height scale for all lanes, so a taller curve means more cases.
+  const DAY = 864e5, BW = 10 * DAY, N = 140, grid = Array.from({length: N}, (_, i) => t0 + (t1 - t0) * i / (N - 1));
+  const dens = lanes.map(ln => { const ts = inc.filter(q => q.scenario === ln).map(q => q.start); return grid.map(g => ts.reduce((a, t) => a + Math.exp(-0.5 * Math.pow((g - t) / BW, 2)), 0)); });
+  const peak = Math.max(1e-9, ...dens.flat());
+  lanes.forEach((ln, i) => { const y = m.t + i * gap, d = dens[i], cases = inc.filter(q => q.scenario === ln);
+    let area = `M${x(grid[0]).toFixed(1)} ${y}`; d.forEach((v, k) => { area += `L${x(grid[k]).toFixed(1)} ${(y - v / peak * rise).toFixed(1)}`; }); area += `L${x(grid[N - 1]).toFixed(1)} ${y}Z`;
+    let line = ''; d.forEach((v, k) => { line += (k ? 'L' : 'M') + x(grid[k]).toFixed(1) + ' ' + (y - v / peak * rise).toFixed(1); });
+    s.append(svg('path', {d: area, fill: 'var(--series)', 'fill-opacity': 0.14}), svg('path', {d: line, fill: 'none', stroke: 'var(--series)', 'stroke-opacity': 0.45, 'stroke-width': 1.2}));
+    s.append(svg('line', {x1: m.l, x2: W - m.r, y1: y, y2: y, stroke: 'var(--line)'})); s.append(svg('text', {x: narrow ? m.l : 0, y: narrow ? y - rise - 4 : y + 4, class: 'lbl'}, SC[ln]));
+    const band = svg('rect', {x: m.l, y: y - rise, width: W - m.l - m.r, height: rise + 8, fill: 'transparent'});
+    band.addEventListener('mousemove', ev => { const r = s.getBoundingClientRect(), tv = t0 + ((ev.clientX - r.left) / r.width * W - m.l) / (W - m.l - m.r) * (t1 - t0), n = cases.filter(q => Math.abs(q.start - tv) <= 15 * DAY).length;
+      showTip(ev, '<b>' + esc(SC[ln]) + '</b><br>' + n + ' case' + (n === 1 ? '' : 's') + ' in the 30 days around ' + esc(F_DAY.format(new Date(tv)))); });
+    band.addEventListener('mouseleave', hideTip); s.append(band);
+    for (const e of cases) { const cc = svg('circle', {cx: x(e.start), cy: y, r: (e.priority === 'critical' ? 6 : 4.5) + (narrow ? 1 : 0), fill: e.priority === 'critical' ? 'var(--crit)' : 'var(--series)', stroke: 'var(--panel)', 'stroke-width': 2, style: 'cursor:pointer', class: 'dot'});
       cc.addEventListener('mousemove', ev => showTip(ev, '<b>' + esc(episodeTitle(e)) + '</b><br>' + esc(lt(e.start)) + '<br>risk: ' + e.priority)); cc.addEventListener('mouseleave', hideTip);
       cc.addEventListener('click', () => open(e)); s.append(cc); } });
   const ticks = narrow ? 3 : 6; for (let i = 0; i <= ticks; i++) { const tv = t0 + (t1 - t0) * i / ticks; s.append(svg('text', {x: x(tv), y: H - 6, 'text-anchor': i === 0 ? 'start' : i === ticks ? 'end' : 'middle'}, F_DAY.format(new Date(tv)))); }
