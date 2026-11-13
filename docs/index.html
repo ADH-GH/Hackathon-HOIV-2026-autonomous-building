@@ -39,10 +39,12 @@ nav button{display:flex;flex-direction:column;justify-content:flex-start;align-i
 nav button:hover{background:var(--raise);border-color:var(--mute)}
 nav button.on{background:var(--raise);border-color:var(--accent);box-shadow:inset 0 -3px 0 var(--accent)}
 nav button b{display:block;font:500 25px/1.1 var(--mono);letter-spacing:-.02em;color:var(--series);white-space:nowrap}
-nav button span{display:block;font:500 10.5px/1.35 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--ink2);margin-top:6px;overflow-wrap:anywhere}
+nav button i{display:block;font:500 10.5px/1.3 var(--mono);font-style:normal;letter-spacing:.14em;text-transform:uppercase;color:var(--mute);margin-top:6px}
+nav button span{display:block;font:500 12.5px/1.3 var(--sans);color:var(--ink2);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 nav button.on span{color:var(--ink)}
 nav button small{display:block;font-size:11px;line-height:1.35;color:var(--mute);margin-top:3px}
-@media (max-width:1100px){nav{grid-auto-columns:128px;overflow-x:auto;scrollbar-width:thin;padding-bottom:4px}}
+@media (max-width:1320px){nav{gap:6px}nav button{padding:8px 7px 9px}nav button span{font-size:11.5px;letter-spacing:-.01em}nav button b{font-size:22px}}
+@media (max-width:1100px){nav{grid-auto-columns:112px;overflow-x:auto;scrollbar-width:thin;padding-bottom:4px}}
 #brief{height:36px;font:600 14px/1 var(--sans);color:var(--onaccent);background:var(--accent);border:1px solid var(--accent);border-radius:8px;padding:0 14px;cursor:pointer;margin-right:8px}
 #brief.live{background:transparent;color:var(--ink);border-color:var(--line)}
 #brief[hidden]{display:none}
@@ -211,7 +213,7 @@ const level = d => d.autonomy || (d.requires_guest_consent ? 'approval_and_conse
 const LEVEL = {autonomous: 'autonomous', human_approval: 'human approval', approval_and_consent: 'approval + guest consent'};
 const SC = {S01: 'S01 Turnaround', S02: 'S02 Water', S03: 'S03 Heating', S04: 'S04 Maintenance', S05: 'S05 Event weekend', ENG: 'L2 Energy', LOG: 'L2 Logistics'};
 const TABHINT = {S01: 'Scenario 1 of the brief: the perfect checkout', S02: 'Scenario 2: the hidden water leak', S03: 'Scenario 3: energy vs comfort', S04: 'Scenario 4: the maintenance cascade', S05: 'Scenario 5: the unexpected weekend',
-  ENG: 'Level 2 of the brief, building and energy optimisation (no scenario number there)', LOG: 'Level 2 of the brief, cleaning and logistics (no scenario number there)', queue: 'Decisions that wait for a person', trail: 'Every decision in order', overview: 'All cases at a glance. The figure counts incidents and plans; routine guest answers are counted separately and shown on request in each view'};
+  ENG: 'Level 2 of the brief, building and energy optimisation (no scenario number there)', LOG: 'Level 2 of the brief, cleaning and logistics (no scenario number there)', queue: 'Decisions that still wait for a person to approve or reject', trail: 'Every decision in order', overview: 'All cases at a glance. The figure counts incidents and plans; the routine guest answers are counted separately, see the header line', };
 const KIND = {room_flow: 'Water leak in a room', main_gap: 'Water loss outside the rooms', room_meter: 'Unreliable water meter',
   cop: 'Heat pump degradation', forecast: 'Cold snap ahead', room_temp: 'Guest reports a cold room',
   room_day: 'Room turnaround', day_plan: 'Day capacity shortfall', ahu: 'Ventilation filter', logistics: 'Extra service ordered', energy: 'Battery plan'};
@@ -515,10 +517,12 @@ function render() {
   hideTip();
   const nav = $('nav'); nav.replaceChildren();
   const inc = E.filter(e => !e.routine), by = k => inc.filter(e => e.scenario === k).length;
-  const tabs = [['overview', inc.length, 'Overview', 'incidents and plans; + ' + (E.length - inc.length) + ' routine answers = ' + E.length + ' cases'],
-    ...Object.keys(SC).map(k => [k, by(k), SC[k], '']), ['queue', pending().length, 'Approvals', 'wait for a person'], ['trail', all.length, 'All decisions', 'in ' + E.length + ' cases']];
-  for (const [k, n, name, small] of tabs) { const b = el('button', k === tab ? 'on' : ''); b.title = TABHINT[k] || ''; b.setAttribute('aria-current', k === tab ? 'page' : 'false');
-    b.append(el('b', null, n), el('span', null, name)); if (small) b.append(el('small', null, small));
+  // Every box has the same three lines: figure, short code, name. SC labels are "S01 Turnaround": code, then name.
+  const split = k => { const i = SC[k].indexOf(' '); return [SC[k].slice(0, i), SC[k].slice(i + 1)]; };
+  const tabs = [['overview', inc.length, 'All', 'Overview'], ...Object.keys(SC).map(k => [k, by(k), ...split(k)]), ['queue', pending().length, 'Open', 'Approvals'], ['trail', all.length, 'Log', 'All decisions']];
+  for (const [k, n, code, name] of tabs) { const b = el('button', k === tab ? 'on' : ''); b.title = TABHINT[k] || ''; b.dataset.tab = k; b.setAttribute('aria-current', k === tab ? 'page' : 'false');
+    b.setAttribute('aria-label', code + ' ' + name + ', ' + n);
+    b.append(el('b', null, n), el('i', null, code), el('span', null, name));
     b.onclick = () => { tab = k; history.replaceState(null, '', '#' + k); render(); }; nav.append(b); }
   const root = $('view'); root.replaceChildren();
   if (tab === 'overview') overview(root); else if (tab === 'trail') trail(root); else if (tab === 'queue') queue(root); else scenario(root, tab);
