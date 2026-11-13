@@ -3,7 +3,7 @@
 Team Alf & Friends · proximata Hackathon '26 · Rhomberg track
 "PLATO · CLARA Future — The Autonomous Building".
 
-**Live dashboard:** https://adh-gh.github.io/Hackathon-HOIV-2026-autonomous-building/ (the file `docs/index.html`, written by the dashboard command below from `decisions.jsonl` with `--web-fonts` and `--voice-agent`; it loads the fonts and the ElevenLabs voice widget, nothing else).
+**Live dashboard:** https://adh-gh.github.io/Hackathon-HOIV-2026-autonomous-building/ (the file `docs/index.html`, written by the dashboard command below from `decisions.jsonl` with `--web-fonts` and `--voice-agent`; it loads the fonts, and the ElevenLabs client only when "Voice briefing" is clicked).
 
 PLATO-40 is a fictional 40-room self-check-in hotel. All data is synthetic.
 Nothing here is a statement about real PLATO buildings or about what CLARA does today.
@@ -217,17 +217,18 @@ outage, no order. Robot transport of floor bins is not planned: no floor bin exc
 
 ## Voice control (optional)
 
-`python -m building_ops dashboard ... --voice-agent <agent id>` embeds the ElevenLabs voice widget
-(bottom right, "Talk to the building"). The agent answers status questions, opens views and cases
+`python -m building_ops dashboard ... --voice-agent <agent id>` adds a "Voice briefing" button to the
+header. A click starts a call with an ElevenLabs agent, which first reports the status, the critical
+cases and what waits for approval, and then takes questions. It answers status questions, opens views and cases
 and reads the approval queue; it approves or rejects only after it has read the item back and
-heard a clear yes. Its eight tools are client tools that the widget runs in the page
+heard a clear yes. Its eight tools are client tools that run in the page
 (`voice/create_agent.py` holds the agent configuration), so there is no server. The rules stay in
 the page's code, not in the prompt: an item that needs guest consent cannot be approved until
 consent is recorded, by voice or by click. The agent only accepts calls from an allowlist of
 origins and has a daily conversation limit; conversations are billed by ElevenLabs. Voice needs
 network, a microphone and a page served over https or localhost. The tool handlers can be checked
 without network or microphone: open the page with `?voicetest`. The spoken conversation itself has
-not been tested by us. Without the flag the dashboard loads no widget.
+not been tested by us. Without the flag the dashboard has no voice button and loads nothing for it.
 
 ## Local time
 

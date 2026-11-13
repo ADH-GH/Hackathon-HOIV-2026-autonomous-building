@@ -46,7 +46,7 @@ nav button small{display:block;font-size:11px;line-height:1.35;color:var(--mute)
 #brief{height:36px;font:600 14px/1 var(--sans);color:var(--onaccent);background:var(--accent);border:1px solid var(--accent);border-radius:8px;padding:0 14px;cursor:pointer;margin-right:8px}
 #brief.live{background:transparent;color:var(--ink);border-color:var(--line)}
 #brief[hidden]{display:none}
-#vbox{position:fixed;left:16px;bottom:16px;width:min(380px,calc(100vw - 32px));background:var(--panel);border:1px solid var(--accent);border-radius:8px;padding:12px 14px;z-index:8;display:none}
+#vbox{position:fixed;right:16px;bottom:16px;width:min(380px,calc(100vw - 32px));background:var(--panel);border:1px solid var(--accent);border-radius:8px;padding:12px 14px;z-index:8;display:none}
 #vbox.on{display:block}
 #vbox .st{font:500 11px/1 var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--accent)}
 #vbox .cap{margin-top:8px;font-size:13px;max-height:170px;overflow:auto;color:var(--ink2)}
@@ -561,8 +561,9 @@ const VT = {
     decide(d, 'approved'); return {ok: true, result: 'approved in the simulation', action: d.action.replace(/_/g, ' '), assets: (d.affected_assets || []).slice(0, 3), still_waiting: pending().length}; },
   reject({item}) { const r = VT._item(item); if (r.error) return r; decide(r.d, 'rejected'); return {ok: true, result: 'rejected, not executed', action: r.d.action.replace(/_/g, ' '), still_waiting: pending().length}; },
 };
-// "Voice briefing" in the header: one click starts a call and asks for the urgent items, so the
-// operator hears the status without typing or searching for the widget.
+// "Voice briefing" in the header is the one voice entry point: a click starts a call with the
+// ElevenLabs agent and asks for the urgent items; the conversation then continues freely. The
+// agent's tools are the handlers above, so it acts through this page's own code and rules.
 let call = null;
 function vsay(text, me) { const c = $('vcap2'), p = el('p', me ? 'me' : '', (me ? 'You: ' : '') + text); c.append(p); while (c.children.length > 8) c.firstChild.remove(); c.scrollTop = c.scrollHeight; }
 async function briefing() {
@@ -584,23 +585,6 @@ async function briefing() {
   finally { btn.disabled = false; }
 }
 if (D.voiceAgent) { const b = $('brief'); b.hidden = false; b.title = 'Hear the status, the critical cases and what waits for approval'; b.onclick = briefing; }
-// The official ElevenLabs widget, bottom right. Its client tools are the handlers above, so the agent
-// acts through this page's own code and rules. Loaded only when the page was built with an agent id.
-if (D.voiceAgent) {
-  const tools = {};
-  for (const k of Object.keys(VT)) if (k[0] !== '_') tools[k] = async args => { let out; try { out = VT[k](args || {}); } catch (err) { out = {error: String(err && err.message || err)}; } return JSON.stringify(out); };
-  const w = document.createElement('elevenlabs-convai');
-  w.setAttribute('agent-id', D.voiceAgent);
-  w.setAttribute('action-text', 'Talk to the building');
-  w.setAttribute('start-call-text', 'Start voice');
-  w.setAttribute('end-call-text', 'End');
-  w.setAttribute('avatar-orb-color-1', '#508cdc');
-  w.setAttribute('avatar-orb-color-2', '#9cc3f0');
-  w.addEventListener('elevenlabs-convai:call', ev => { if (ev.detail && ev.detail.config) ev.detail.config.clientTools = tools; });
-  document.body.append(w);
-  const sc = document.createElement('script'); sc.src = 'https://unpkg.com/@elevenlabs/convai-widget-embed@0.26.0'; sc.async = true; sc.type = 'text/javascript';
-  document.body.append(sc);
-}
 // ?voicetest runs the tool handlers without any network or microphone and shows what they return
 function voiceTest() { const KEYBAK = approvals; approvals = {}; const log = [], run = (name, args) => log.push(name + '(' + JSON.stringify(args || {}) + ') -> ' + JSON.stringify(VT[name](args || {}), null, 1));
   const real = saveApprovals; window.__nosave = true;
