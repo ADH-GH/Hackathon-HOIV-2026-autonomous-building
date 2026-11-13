@@ -43,7 +43,7 @@ def tool(name, description, properties=None, required=None):
 ITEM = {"item": {"type": "integer", "description": "Number of the item as returned by list_pending_approvals, starting at 1"}}
 TOOLS = [
     tool("get_status", "Current status of the building: number of cases per scenario, how many decisions wait for a person, and the most urgent open items."),
-    tool("open_view", "Switch the dashboard to a view.", {"view": {"type": "string", "enum": ["overview", "turnaround", "water", "heating", "maintenance", "weekend", "logistics", "approvals", "decisions"], "description": "The view to show"}}, ["view"]),
+    tool("open_view", "Switch the dashboard to a view.", {"view": {"type": "string", "enum": ["overview", "turnaround", "water", "heating", "maintenance", "weekend", "energy", "logistics", "approvals", "decisions"], "description": "The view to show"}}, ["view"]),
     tool("open_case", "Find a case and show it on the dashboard. Returns its title, time, risk and what was decided.", {"query": {"type": "string", "description": "Words to search for, such as a room like R403, 'heat pump', 'filter', 'water leak', a date like 2026-07-17, or a booking number"}}, ["query"]),
     tool("describe_current_case", "Details of the case that is currently open on the dashboard: evidence, decisions, autonomy level and the later work order if there is one."),
     tool("list_pending_approvals", "The decisions that wait for a person, most urgent first, numbered from 1. Call this before approving or rejecting.", {"limit": {"type": "integer", "description": "How many items to return, 1 to 10. Default 3."}}),
