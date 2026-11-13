@@ -37,10 +37,10 @@ nav button:hover{background:var(--raise)}
 nav button.on{color:var(--ink);background:var(--raise);border-color:var(--line)}
 nav button span{font:500 11.5px/1 var(--mono);color:var(--mute);margin-left:7px}
 .wrap{max-width:1536px;margin:0 auto;padding:20px 48px}
-.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px}
-.tile{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:12px 14px}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(124px,1fr));gap:10px}
+.tile{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:12px 12px}
 .tile b{display:block;font:500 30px/1.1 var(--mono);letter-spacing:-.02em;color:var(--series)}
-.tile span{display:block;font:500 11px/1.4 var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--mute);margin-top:8px}
+.tile span{display:block;font:500 10.5px/1.4 var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--mute);margin-top:8px}
 .tile small{display:block;font-size:11.5px;color:var(--mute);margin-top:4px}
 .tile.key{border-color:var(--accent)}
 .card{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:20px;margin-top:12px;min-width:0}
@@ -384,10 +384,10 @@ function overview(root) {
   const inc = E.filter(e => !e.routine), by = s => inc.filter(e => e.scenario === s).length;
   const checked = E.filter(e => e.check), leads = checked.map(e => e.check.lead_h).sort((a, b) => a - b);
   const tl = el('div', 'tiles');
-  tl.append(tile(inc.length, 'cases that needed a decision', E.length - inc.length + ' routine guest answers besides'),
-    tile(by('S01'), 'S01 turnaround cases', null, false, 'S01'), tile(by('S02'), 'S02 water cases', null, false, 'S02'), tile(by('S03'), 'S03 heating cases', null, false, 'S03'), tile(by('S04'), 'S04 maintenance cases', null, false, 'S04'), tile(by('S05'), 'S05 event weekends', null, false, 'S05'), tile(by('LOG'), 'logistics orders', null, false, 'LOG'),
-    tile(all.filter(d => level(d) !== 'autonomous').length, 'decisions wait for a person', pending().length + ' still open', false, 'queue'),
-    tile(leads.length ? Math.round(leads[Math.floor(leads.length / 2)]) + ' h' : 'n/a', 'median lead over the repair', leads.length ? checked.length + ' cases with a later work order' : 'no work order to compare', true));
+  tl.append(tile(inc.length, 'cases needed a decision', E.length - inc.length + ' routine answers besides'),
+    tile(by('S01'), 'S01 turnaround', null, false, 'S01'), tile(by('S02'), 'S02 water', null, false, 'S02'), tile(by('S03'), 'S03 heating', null, false, 'S03'), tile(by('S04'), 'S04 maintenance', null, false, 'S04'), tile(by('S05'), 'S05 event weekend', null, false, 'S05'), tile(by('LOG'), 'logistics orders', null, false, 'LOG'),
+    tile(all.filter(d => level(d) !== 'autonomous').length, 'wait for a person', pending().length + ' still open', false, 'queue'),
+    tile(leads.length ? Math.round(leads[Math.floor(leads.length / 2)]) + ' h' : 'n/a', 'median lead over repair', leads.length ? checked.length + ' cases with a work order' : 'no work order to compare', true));
   root.append(tl);
   const na = all.filter(d => level(d) === 'autonomous').length, nh = all.filter(d => level(d) === 'human_approval').length, nc = all.length - na - nh;
   const sb = el('div', 'card'); sb.append(el('h2', null, 'Who decides'), el('p', 'note', 'Share of all decisions by autonomy level. The gate is code: a detector can ask for more oversight, never for less.'));
