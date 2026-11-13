@@ -1,0 +1,10 @@
+[project]
+name = "building-ops"
+version = "0.1.0"
+description = "Autonomous building operations for the fictional PLATO-40 property (proximata Hackathon '26, Rhomberg track)"
+requires-python = ">=3.11"
+license = "MIT"
+dependencies = []
+
+[tool.setuptools]
+packages = ["building_ops", "building_ops.detectors"]
