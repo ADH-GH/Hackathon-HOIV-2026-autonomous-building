@@ -56,6 +56,14 @@ nav button small{display:block;font-size:11px;line-height:1.35;color:var(--mute)
 #vbox .cap{margin-top:8px;font-size:13px;max-height:170px;overflow:auto;color:var(--ink2)}
 #vbox .cap p{margin:4px 0}#vbox .cap p.me{color:var(--ink)}
 #vbox small{display:block;margin-top:8px;color:var(--mute);font-size:11px}
+.vctl{display:flex;align-items:center;gap:10px;margin-top:10px}
+.vctl label{font-size:12.5px;color:var(--ink2)}
+#ptt{flex:1;height:44px;font:600 14px/1 var(--sans);border-radius:8px;border:1px solid var(--accent);background:transparent;color:var(--ink);cursor:pointer;user-select:none;-webkit-user-select:none;touch-action:none}
+#ptt.down{background:var(--accent);color:var(--onaccent)}
+#ptt:disabled{opacity:.45;cursor:default}
+.vtype{display:flex;gap:6px;margin-top:8px}
+.vtype input{flex:1;min-width:0;height:36px;font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:0 10px}
+.vtype button{height:36px;font:600 14px/1 var(--sans);color:var(--ink);background:transparent;border:1px solid var(--line);border-radius:8px;padding:0 12px;cursor:pointer}
 .wrap{max-width:1536px;margin:0 auto;padding:12px 48px 20px}
 .tiles{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);gap:8px}
 @media (max-width:1100px){.tiles{grid-auto-flow:row;grid-template-columns:repeat(auto-fit,minmax(120px,1fr))}}
@@ -205,7 +213,7 @@ footer{max-width:1536px;margin:0 auto;padding:4px 48px 32px;color:var(--mute);fo
 <footer>PLATO-40 synthetic dataset, proximata Hackathon '26 · Rhomberg track (CC BY 4.0). Every finding concerns the fictional PLATO-40 only. Simulated effects are labelled; nothing here was measured on a real building.</footer>
 <div id="tip"></div>
 <div id="toast" role="status" aria-live="polite"></div>
-<div id="vbox" aria-live="polite"><div class="st" id="vst">Voice</div><div class="cap" id="vcap2"></div><small>Voice assistant by ElevenLabs. It reports and opens cases; approvals happen only on your clear yes. Effects are simulated.</small></div>
+<div id="vbox" aria-live="polite"><div class="st" id="vst">Voice</div><div class="cap" id="vcap2"></div><div class="vctl"><button id="ptt" type="button">Hold to talk</button><label><input id="pttOn" type="checkbox" checked> push to talk</label></div><form class="vtype" id="vform"><input id="vtext" type="text" placeholder="or type: status, open R403, approve item 1" aria-label="Type to the assistant" autocomplete="off"><button type="submit">Send</button></form><small>In a loud room: hold the button or the space bar while you speak, release when done. The microphone is closed in between, so the room cannot talk to the assistant. Typing works as well. Approvals happen only on your clear yes; effects are simulated.</small></div>
 <script id="data" type="application/json">__DATA__</script>
 <script>
 const D = JSON.parse(document.getElementById('data').textContent);
@@ -591,14 +599,31 @@ async function briefing() {
     const tools = {}; for (const k of Object.keys(VT)) if (k[0] !== '_') tools[k] = async args => { let out; try { out = VT[k](args || {}); } catch (err) { out = {error: String(err && err.message || err)}; } return JSON.stringify(out); };
     call = await mod.Conversation.startSession({agentId: D.voiceAgent, connectionType: 'webrtc', clientTools: tools,
       onConnect: () => { st.textContent = 'Listening'; btn.textContent = 'End briefing'; btn.classList.add('live'); },
-      onDisconnect: () => { call = null; btn.textContent = 'Voice briefing'; btn.classList.remove('live'); st.textContent = 'Voice ended'; setTimeout(() => { if (!call) box.className = ''; }, 2500); },
-      onModeChange: ev => { st.textContent = ev && ev.mode === 'speaking' ? 'Speaking' : 'Listening'; },
+      onDisconnect: () => { call = null; talking = false; $('ptt').classList.remove('down'); $('ptt').disabled = true; btn.textContent = 'Voice briefing'; btn.classList.remove('live'); st.textContent = 'Voice ended'; setTimeout(() => { if (!call) box.className = ''; }, 2500); },
+      onModeChange: ev => { if (!talking) st.textContent = ev && ev.mode === 'speaking' ? 'Assistant is speaking' : (pttActive() ? 'Hold to talk' : 'Listening'); },
       onMessage: ev => { if (ev && ev.message) vsay(ev.message, ev.source === 'user'); },
       onError: err => { st.textContent = 'Voice error'; vsay(String(err && err.message || err)); }});
     setTimeout(() => { try { if (call && call.sendUserMessage) call.sendUserMessage('Give me a short briefing: the status, the critical cases, and what is waiting for my approval.'); } catch (err) {} }, 1200);
+    applyPtt();
   } catch (err) { call = null; st.textContent = 'Voice not available'; vsay(String(err && err.message || err) + '. Voice needs a microphone, network access and a page served over https or localhost.'); }
   finally { btn.disabled = false; }
 }
+// Push to talk, for loud rooms: the microphone is open only while the button or the space bar is held.
+let talking = false, releaseTimer = null;
+const pttActive = () => !!call && $('pttOn').checked;
+function mic(open) { try { if (call && call.setMicMuted) call.setMicMuted(!open); } catch (err) {} }
+function applyPtt() { const on = $('pttOn').checked; $('ptt').disabled = !call || !on; $('ptt').textContent = on ? 'Hold to talk (or hold space)' : 'Microphone is open'; mic(!on); }
+function talk(down) { if (!pttActive()) return; clearTimeout(releaseTimer);
+  if (down) { talking = true; mic(true); $('ptt').classList.add('down'); $('vst').textContent = 'You are speaking'; }
+  else if (talking) { $('ptt').classList.remove('down'); releaseTimer = setTimeout(() => { talking = false; mic(false); if (call) $('vst').textContent = 'Listening for the assistant'; }, 350); } }   // short tail so the last word is not cut
+$('pttOn').onchange = applyPtt;
+for (const [evn, down] of [['pointerdown', true], ['pointerup', false], ['pointerleave', false], ['pointercancel', false]]) $('ptt').addEventListener(evn, ev => { ev.preventDefault(); talk(down); });
+const typing = ev => /^(INPUT|TEXTAREA|SELECT)$/.test(ev.target.tagName || '');
+document.addEventListener('keydown', ev => { if (ev.code === 'Space' && pttActive() && !typing(ev)) { ev.preventDefault(); if (!ev.repeat) talk(true); } });
+document.addEventListener('keyup', ev => { if (ev.code === 'Space' && pttActive() && !typing(ev)) { ev.preventDefault(); talk(false); } });
+$('vform').addEventListener('submit', ev => { ev.preventDefault(); const t = $('vtext').value.trim(); if (!t) return;
+  if (!call) { vsay('Start the voice briefing first.'); return; }
+  try { call.sendUserMessage(t); vsay(t, true); $('vtext').value = ''; } catch (err) { vsay(String(err && err.message || err)); } });
 if (D.voiceAgent) { const b = $('brief'); b.hidden = false; b.title = 'Hear the status, the critical cases and what waits for approval'; b.onclick = briefing; }
 // ?voicetest runs the tool handlers without any network or microphone and shows what they return
 function voiceTest() { const KEYBAK = approvals; approvals = {}; const log = [], run = (name, args) => log.push(name + '(' + JSON.stringify(args || {}) + ') -> ' + JSON.stringify(VT[name](args || {}), null, 1));

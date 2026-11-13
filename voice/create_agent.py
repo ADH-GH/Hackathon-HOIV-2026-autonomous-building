@@ -57,11 +57,17 @@ body = {
         "agent": {
             "first_message": "Building operations for PLATO-40. Ask me for the status, a case, or the approval queue.",
             "language": "en",
+            "disable_first_message_interruptions": True,
             "prompt": {"prompt": PROMPT, "llm": "gemini-2.5-flash", "temperature": 0.2, "timezone": "Europe/Vienna",
                        "tools": TOOLS},
         },
         "tts": {"voice_id": "JBFqnCBsd6RMkjVDRZzb"},
         "conversation": {"max_duration_seconds": 300},
+        # for loud rooms: ignore voices in the background, wait longer before taking the turn, boost the words that matter
+        "vad": {"background_voice_detection": True},
+        "turn": {"turn_eagerness": "patient", "turn_timeout": 20},
+        "asr": {"quality": "high", "keywords": ["PLATO-40", "status", "briefing", "approve", "reject", "approval", "consent", "turnaround", "water leak",
+                                                "heat pump", "maintenance", "event weekend", "energy", "logistics", "overview", "open case"]},
     },
     # The widget wears the dashboard's style set (dark card, blue primary button, 8 px radius).
     "platform_settings": {"widget": {

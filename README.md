@@ -228,7 +228,11 @@ consent is recorded, by voice or by click. The agent only accepts calls from an 
 origins and has a daily conversation limit; conversations are billed by ElevenLabs. Voice needs
 network, a microphone and a page served over https or localhost. The tool handlers can be checked
 without network or microphone: open the page with `?voicetest`. The spoken conversation itself has
-not been tested by us. Without the flag the dashboard has no voice button and loads nothing for it.
+not been tested by us. For loud rooms the call starts in push-to-talk: the
+microphone is open only while the button or the space bar is held, and a text field takes typed
+requests instead. The agent itself is set to ignore background voices, to wait longer before it
+takes the turn, and to favour the words that matter. Without the flag the dashboard has no voice
+button and loads nothing for it.
 
 ## Local time
 
