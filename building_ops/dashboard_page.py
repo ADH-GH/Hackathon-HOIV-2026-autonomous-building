@@ -25,7 +25,7 @@ html{color-scheme:dark}:root[data-theme="light"]{color-scheme:light}
 body{margin:0;background:var(--bg);color:var(--ink);font:14.5px/1.55 var(--sans);-webkit-font-smoothing:antialiased}
 h1,h2,h3,h4{font-family:var(--display);letter-spacing:-.01em}
 :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
-header{padding:24px 48px 0;max-width:1536px;margin:0 auto}
+header{padding:20px 48px 0;max-width:1536px;margin:0 auto}
 .top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap}
 .kicker{font:500 11px/1 var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--accent)}
 .kicker::before{content:"";display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 4px var(--glow);margin-right:9px;vertical-align:1px}
@@ -33,12 +33,13 @@ h1{margin:8px 0 0;font:600 28px/1.15 var(--display);letter-spacing:-.01em}
 .sub{color:var(--mute);font-size:12.5px;margin-top:5px;overflow-wrap:anywhere}
 #theme{height:36px;font:600 14px/1 var(--sans);color:var(--ink);background:transparent;border:1px solid var(--line);border-radius:8px;padding:0 14px;cursor:pointer}
 #theme:hover{background:var(--raise)}
-nav{display:flex;gap:6px;flex-wrap:wrap;margin-top:16px;padding-bottom:12px;border-bottom:1px solid var(--line)}
+nav{display:flex;gap:6px;flex-wrap:wrap;margin-top:16px}
+.hbox{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:18px 20px 14px}
 nav button{height:36px;font:500 14px/1 var(--sans);color:var(--ink2);background:transparent;border:1px solid transparent;border-radius:8px;padding:0 12px;cursor:pointer;white-space:nowrap}
 nav button:hover{background:var(--raise)}
 nav button.on{color:var(--ink);background:var(--raise);border-color:var(--line)}
 nav button span{font:500 11.5px/1 var(--mono);color:var(--mute);margin-left:7px}
-.wrap{max-width:1536px;margin:0 auto;padding:20px 48px}
+.wrap{max-width:1536px;margin:0 auto;padding:12px 48px 20px}
 .tiles{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);gap:8px}
 @media (max-width:1100px){.tiles{grid-auto-flow:row;grid-template-columns:repeat(auto-fit,minmax(120px,1fr))}}
 .tile{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:9px 10px 10px;min-width:0}
@@ -114,7 +115,7 @@ input[type=search]{height:36px;font:inherit;color:var(--ink);background:var(--bg
 .act .state.approved{color:var(--auto)}.act .state.rejected{color:var(--crit)}
 .act small{flex-basis:100%;color:var(--mute);font-size:11.5px}
 @media (max-width:700px){
-  header{padding:16px 16px 0}.wrap{padding:14px 16px}footer{padding:4px 16px 28px}h1{font-size:22px}
+  header{padding:12px 16px 0}.hbox{padding:14px 14px 10px}.wrap{padding:10px 16px 14px}footer{padding:4px 16px 28px}h1{font-size:22px}
   nav{flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none}nav::-webkit-scrollbar{display:none}nav button{white-space:nowrap;flex:0 0 auto}
   .tiles{grid-auto-flow:row;grid-template-columns:repeat(2,minmax(0,1fr))}.tile b{font-size:23px}
   .card{padding:12px}.scroll table{min-width:680px}
@@ -163,6 +164,7 @@ footer{max-width:1536px;margin:0 auto;padding:4px 48px 32px;color:var(--mute);fo
 </head>
 <body>
 <header>
+  <div class="hbox">
   <div class="top">
     <div>
       <div class="kicker">Autonomous building operations · fictional reference property</div>
@@ -172,6 +174,7 @@ footer{max-width:1536px;margin:0 auto;padding:4px 48px 32px;color:var(--mute);fo
     <button id="theme" type="button">Light</button>
   </div>
   <nav id="nav"></nav>
+  </div>
 </header>
 <div class="wrap" id="view"></div>
 <footer>PLATO-40 synthetic dataset, proximata Hackathon '26 · Rhomberg track (CC BY 4.0). Every finding concerns the fictional PLATO-40 only. Simulated effects are labelled; nothing here was measured on a real building.</footer>
