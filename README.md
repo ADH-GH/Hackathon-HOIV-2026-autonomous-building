@@ -3,6 +3,8 @@
 Team Alf & Friends · proximata Hackathon '26 · Rhomberg track
 "PLATO · CLARA Future — The Autonomous Building".
 
+**Live dashboard:** https://adh-gh.github.io/Hackathon-HOIV-2026-autonomous-building/ (the file `docs/index.html`, written by the dashboard command below from `decisions.jsonl`; no voice, no network requests).
+
 PLATO-40 is a fictional 40-room self-check-in hotel. All data is synthetic.
 Nothing here is a statement about real PLATO buildings or about what CLARA does today.
 
@@ -139,6 +141,7 @@ Cold-snap pre-heating uses the newest forecast issued at the decision time (mini
 
 ## Dashboard
 
+`python -m building_ops dashboard data/dev decisions.jsonl --out docs/index.html` writes the hosted copy.
 `python -m building_ops dashboard data/dev decisions.jsonl --actions out/actions.jsonl` writes one
 HTML file that opens from disk and makes no network request. Overview, one tab per scenario and
 the full decision log. Each case shows the slice of raw data the decision rests on (meter flow,
