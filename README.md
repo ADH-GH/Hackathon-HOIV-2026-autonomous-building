@@ -8,8 +8,9 @@ Nothing here is a statement about real PLATO buildings or about what CLARA does 
 
 ## Status
 
-**Work in progress.** The three mandatory scenarios S01 to S03 are implemented and tested.
-Level 2 beyond the surge days, Level 3 (`insights.md`) and the dashboard are not done yet.
+**Status.** S01 to S04 are implemented and tested, Level 3 (`insights.md`) is computed from the dev
+year, and the dashboard shows every case. Not done: logistics planning (waste, vending) and
+battery or PV scheduling.
 
 | Part | State |
 |---|---|
@@ -22,9 +23,11 @@ Level 2 beyond the surge days, Level 3 (`insights.md`) and the dashboard are not
 | S02 water leak (burst, quiet, hidden) | implemented, tested, run on quickstart and dev |
 | S01 turnaround (requests, day capacity, waiting guests; covers surge days) | implemented, tested, run on quickstart and dev |
 | S03 energy vs comfort (heat pump degradation, cold-snap pre-heating, cold-room reports) | implemented, tested, run on quickstart and dev |
-| S04 maintenance cascade, logistics, energy optimisation beyond pre-heating | not started |
+| S04 maintenance cascade (fast filter loading, sensor gap, technician away) | implemented, tested, run on quickstart and dev |
+| Logistics (waste, vending), battery and PV scheduling | not started; findings only, in `insights.md` |
 | Dashboard: every case with its evidence, decisions and autonomy level (`dashboard`) | working; checked by screenshot on dev |
-| Level 3 (`insights.md`) | not started |
+| Level 3: `insights.md`, `insights.jsonl` (`insights`) | computed from dev: 13 recommendations with numbers, evidence, uncertainty; target architecture |
+| Approval queue in the dashboard (approve, reject, guest consent, exportable log) | working; effect is simulated |
 
 ## Run
 
@@ -142,6 +145,18 @@ day), the decisions in order with autonomy level, evidence and verification, and
 executor's status. Where the dataset has a later corrective work order it is shown as a check
 and labelled as such; detectors never read it. Deep links work: `dashboard.html#S02` or
 `#S02:<episode id>`. Dark by default with a light theme toggle.
+
+## Maintenance cascade (S04)
+
+Only readings taken at normal fan power are compared; the planned reduced operation at night
+lowers airflow and filter pressure together and is neither a fault nor a recovery. Steps:
+the 6-hour median pressure rises 15 Pa or more in 24 hours (normal loading is about 1.5 Pa
+per day); the pressure sensor is silent for 6 hours, after which fan power and airflow are
+read instead; the fan reaches its limit of 5.3 kW or airflow falls below 95 % of nominal.
+Service goes to the technician only if a shift within 48 hours is known as worked, otherwise
+to a contractor, always with approval. Dev: both cascades flagged 11 and 9 days before the
+unplanned filter change in `work_orders.csv`, two harmless sensor gaps reported as low-priority
+data quality, nothing else. Quickstart: one cascade, flagged 8 days before the change.
 
 ## Local time
 

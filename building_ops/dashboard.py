@@ -25,7 +25,7 @@ from .signals import local
 
 PRIORITY_RANK = {"critical": 0, "high": 1, "medium": 2, "low": 3}
 SCENARIO = {"room_turnaround": "S01", "occupancy_surge": "S01", "water_leak": "S02",
-            "data_quality": "S02", "heating_comfort": "S03"}
+            "data_quality": "S02", "heating_comfort": "S03", "ventilation_maintenance": "S04"}
 
 
 def _read(path: str | Path | None) -> list[dict[str, Any]]:
@@ -44,6 +44,8 @@ def _kind(episode_id: str) -> tuple[str, str]:
     head, subject = parts[0], parts[1] if len(parts) > 1 else ""
     if head == "water_leak":
         return ("main_gap", "WM_MAIN") if subject == "WM_MAIN" else ("room_flow", subject)
+    if head == "ventilation_maintenance" or (head == "data_quality" and subject == "AHU1"):
+        return "ahu", "AHU1"
     if head == "data_quality":
         return "room_meter", subject.replace("WM_", "")
     if head == "heating_comfort":
@@ -70,7 +72,7 @@ def build(data_dir: str | Path, decisions_path: str | Path, out: str | Path,
     for ep in episodes.values():
         ds_ = ep["decisions"]
         ep["kind"], ep["subject"] = _kind(ep["id"])
-        ep["scenario"] = SCENARIO.get(ds_[0]["issue_type"], "Other")
+        ep["scenario"] = "S04" if ep["kind"] == "ahu" else SCENARIO.get(ds_[0]["issue_type"], "Other")
         ep["issue_type"] = ds_[0]["issue_type"]
         ep["start"] = min(parse_ts(d["timestamp_utc"]) for d in ds_)
         ep["end"] = max(parse_ts(d["timestamp_utc"]) for d in ds_)
@@ -85,12 +87,14 @@ def build(data_dir: str | Path, decisions_path: str | Path, out: str | Path,
 
     _water(ds, episodes)
     _heat_pump(ds, episodes)
+    _ahu(ds, episodes)
     _forecast(ds, episodes)
     _room_temp(ds, episodes)
     _room_days(episodes, events, requests)
 
     for ep in episodes.values():
-        asset = {"room_flow": ep["subject"], "main_gap": "WM_MAIN", "cop": "HP1"}.get(ep["kind"])
+        asset = {"room_flow": ep["subject"], "main_gap": "WM_MAIN", "cop": "HP1",
+                 "ahu": "AHU1" if ep["issue_type"] == "ventilation_maintenance" else None}.get(ep["kind"])
         if asset:
             later = [w for w in work_orders if w["asset_id"] == asset and w["type"] == "corrective"
                      and ep["start"] <= w["created"] <= ep["start"] + timedelta(days=14)]
@@ -192,6 +196,24 @@ def _heat_pump(ds: Dataset, episodes: dict[str, dict]) -> None:
         ep["series"] = {"t": [_ms(h) for h in keys],
                         "v": [round(statistics.median(c for c, _ in hours[h]), 3) for h in keys],
                         "ref": [round(statistics.median(e for _, e in hours[h]), 3) for h in keys]}
+
+
+def _ahu(ds: Dataset, episodes: dict[str, dict]) -> None:
+    targets = [ep for ep in episodes.values() if ep["kind"] == "ahu"]
+    if not targets or not ds.has("equipment"):
+        return
+    hours: dict[datetime, dict[str, list[float]]] = defaultdict(lambda: defaultdict(list))
+    for r in ds.rows("equipment"):
+        if r["asset_id"] == "AHU1" and r["metric"] in ("filter_dp_pa", "fan_kw", "airflow_m3h"):
+            value = to_float(r["value"])
+            if value is not None:
+                hours[parse_ts(r["timestamp_utc"]).replace(minute=0, second=0, microsecond=0)][r["metric"]].append(value)
+    for ep in targets:
+        lo, hi = ep["start"] - timedelta(days=5), ep["end"] + timedelta(days=12)
+        keys = [lo.replace(minute=0, second=0, microsecond=0) + timedelta(hours=i) for i in range(int((hi - lo).total_seconds() // 3600) + 1)]
+        pick = lambda h, k: round(statistics.median(hours[h][k]), 2) if h in hours and hours[h][k] else None
+        ep["series"] = {"t": [_ms(h) for h in keys], "v": [pick(h, "filter_dp_pa") for h in keys],
+                        "fan": [pick(h, "fan_kw") for h in keys], "air": [pick(h, "airflow_m3h") for h in keys]}
 
 
 def _forecast(ds: Dataset, episodes: dict[str, dict]) -> None:

@@ -145,10 +145,10 @@ const lt = ms => F_FULL.format(new Date(ms));
 const dhm = ms => F_DHM.format(new Date(ms));
 const level = d => d.autonomy || (d.requires_guest_consent ? 'approval_and_consent' : d.requires_human_approval ? 'human_approval' : 'autonomous');
 const LEVEL = {autonomous: 'autonomous', human_approval: 'human approval', approval_and_consent: 'approval + guest consent'};
-const SC = {S01: 'S01 Turnaround', S02: 'S02 Water', S03: 'S03 Heating'};
+const SC = {S01: 'S01 Turnaround', S02: 'S02 Water', S03: 'S03 Heating', S04: 'S04 Maintenance'};
 const KIND = {room_flow: 'Water leak in a room', main_gap: 'Water loss outside the rooms', room_meter: 'Unreliable water meter',
   cop: 'Heat pump degradation', forecast: 'Cold snap ahead', room_temp: 'Guest reports a cold room',
-  room_day: 'Room turnaround', day_plan: 'Day capacity shortfall'};
+  room_day: 'Room turnaround', day_plan: 'Day capacity shortfall', ahu: 'Ventilation filter'};
 const tsOf = d => Date.parse(d.timestamp_utc);
 const E = D.episodes;
 const all = E.flatMap(e => e.decisions);
@@ -256,6 +256,15 @@ function evidenceCard(e) {
     lineChart(c, {t: S && S.t, lines: [{name: 'night gap', v: S && S.v}], unit: 'L per 15 min', short: 'L', zero: true, marks, label: 'Night gap'}); }
   else if (e.kind === 'cop') { c.append(el('h2', null, 'Heat pump COP against the outdoor-temperature model'), el('p', 'note', 'Hourly median of heat output divided by electric input. The dashed line is what the outdoor temperature explains.'));
     lineChart(c, {t: S && S.t, lines: [{name: 'measured COP', v: S && S.v}, {name: 'expected from outdoor temperature', v: S && S.ref, ref: true}], unit: 'COP', marks, label: 'COP'}); }
+  else if (e.kind === 'ahu') { const dm = e.decisions.map(d => ({t: tsOf(d), label: (d.stage || 'decision') + ' ' + dhm(tsOf(d))})).filter((x, i, a) => a.findIndex(y => y.label === x.label) === i).concat(e.check ? [{t: e.check.t, label: 'work order ' + dhm(e.check.t), check: true}] : []);
+    c.append(el('h2', null, 'Filter differential pressure'), el('p', 'note', 'Hourly median. Where the line stops, the sensor sent nothing; a gap is not a recovery. The saw-tooth is the planned reduced operation at night.'));
+    lineChart(c, {t: S && S.t, lines: [{name: 'filter pressure', v: S && S.v}], unit: 'Pa', short: 'Pa', marks: dm, label: 'Filter pressure'});
+    c.append(el('h2', null, 'Fan power'), el('p', 'note', 'A different sensor, still reporting through the gap. The fan works harder against a loaded filter until it reaches its limit of 5.4 kW.'));
+    c.lastChild.previousSibling.style.marginTop = '14px';
+    lineChart(c, {t: S && S.t, lines: [{name: 'fan power', v: S && S.fan}], unit: 'kW', short: 'kW', marks: dm, label: 'Fan power'});
+    c.append(el('h2', null, 'Airflow'), el('p', 'note', 'Nominal is 4,200 m³/h. Once the fan is at its limit, airflow falls.'));
+    c.lastChild.previousSibling.style.marginTop = '14px';
+    lineChart(c, {t: S && S.t, lines: [{name: 'airflow', v: S && S.air}], unit: 'm³/h', short: 'm³/h', marks: dm, label: 'Airflow'}); }
   else if (e.kind === 'forecast') { c.append(el('h2', null, 'Outdoor temperature forecast used for the decision'), el('p', 'note', 'Solid: the forecast issued at the decision time. Dashed: what was measured afterwards, shown for checking only.'));
     lineChart(c, {t: S && S.t, lines: [{name: 'forecast', v: S && S.v}, {name: 'measured later', v: S && S.ref, ref: true}], unit: '°C outdoor', short: '°C', marks, label: 'Forecast'}); }
   else if (e.kind === 'room_temp') { c.append(el('h2', null, 'Room ' + e.subject + ': temperature and setpoint'), el('p', 'note', 'Shaded band: comfort range for occupied rooms, 20 to 23 °C. The replay does not react to our action.'));
@@ -273,7 +282,7 @@ function evidenceCard(e) {
         b.append(el('span', null, w.room), holder, el('span', null, w.min + ' min')); bs.append(b); } c.append(bs); } }
   return c;
 }
-function episodeTitle(e) { return (KIND[e.kind] || e.issue_type) + (e.subject && e.subject !== 'BUILDING' && e.kind !== 'cop' && e.kind !== 'main_gap' ? ' · ' + e.subject : ''); }
+function episodeTitle(e) { if (e.kind === 'ahu') return e.issue_type === 'data_quality' ? 'Filter sensor gap, plant healthy' : 'Ventilation filter cascade'; return (KIND[e.kind] || e.issue_type) + (e.subject && e.subject !== 'BUILDING' && e.kind !== 'cop' && e.kind !== 'main_gap' ? ' · ' + e.subject : ''); }
 function detail(e) {
   const box = el('div', 'detail');
   if (!e) { box.append(el('div', 'empty', 'Select a case.')); return box; }
@@ -298,14 +307,14 @@ function overview(root) {
   const checked = E.filter(e => e.check), leads = checked.map(e => e.check.lead_h).sort((a, b) => a - b);
   const tl = el('div', 'tiles');
   tl.append(tile(inc.length, 'cases that needed a decision', E.length - inc.length + ' routine guest answers besides'),
-    tile(by('S01'), 'S01 turnaround cases'), tile(by('S02'), 'S02 water cases'), tile(by('S03'), 'S03 heating cases'),
+    tile(by('S01'), 'S01 turnaround cases'), tile(by('S02'), 'S02 water cases'), tile(by('S03'), 'S03 heating cases'), tile(by('S04'), 'S04 maintenance cases'),
     tile(all.filter(d => level(d) === 'autonomous').length, 'autonomous decisions'), tile(all.filter(d => level(d) === 'human_approval').length, 'need human approval', pending().length + ' still open'),
     tile(all.filter(d => level(d) === 'approval_and_consent').length, 'need guest consent too'),
     tile(leads.length ? Math.round(leads[Math.floor(leads.length / 2)]) + ' h' : 'n/a', 'median lead over the repair', leads.length ? checked.length + ' cases with a later work order' : 'no work order to compare', true));
   root.append(tl);
   // time strip
   const c = el('div', 'card'); c.append(el('h2', null, 'When the cases happened'), el('p', 'note', 'One dot per case, one lane per scenario. Hover for details, click to open.'));
-  const narrow = window.innerWidth < 700, W = narrow ? Math.max(300, window.innerWidth - 66) : 1000, gap = narrow ? 46 : 38, H = narrow ? 190 : 150, m = {l: narrow ? 4 : 110, r: narrow ? 8 : 14, t: 10, b: 24}, lanes = ['S01', 'S02', 'S03'];
+  const narrow = window.innerWidth < 700, W = narrow ? Math.max(300, window.innerWidth - 66) : 1000, gap = narrow ? 46 : 38, H = narrow ? 236 : 188, m = {l: narrow ? 4 : 110, r: narrow ? 8 : 14, t: 10, b: 24}, lanes = ['S01', 'S02', 'S03', 'S04'];
   const t0 = Math.min(...E.map(e => e.start)), t1 = Math.max(...E.map(e => e.start), t0 + 1);
   const x = v => m.l + (v - t0) / (t1 - t0) * (W - m.l - m.r), s = svg('svg', {viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': 'Cases over time'});
   lanes.forEach((ln, i) => { const y = m.t + (narrow ? 30 : 20) + i * gap; s.append(svg('line', {x1: m.l, x2: W - m.r, y1: y, y2: y, stroke: 'var(--grid)'})); s.append(svg('text', {x: narrow ? m.l : 0, y: narrow ? y - 12 : y + 4, class: 'lbl'}, SC[ln]));
@@ -317,7 +326,7 @@ function overview(root) {
   // table
   const tb = el('div', 'card'); tb.append(el('h2', null, 'Technical incidents and how early they were seen'), el('p', 'note', 'Lead is the time from our first decision to the corrective work order in the dataset. Work orders are used for this comparison only.'));
   const sc = el('div', 'scroll'), table = el('table'), hr = el('tr'); ['Case', 'First decision (Vienna)', 'Risk', 'Work order written later', 'Lead'].forEach(h => hr.append(el('th', null, h))); table.append(hr);
-  for (const e of E.filter(q => ['room_flow', 'main_gap', 'cop'].includes(q.kind))) { const tr = el('tr', 'go'); tr.onclick = () => open(e);
+  for (const e of E.filter(q => ['room_flow', 'main_gap', 'cop'].includes(q.kind) || (q.kind === 'ahu' && q.issue_type !== 'data_quality'))) { const tr = el('tr', 'go'); tr.onclick = () => open(e);
     tr.append(el('td', null, episodeTitle(e)), el('td', 'm', lt(e.start))); const td = el('td'); td.append(el('span', 'tag p-' + e.priority, e.priority)); tr.append(td);
     tr.append(el('td', null, e.check ? e.check.text : 'none within 14 days'), el('td', 'n', e.check ? e.check.lead_h + ' h' : '')); table.append(tr); }
   sc.append(table); tb.append(sc); root.append(tb);

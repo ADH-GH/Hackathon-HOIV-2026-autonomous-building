@@ -7,6 +7,7 @@ from pathlib import Path
 from building_ops.dataset import Dataset
 from building_ops.detectors import s01_turnaround as s01
 from building_ops.detectors import s03_energy_comfort as s03
+from building_ops.detectors import s04_maintenance as s04
 from building_ops.signals import fmt_local, local_day_time
 
 Q = timedelta(minutes=15)
@@ -112,6 +113,48 @@ class HeatPumpTest(unittest.TestCase):
 
     def test_data_gap_is_not_degradation(self):
         self.assertEqual(self.run_hp(lambda i: 1.0, blank_from=96), [])
+
+
+class MaintenanceCascadeTest(unittest.TestCase):
+    """Day operation 06:00-22:00 UTC at normal fan power, reduced operation at night."""
+
+    def run_ahu(self, dp_of_day, gap_days=(), roster=(), days=14):
+        t0 = datetime(2026, 7, 10, 0, 0, tzinfo=timezone.utc)
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            base(root)
+            write(root, "work_orders.csv", "work_order_id,created_utc,asset_id,type,status,scheduled_utc,completed_utc,assigned_to,summary", [])
+            write(root, "staff_roster.csv", "shift_id,resource_id,role,start_utc,end_utc,status,status_known_utc", roster)
+            eq = []
+            for i in range(days * 96):
+                ts, day, night = z(t0 + i * Q), i // 96, not 24 <= i % 96 < 88
+                dp = dp_of_day(day + (i % 96) / 96)
+                fan = min(5.4, 3.2 + max(0.0, dp - 100) * 0.0125)
+                air = 4200.0 if dp < 280 else 4200.0 - (dp - 280) * 40
+                if night:
+                    dp, fan, air = dp * 0.5, 1.8, 3100.0
+                eq.append((ts, "AHU1", "filter_dp_pa", None if day in gap_days else round(dp, 1)))
+                eq.append((ts, "AHU1", "fan_kw", round(fan, 2)))
+                eq.append((ts, "AHU1", "airflow_m3h", round(air)))
+            write(root, "equipment.csv", "timestamp_utc,asset_id,metric,value", eq)
+            return [d.finalize() for d in s04.detect(Dataset(root))]
+
+    def test_slow_loading_and_night_mode_are_silent(self):
+        self.assertEqual(self.run_ahu(lambda d: 150 + 1.5 * d), [])
+
+    def test_sensor_gap_on_a_healthy_plant_is_data_quality_only(self):
+        found = self.run_ahu(lambda d: 150 + 1.5 * d, gap_days=(5, 6))
+        self.assertEqual([(d["issue_type"], d["priority"]) for d in found], [("data_quality", "low")])
+
+    def test_cascade_through_a_sensor_gap_with_technician_away(self):
+        away = [(f"S{i}", "TECH_1", "technician", f"2026-07-{10 + i:02d}T06:00:00Z", f"2026-07-{10 + i:02d}T14:30:00Z",
+                 "vacation", "2026-06-01T00:00:00Z") for i in range(14)]
+        found = self.run_ahu(lambda d: 150 + (30 * (d - 3) if d > 3 else 0), gap_days=(6, 7, 8, 9), roster=away)
+        self.assertEqual(len({d["episode_id"] for d in found}), 1)
+        self.assertEqual([d["stage"] for d in found if d["action"] == "flag_anomaly"], ["rising", "gap", "airflow"])
+        services = [d for d in found if d["action"] != "flag_anomaly"]
+        self.assertTrue(all(d["action"] == "order_service" and d["requires_human_approval"] for d in services))   # absent technician is not scheduled
+        self.assertEqual(found[-1]["priority"], "critical")
 
 
 if __name__ == "__main__":
