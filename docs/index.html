@@ -62,6 +62,7 @@ nav button small{display:block;font-size:11px;line-height:1.35;color:var(--mute)
 .tile span{display:block;font:500 10.5px/1.35 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--mute);margin-top:6px;overflow-wrap:anywhere}
 .tile small{display:block;font-size:11px;line-height:1.35;color:var(--mute);margin-top:3px}
 .tile.key{border-color:var(--accent)}
+.card .tiles .tile{background:var(--bg)}
 .card{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:20px;margin-top:12px;min-width:0}
 .card h2{margin:0 0 4px;font:600 18px/1.3 var(--display);letter-spacing:-.01em;color:var(--ink)}
 .card p.note{margin:0 0 12px;color:var(--mute);font-size:14px}
@@ -419,7 +420,7 @@ function overview(root) {
     tile(checked.length + ' of ' + tech.length, 'technical incidents with a later work order', 'used for checking only, never read by a detector'),
     tile(inc.filter(e => e.priority === 'critical').length, 'critical cases', 'the red dots below'),
     tile(E.length - inc.length, 'routine guest answers', 'not counted as incidents; tick the box in S01 or S03 to see them'));
-  root.append(tl);
+  const kf = el('div', 'card'); kf.style.marginTop = '0'; kf.append(el('h2', null, 'Key figures'), el('p', 'note', 'How early the system was, how that was checked, and what is counted where.'), tl); root.append(kf);
   const na = all.filter(d => level(d) === 'autonomous').length, nh = all.filter(d => level(d) === 'human_approval').length, nc = all.length - na - nh;
   const sb = el('div', 'card'); sb.append(el('h2', null, 'Who decides'), el('p', 'note', 'Share of all decisions by autonomy level. The gate is code: a detector can ask for more oversight, never for less.'));
   const bar = el('div', 'split-bar'); [[na, 'var(--auto)', 'autonomous'], [nh, 'var(--appr)', 'human approval'], [nc, 'var(--cons)', 'approval + guest consent']].forEach(([n, col, name]) => { const seg = el('div'); seg.style.background = col; seg.style.width = Math.max(n ? 0.8 : 0, n / all.length * 100) + '%';
