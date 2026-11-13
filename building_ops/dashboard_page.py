@@ -168,7 +168,7 @@ footer{max-width:1536px;margin:0 auto;padding:4px 48px 32px;color:var(--mute);fo
       <h1 id="title"></h1>
       <div class="sub" id="source"></div>
     </div>
-    <div><button id="voice" type="button" hidden>Voice</button><button id="theme" type="button">Light</button></div>
+    <button id="theme" type="button">Light</button>
   </div>
   <nav id="nav"></nav>
 </header>
@@ -176,7 +176,6 @@ footer{max-width:1536px;margin:0 auto;padding:4px 48px 32px;color:var(--mute);fo
 <footer>PLATO-40 synthetic dataset, proximata Hackathon '26 · Rhomberg track (CC BY 4.0). Every finding concerns the fictional PLATO-40 only. Simulated effects are labelled; nothing here was measured on a real building.</footer>
 <div id="tip"></div>
 <div id="toast" role="status" aria-live="polite"></div>
-<div id="vpanel" aria-live="polite"><div class="st"><i></i><span id="vstate">Voice</span></div><div class="cap" id="vcap"></div><small>Voice assistant by ElevenLabs. It can show cases and set approvals only on your word; effects are simulated.</small></div>
 <script id="data" type="application/json">__DATA__</script>
 <script>
 const D = JSON.parse(document.getElementById('data').textContent);
@@ -509,27 +508,23 @@ const VT = {
     decide(d, 'approved'); return {ok: true, result: 'approved in the simulation', action: d.action.replace(/_/g, ' '), assets: (d.affected_assets || []).slice(0, 3), still_waiting: pending().length}; },
   reject({item}) { const r = VT._item(item); if (r.error) return r; decide(r.d, 'rejected'); return {ok: true, result: 'rejected, not executed', action: r.d.action.replace(/_/g, ' '), still_waiting: pending().length}; },
 };
-let conv = null;
-function vstate(text, cls) { $('vstate').textContent = text; const p = $('vpanel'); p.className = 'on' + (cls ? ' ' + cls : ''); }
-function vcap(text, me) { const c = $('vcap'), p = el('p', me ? 'me' : '', (me ? 'You: ' : '') + text); c.append(p); while (c.children.length > 8) c.firstChild.remove(); c.scrollTop = c.scrollHeight; }
-async function startVoice() {
-  const btn = $('voice');
-  if (conv) { try { await conv.endSession(); } catch (err) {} return; }
-  try { vstate('Asking for the microphone'); btn.disabled = true;
-    await navigator.mediaDevices.getUserMedia({audio: true});
-    vstate('Connecting');
-    let mod; try { mod = await import('https://cdn.jsdelivr.net/npm/@elevenlabs/client@1.36.1/+esm'); } catch (err) { mod = await import('https://esm.sh/@elevenlabs/client@1.36.1'); }
-    const tools = {}; for (const k of Object.keys(VT)) if (k[0] !== '_') tools[k] = async args => { let out; try { out = VT[k](args || {}); } catch (err) { out = {error: String(err && err.message || err)}; } return JSON.stringify(out); };
-    conv = await mod.Conversation.startSession({agentId: D.voiceAgent, connectionType: 'webrtc', clientTools: tools,
-      onConnect: () => { vstate('Listening'); btn.textContent = 'End voice'; btn.classList.add('live'); },
-      onDisconnect: () => { conv = null; btn.textContent = 'Voice'; btn.classList.remove('live'); vstate('Voice ended'); setTimeout(() => { if (!conv) $('vpanel').className = ''; }, 2500); },
-      onModeChange: ev => vstate(ev && ev.mode === 'speaking' ? 'Speaking' : 'Listening', ev && ev.mode === 'speaking' ? 'speaking' : ''),
-      onMessage: ev => { if (ev && ev.message) vcap(ev.message, ev.source === 'user'); },
-      onError: err => { vstate('Voice error'); vcap(String(err && err.message || err)); }});
-  } catch (err) { conv = null; vstate('Voice not available'); vcap(String(err && err.message || err) + '. Voice needs a microphone, network access and a page served over https or localhost.'); }
-  finally { btn.disabled = false; }
+// The official ElevenLabs widget, bottom right. Its client tools are the handlers above, so the agent
+// acts through this page's own code and rules. Loaded only when the page was built with an agent id.
+if (D.voiceAgent) {
+  const tools = {};
+  for (const k of Object.keys(VT)) if (k[0] !== '_') tools[k] = async args => { let out; try { out = VT[k](args || {}); } catch (err) { out = {error: String(err && err.message || err)}; } return JSON.stringify(out); };
+  const w = document.createElement('elevenlabs-convai');
+  w.setAttribute('agent-id', D.voiceAgent);
+  w.setAttribute('action-text', 'Talk to the building');
+  w.setAttribute('start-call-text', 'Start voice');
+  w.setAttribute('end-call-text', 'End');
+  w.setAttribute('avatar-orb-color-1', '#508cdc');
+  w.setAttribute('avatar-orb-color-2', '#9cc3f0');
+  w.addEventListener('elevenlabs-convai:call', ev => { if (ev.detail && ev.detail.config) ev.detail.config.clientTools = tools; });
+  document.body.append(w);
+  const sc = document.createElement('script'); sc.src = 'https://unpkg.com/@elevenlabs/convai-widget-embed@0.26.0'; sc.async = true; sc.type = 'text/javascript';
+  document.body.append(sc);
 }
-if (D.voiceAgent) { const b = $('voice'); b.hidden = false; b.title = 'Talk to the building: status, cases, approvals'; b.onclick = startVoice; }
 // ?voicetest runs the tool handlers without any network or microphone and shows what they return
 function voiceTest() { const KEYBAK = approvals; approvals = {}; const log = [], run = (name, args) => log.push(name + '(' + JSON.stringify(args || {}) + ') -> ' + JSON.stringify(VT[name](args || {}), null, 1));
   const real = saveApprovals; window.__nosave = true;
