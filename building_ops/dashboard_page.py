@@ -26,19 +26,34 @@ body{margin:0;background:var(--bg);color:var(--ink);font:14.5px/1.55 var(--sans)
 h1,h2,h3,h4{font-family:var(--display);letter-spacing:-.01em}
 :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 header{padding:20px 48px 0;max-width:1536px;margin:0 auto}
-.top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap}
+.top{display:flex;justify-content:space-between;align-items:flex-start;gap:16px}
 .kicker{font:500 11px/1 var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--accent)}
 .kicker::before{content:"";display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 4px var(--glow);margin-right:9px;vertical-align:1px}
 h1{margin:8px 0 0;font:600 28px/1.15 var(--display);letter-spacing:-.01em}
 .sub{color:var(--mute);font-size:12.5px;margin-top:5px;overflow-wrap:anywhere}
 #theme{height:36px;font:600 14px/1 var(--sans);color:var(--ink);background:transparent;border:1px solid var(--line);border-radius:8px;padding:0 14px;cursor:pointer}
 #theme:hover{background:var(--raise)}
-nav{display:flex;gap:4px;flex-wrap:wrap;margin-top:16px}
-.hbox{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:18px 20px 14px}
-nav button{height:36px;font:500 14px/1 var(--sans);color:var(--ink2);background:transparent;border:1px solid transparent;border-radius:8px;padding:0 11px;cursor:pointer;white-space:nowrap}
-nav button:hover{background:var(--raise)}
-nav button.on{color:var(--ink);background:var(--raise);border-color:var(--line)}
-nav button span{font:500 11.5px/1 var(--mono);color:var(--mute);margin-left:7px}
+.hbox{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:18px 20px 16px}
+.top>div:first-child{flex:1 1 0;min-width:0}.top>div:last-child{flex:none;white-space:nowrap}
+/* One row of boxes is both the figures and the navigation: each box opens its view, the active one is marked. */
+nav{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);gap:8px;margin-top:16px}
+nav button{display:flex;flex-direction:column;justify-content:flex-start;align-items:stretch;text-align:left;min-width:0;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:9px 10px 10px;cursor:pointer;color:var(--ink);font:inherit}
+nav button:hover{background:var(--raise);border-color:var(--mute)}
+nav button.on{background:var(--raise);border-color:var(--accent);box-shadow:inset 0 -3px 0 var(--accent)}
+nav button b{display:block;font:500 25px/1.1 var(--mono);letter-spacing:-.02em;color:var(--series);white-space:nowrap}
+nav button span{display:block;font:500 10.5px/1.35 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--ink2);margin-top:6px;overflow-wrap:anywhere}
+nav button.on span{color:var(--ink)}
+nav button small{display:block;font-size:11px;line-height:1.35;color:var(--mute);margin-top:3px}
+@media (max-width:1100px){nav{grid-auto-columns:128px;overflow-x:auto;scrollbar-width:thin;padding-bottom:4px}}
+#brief{height:36px;font:600 14px/1 var(--sans);color:var(--onaccent);background:var(--accent);border:1px solid var(--accent);border-radius:8px;padding:0 14px;cursor:pointer;margin-right:8px}
+#brief.live{background:transparent;color:var(--ink);border-color:var(--line)}
+#brief[hidden]{display:none}
+#vbox{position:fixed;left:16px;bottom:16px;width:min(380px,calc(100vw - 32px));background:var(--panel);border:1px solid var(--accent);border-radius:8px;padding:12px 14px;z-index:8;display:none}
+#vbox.on{display:block}
+#vbox .st{font:500 11px/1 var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--accent)}
+#vbox .cap{margin-top:8px;font-size:13px;max-height:170px;overflow:auto;color:var(--ink2)}
+#vbox .cap p{margin:4px 0}#vbox .cap p.me{color:var(--ink)}
+#vbox small{display:block;margin-top:8px;color:var(--mute);font-size:11px}
 .wrap{max-width:1536px;margin:0 auto;padding:12px 48px 20px}
 .tiles{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);gap:8px}
 @media (max-width:1100px){.tiles{grid-auto-flow:row;grid-template-columns:repeat(auto-fit,minmax(120px,1fr))}}
@@ -116,7 +131,6 @@ input[type=search]{height:36px;font:inherit;color:var(--ink);background:var(--bg
 .act small{flex-basis:100%;color:var(--mute);font-size:11.5px}
 @media (max-width:700px){
   header{padding:12px 16px 0}.hbox{padding:14px 14px 10px}.wrap{padding:10px 16px 14px}footer{padding:4px 16px 28px}h1{font-size:22px}
-  nav{flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none}nav::-webkit-scrollbar{display:none}nav button{white-space:nowrap;flex:0 0 auto}
   .tiles{grid-auto-flow:row;grid-template-columns:repeat(2,minmax(0,1fr))}.tile b{font-size:23px}
   .card{padding:12px}.scroll table{min-width:680px}
   .step .h b{flex-basis:100%}.act button{padding:11px 14px}
@@ -171,7 +185,7 @@ footer{max-width:1536px;margin:0 auto;padding:4px 48px 32px;color:var(--mute);fo
       <h1 id="title"></h1>
       <div class="sub" id="source"></div>
     </div>
-    <button id="theme" type="button">Light</button>
+    <div><button id="brief" type="button" hidden>Voice briefing</button><button id="theme" type="button">Light</button></div>
   </div>
   <nav id="nav"></nav>
   </div>
@@ -180,6 +194,7 @@ footer{max-width:1536px;margin:0 auto;padding:4px 48px 32px;color:var(--mute);fo
 <footer>PLATO-40 synthetic dataset, proximata Hackathon '26 · Rhomberg track (CC BY 4.0). Every finding concerns the fictional PLATO-40 only. Simulated effects are labelled; nothing here was measured on a real building.</footer>
 <div id="tip"></div>
 <div id="toast" role="status" aria-live="polite"></div>
+<div id="vbox" aria-live="polite"><div class="st" id="vst">Voice</div><div class="cap" id="vcap2"></div><small>Voice assistant by ElevenLabs. It reports and opens cases; approvals happen only on your clear yes. Effects are simulated.</small></div>
 <script id="data" type="application/json">__DATA__</script>
 <script>
 const D = JSON.parse(document.getElementById('data').textContent);
@@ -198,7 +213,7 @@ const level = d => d.autonomy || (d.requires_guest_consent ? 'approval_and_conse
 const LEVEL = {autonomous: 'autonomous', human_approval: 'human approval', approval_and_consent: 'approval + guest consent'};
 const SC = {S01: 'S01 Turnaround', S02: 'S02 Water', S03: 'S03 Heating', S04: 'S04 Maintenance', S05: 'S05 Event weekend', ENG: 'L2 Energy', LOG: 'L2 Logistics'};
 const TABHINT = {S01: 'Scenario 1 of the brief: the perfect checkout', S02: 'Scenario 2: the hidden water leak', S03: 'Scenario 3: energy vs comfort', S04: 'Scenario 4: the maintenance cascade', S05: 'Scenario 5: the unexpected weekend',
-  ENG: 'Level 2 of the brief, building and energy optimisation (no scenario number there)', LOG: 'Level 2 of the brief, cleaning and logistics (no scenario number there)', queue: 'Decisions that wait for a person', trail: 'Every decision in order', overview: 'All cases at a glance'};
+  ENG: 'Level 2 of the brief, building and energy optimisation (no scenario number there)', LOG: 'Level 2 of the brief, cleaning and logistics (no scenario number there)', queue: 'Decisions that wait for a person', trail: 'Every decision in order', overview: 'All cases at a glance. The figure counts incidents and plans; routine guest answers are counted separately and shown on request in each view'};
 const KIND = {room_flow: 'Water leak in a room', main_gap: 'Water loss outside the rooms', room_meter: 'Unreliable water meter',
   cop: 'Heat pump degradation', forecast: 'Cold snap ahead', room_temp: 'Guest reports a cold room',
   room_day: 'Room turnaround', day_plan: 'Day capacity shortfall', ahu: 'Ventilation filter', logistics: 'Extra service ordered', energy: 'Battery plan'};
@@ -227,7 +242,8 @@ function controls(d) {
 }
 
 $('title').textContent = D.title;
-$('source').textContent = 'Dataset: ' + D.profile + ' · ' + all.length + ' decisions in ' + E.length + ' episodes · all times Vienna local time (CET/CEST) · PLATO-40 is fictional, the data is synthetic, effects of actions are simulated';
+const INC = E.filter(e => !e.routine).length, ROUTINE = E.length - INC;
+$('source').textContent = 'Dataset: ' + D.profile + ' · ' + all.length + ' decisions in ' + E.length + ' cases (' + INC + ' incidents and plans + ' + ROUTINE + ' routine guest answers; a case can hold several decisions) · Vienna local time · PLATO-40 is fictional, data synthetic, effects simulated';
 
 /* ---------- tooltip ---------- */
 const tip = $('tip');
@@ -397,11 +413,12 @@ function tile(v, k, small, key, go) { const t = el('div', 'tile' + (key ? ' key'
 function overview(root) {
   const inc = E.filter(e => !e.routine), by = s => inc.filter(e => e.scenario === s).length;
   const checked = E.filter(e => e.check), leads = checked.map(e => e.check.lead_h).sort((a, b) => a - b);
+  const tech = E.filter(q => ['room_flow', 'main_gap', 'cop'].includes(q.kind) || (q.kind === 'ahu' && q.issue_type !== 'data_quality'));
   const tl = el('div', 'tiles');
-  tl.append(tile(inc.length, 'cases needed a decision', E.length - inc.length + ' routine answers besides'),
-    tile(by('S01'), 'S01 turnaround', null, false, 'S01'), tile(by('S02'), 'S02 water', null, false, 'S02'), tile(by('S03'), 'S03 heating', null, false, 'S03'), tile(by('S04'), 'S04 maintenance', null, false, 'S04'), tile(by('S05'), 'S05 event weekend', null, false, 'S05'), tile(by('ENG'), 'energy plans', null, false, 'ENG'), tile(by('LOG'), 'logistics orders', null, false, 'LOG'),
-    tile(all.filter(d => level(d) !== 'autonomous').length, 'wait for a person', pending().length + ' still open', false, 'queue'),
-    tile(leads.length ? Math.round(leads[Math.floor(leads.length / 2)]) + ' h' : 'n/a', 'median lead over repair', leads.length ? checked.length + ' cases with a work order' : 'no work order to compare', true));
+  tl.append(tile(leads.length ? Math.round(leads[Math.floor(leads.length / 2)]) + ' h' : 'n/a', 'seen earlier than the repair, median', 'time from our first decision to the repair order in the dataset', true),
+    tile(checked.length + ' of ' + tech.length, 'technical incidents with a later work order', 'used for checking only, never read by a detector'),
+    tile(inc.filter(e => e.priority === 'critical').length, 'critical cases', 'the red dots below'),
+    tile(E.length - inc.length, 'routine guest answers', 'not counted as incidents; tick the box in S01 or S03 to see them'));
   root.append(tl);
   const na = all.filter(d => level(d) === 'autonomous').length, nh = all.filter(d => level(d) === 'human_approval').length, nc = all.length - na - nh;
   const sb = el('div', 'card'); sb.append(el('h2', null, 'Who decides'), el('p', 'note', 'Share of all decisions by autonomy level. The gate is code: a detector can ask for more oversight, never for less.'));
@@ -410,7 +427,7 @@ function overview(root) {
   const lgd = el('div', 'legend'); [[na, 'l-autonomous', 'autonomous'], [nh, 'l-human_approval', 'human approval'], [nc, 'l-approval_and_consent', 'approval + guest consent']].forEach(([n, cls, name]) => { const sp = el('span', 'tag ' + cls, name + ' · ' + n); sp.title = HINT[cls.slice(2)]; lgd.append(sp); });
   sb.append(bar, lgd); root.append(sb);
   // time strip
-  const c = el('div', 'card'); c.append(el('h2', null, 'When the cases happened'), el('p', 'note', 'One dot per case, one lane per scenario; red dots are critical. The curve behind each lane shows how many cases fall around that time. Hover for details, click a dot to open.'));
+  const c = el('div', 'card'); c.append(el('h2', null, 'When the cases happened'), el('p', 'note', 'One dot per case, one lane per scenario; red dots are critical. The blue curve behind each lane shows how many cases fall around that time, the red curve how many of them are critical. Hover for details, click a dot to open.'));
   const narrow = window.innerWidth < 700, W = narrow ? Math.max(300, window.innerWidth - 74) : 1000, lanes = ['S01', 'S02', 'S03', 'S04', 'S05', 'ENG', 'LOG'];
   const gap = narrow ? 58 : 50, rise = narrow ? 26 : 30, m = {l: narrow ? 4 : 190, r: narrow ? 8 : 14, t: narrow ? 44 : 38, b: 26}, H = m.t + (lanes.length - 1) * gap + 14 + m.b;
   const t0 = Math.min(...E.map(e => e.start)), t1 = Math.max(...E.map(e => e.start), t0 + 1);
@@ -419,15 +436,19 @@ function overview(root) {
   // ten days, the same height scale for all lanes, so a taller curve means more cases.
   const DAY = 864e5, BW = 10 * DAY, N = 140, grid = Array.from({length: N}, (_, i) => t0 + (t1 - t0) * i / (N - 1));
   const dens = lanes.map(ln => { const ts = inc.filter(q => q.scenario === ln).map(q => q.start); return grid.map(g => ts.reduce((a, t) => a + Math.exp(-0.5 * Math.pow((g - t) / BW, 2)), 0)); });
+  const densCrit = lanes.map(ln => { const ts = inc.filter(q => q.scenario === ln && q.priority === 'critical').map(q => q.start); return grid.map(g => ts.reduce((a, t) => a + Math.exp(-0.5 * Math.pow((g - t) / BW, 2)), 0)); });
   const peak = Math.max(1e-9, ...dens.flat());
   lanes.forEach((ln, i) => { const y = m.t + i * gap, d = dens[i], cases = inc.filter(q => q.scenario === ln);
     let area = `M${x(grid[0]).toFixed(1)} ${y}`; d.forEach((v, k) => { area += `L${x(grid[k]).toFixed(1)} ${(y - v / peak * rise).toFixed(1)}`; }); area += `L${x(grid[N - 1]).toFixed(1)} ${y}Z`;
     let line = ''; d.forEach((v, k) => { line += (k ? 'L' : 'M') + x(grid[k]).toFixed(1) + ' ' + (y - v / peak * rise).toFixed(1); });
     s.append(svg('path', {d: area, fill: 'var(--series)', 'fill-opacity': 0.14}), svg('path', {d: line, fill: 'none', stroke: 'var(--series)', 'stroke-opacity': 0.45, 'stroke-width': 1.2}));
+    const dc = densCrit[i]; if (dc.some(v => v > 0.01)) { let ca = `M${x(grid[0]).toFixed(1)} ${y}`, cl = ''; dc.forEach((v, k) => { const yy = (y - v / peak * rise).toFixed(1); ca += `L${x(grid[k]).toFixed(1)} ${yy}`; cl += (k ? 'L' : 'M') + x(grid[k]).toFixed(1) + ' ' + yy; }); ca += `L${x(grid[N - 1]).toFixed(1)} ${y}Z`;
+      let seg = '', pen = false; dc.forEach((v, k) => { if (v / peak * rise < 0.6) { pen = false; return; } seg += (pen ? 'L' : 'M') + x(grid[k]).toFixed(1) + ' ' + (y - v / peak * rise).toFixed(1); pen = true; });
+      s.append(svg('path', {d: ca, fill: 'var(--crit)', 'fill-opacity': 0.22}), svg('path', {d: seg, fill: 'none', stroke: 'var(--crit)', 'stroke-opacity': 0.75, 'stroke-width': 1.2})); }
     s.append(svg('line', {x1: m.l, x2: W - m.r, y1: y, y2: y, stroke: 'var(--line)'})); s.append(svg('text', {x: narrow ? m.l : 0, y: narrow ? y - rise - 4 : y + 4, class: 'lbl'}, SC[ln]));
     const band = svg('rect', {x: m.l, y: y - rise, width: W - m.l - m.r, height: rise + 8, fill: 'transparent'});
-    band.addEventListener('mousemove', ev => { const r = s.getBoundingClientRect(), tv = t0 + ((ev.clientX - r.left) / r.width * W - m.l) / (W - m.l - m.r) * (t1 - t0), n = cases.filter(q => Math.abs(q.start - tv) <= 15 * DAY).length;
-      showTip(ev, '<b>' + esc(SC[ln]) + '</b><br>' + n + ' case' + (n === 1 ? '' : 's') + ' in the 30 days around ' + esc(F_DAY.format(new Date(tv)))); });
+    band.addEventListener('mousemove', ev => { const r = s.getBoundingClientRect(), tv = t0 + ((ev.clientX - r.left) / r.width * W - m.l) / (W - m.l - m.r) * (t1 - t0), near = cases.filter(q => Math.abs(q.start - tv) <= 15 * DAY), n = near.length, nc = near.filter(q => q.priority === 'critical').length;
+      showTip(ev, '<b>' + esc(SC[ln]) + '</b><br>' + n + ' case' + (n === 1 ? '' : 's') + ' in the 30 days around ' + esc(F_DAY.format(new Date(tv))) + (nc ? '<br>' + nc + ' of them critical' : '')); });
     band.addEventListener('mouseleave', hideTip); s.append(band);
     for (const e of cases) { const cc = svg('circle', {cx: x(e.start), cy: y, r: (e.priority === 'critical' ? 6 : 4.5) + (narrow ? 1 : 0), fill: e.priority === 'critical' ? 'var(--crit)' : 'var(--series)', stroke: 'var(--panel)', 'stroke-width': 2, style: 'cursor:pointer', class: 'dot'});
       cc.addEventListener('mousemove', ev => showTip(ev, '<b>' + esc(episodeTitle(e)) + '</b><br>' + esc(lt(e.start)) + '<br>risk: ' + e.priority)); cc.addEventListener('mouseleave', hideTip);
@@ -435,11 +456,13 @@ function overview(root) {
   const ticks = narrow ? 3 : 6; for (let i = 0; i <= ticks; i++) { const tv = t0 + (t1 - t0) * i / ticks; s.append(svg('text', {x: x(tv), y: H - 6, 'text-anchor': i === 0 ? 'start' : i === ticks ? 'end' : 'middle'}, F_DAY.format(new Date(tv)))); }
   c.append(s); root.append(c);
   // table
-  const tb = el('div', 'card'); tb.append(el('h2', null, 'Technical incidents and how early they were seen'), el('p', 'note', 'Lead is the time from our first decision to the corrective work order in the dataset. Work orders are used for this comparison only.'));
-  const sc = el('div', 'scroll'), table = el('table'), hr = el('tr'); ['Case', 'First decision (Vienna)', 'Risk', 'Work order written later', 'Lead'].forEach(h => hr.append(el('th', null, h))); table.append(hr);
+  const tb = el('div', 'card'); tb.append(el('h2', null, 'Technical incidents and how early they were seen'), el('p', 'note', 'How much earlier the system saw each fault than the building did. "Seen earlier by" is the time between our first decision and the moment the repair was logged in the dataset: 186.5 h means we flagged it 186.5 hours, almost 8 days, before anyone wrote the repair order. Longer is better. The repair orders are used for this comparison only; no detector reads them.'));
+  const sc = el('div', 'scroll'), table = el('table'), hr = el('tr'); ['Case', 'Our first decision (Vienna)', 'Risk', 'Repair logged in the dataset', 'Seen earlier by'].forEach(h => hr.append(el('th', null, h))); table.append(hr);
   for (const e of E.filter(q => ['room_flow', 'main_gap', 'cop'].includes(q.kind) || (q.kind === 'ahu' && q.issue_type !== 'data_quality'))) { const tr = el('tr', 'go'); tr.onclick = () => open(e);
     tr.append(el('td', null, episodeTitle(e)), el('td', 'm', lt(e.start))); const td = el('td'); td.append(el('span', 'tag p-' + e.priority, e.priority)); tr.append(td);
-    tr.append(el('td', null, e.check ? e.check.text : 'none within 14 days'), el('td', 'n', e.check ? e.check.lead_h + ' h' : '')); table.append(tr); }
+    const days = e.check ? e.check.lead_h / 24 : 0, lead = el('td', 'n', e.check ? e.check.lead_h + ' h' + (days >= 2 ? ' · ' + days.toFixed(1) + ' days' : '') : '');
+    if (e.check) lead.title = 'Our first decision was taken ' + e.check.lead_h + ' hours before the repair order ' + e.check.id + ' was written (' + lt(e.check.t) + ')';
+    tr.append(el('td', null, e.check ? e.check.text + ' · ' + dhm(e.check.t) : 'none within 14 days'), lead); table.append(tr); }
   sc.append(table); tb.append(sc); root.append(tb);
 }
 function scenario(root, sc) {
@@ -455,7 +478,7 @@ function scenario(root, sc) {
   L.append(tools);
   if (!shown.length) L.append(el('div', 'empty', 'No case matches.'));
   for (const e of shown) { const r = el('div', 'row' + (e === selected[sc] ? ' on' : '')); r.append(el('div', 't', lt(e.start)), el('div', 'a', episodeTitle(e)));
-    const tg = el('div'); tg.append(el('span', 'tag p-' + e.priority, e.priority), el('span', 'tag plain', e.decisions.length + ' decision' + (e.decisions.length > 1 ? 's' : ''))); if (e.check) tg.append(el('span', 'tag l-autonomous', e.check.lead_h + ' h early'));
+    const tg = el('div'); tg.append(el('span', 'tag p-' + e.priority, e.priority), el('span', 'tag plain', e.decisions.length + ' decision' + (e.decisions.length > 1 ? 's' : ''))); if (e.check) { const tgl = el('span', 'tag l-autonomous', e.check.lead_h + ' h early'); tgl.title = 'Flagged ' + e.check.lead_h + ' hours before the repair was logged in the dataset'; tg.append(tgl); }
     r.append(tg); const sp = spark(e); if (sp) r.append(sp); r.tabIndex = 0; r.onclick = () => { selected[sc] = e; history.replaceState(null, '', '#' + sc + ':' + encodeURIComponent(e.id)); render(); }; L.append(r); }
   split.append(L, detail(selected[sc])); root.append(split);
   const on = L.querySelector('.row.on'); if (on) L.scrollTop = Math.max(0, on.offsetTop - 90);
@@ -493,8 +516,12 @@ function open(e) { tab = e.scenario in SC ? e.scenario : 'trail'; history.replac
 function render() {
   hideTip();
   const nav = $('nav'); nav.replaceChildren();
-  const tabs = [['overview', 'Overview', ''], ...Object.keys(SC).map(k => [k, SC[k], E.filter(e => e.scenario === k && !e.routine).length]), ['queue', 'Approvals', pending().length], ['trail', 'All decisions', all.length]];
-  for (const [k, name, n] of tabs) { const b = el('button', k === tab ? 'on' : '', name); b.title = TABHINT[k] || ''; if (n !== '') b.append(el('span', null, n)); b.onclick = () => { tab = k; history.replaceState(null, '', '#' + k); render(); }; nav.append(b); }
+  const inc = E.filter(e => !e.routine), by = k => inc.filter(e => e.scenario === k).length;
+  const tabs = [['overview', inc.length, 'Overview', 'incidents and plans; + ' + (E.length - inc.length) + ' routine answers = ' + E.length + ' cases'],
+    ...Object.keys(SC).map(k => [k, by(k), SC[k], '']), ['queue', pending().length, 'Approvals', 'wait for a person'], ['trail', all.length, 'All decisions', 'in ' + E.length + ' cases']];
+  for (const [k, n, name, small] of tabs) { const b = el('button', k === tab ? 'on' : ''); b.title = TABHINT[k] || ''; b.setAttribute('aria-current', k === tab ? 'page' : 'false');
+    b.append(el('b', null, n), el('span', null, name)); if (small) b.append(el('small', null, small));
+    b.onclick = () => { tab = k; history.replaceState(null, '', '#' + k); render(); }; nav.append(b); }
   const root = $('view'); root.replaceChildren();
   if (tab === 'overview') overview(root); else if (tab === 'trail') trail(root); else if (tab === 'queue') queue(root); else scenario(root, tab);
 }
@@ -512,6 +539,8 @@ const VT = {
     return {dataset: D.profile, decisions_total: all.length, cases: {turnaround: by('S01'), water: by('S02'), heating: by('S03'), maintenance: by('S04'), event_weekends: by('S05'), energy_plans: by('ENG'), logistics_orders: by('LOG')}, routine_guest_answers: E.length - inc.length,
       waiting_for_a_person: p.length, of_these_need_guest_consent: p.filter(d => level(d) === 'approval_and_consent').length,
       most_urgent_open: p.slice().sort((a, b) => rank[a.priority] - rank[b.priority] || tsOf(a) - tsOf(b)).slice(0, 3).map(d => ({action: d.action.replace(/_/g, ' '), assets: (d.affected_assets || []).slice(0, 3), risk: d.priority, when: lt(tsOf(d))})),
+      critical_cases: inc.filter(e => e.priority === 'critical').length,
+      latest_critical_cases: inc.filter(e => e.priority === 'critical').sort((a, b) => b.start - a.start).slice(0, 4).map(e => ({case: episodeTitle(e), when: lt(e.start), flagged_before_repair_hours: e.check ? e.check.lead_h : null})),
       note: 'Replay of a fictional building. Effects of actions are simulated.'}; },
   open_view({view}) { const k = VIEW[String(view || '').toLowerCase()]; if (!k) return {error: 'Unknown view. Use one of: ' + Object.keys(VIEW).join(', ')};
     tab = k; history.replaceState(null, '', '#' + k); render(); return {ok: true, showing: view}; },
@@ -534,6 +563,29 @@ const VT = {
     decide(d, 'approved'); return {ok: true, result: 'approved in the simulation', action: d.action.replace(/_/g, ' '), assets: (d.affected_assets || []).slice(0, 3), still_waiting: pending().length}; },
   reject({item}) { const r = VT._item(item); if (r.error) return r; decide(r.d, 'rejected'); return {ok: true, result: 'rejected, not executed', action: r.d.action.replace(/_/g, ' '), still_waiting: pending().length}; },
 };
+// "Voice briefing" in the header: one click starts a call and asks for the urgent items, so the
+// operator hears the status without typing or searching for the widget.
+let call = null;
+function vsay(text, me) { const c = $('vcap2'), p = el('p', me ? 'me' : '', (me ? 'You: ' : '') + text); c.append(p); while (c.children.length > 8) c.firstChild.remove(); c.scrollTop = c.scrollHeight; }
+async function briefing() {
+  const btn = $('brief'), box = $('vbox'), st = $('vst');
+  if (call) { try { await call.endSession(); } catch (err) {} return; }
+  try { box.className = 'on'; st.textContent = 'Asking for the microphone'; btn.disabled = true;
+    await navigator.mediaDevices.getUserMedia({audio: true});
+    st.textContent = 'Connecting';
+    let mod; try { mod = await import('https://cdn.jsdelivr.net/npm/@elevenlabs/client@1.36.1/+esm'); } catch (err) { mod = await import('https://esm.sh/@elevenlabs/client@1.36.1'); }
+    const tools = {}; for (const k of Object.keys(VT)) if (k[0] !== '_') tools[k] = async args => { let out; try { out = VT[k](args || {}); } catch (err) { out = {error: String(err && err.message || err)}; } return JSON.stringify(out); };
+    call = await mod.Conversation.startSession({agentId: D.voiceAgent, connectionType: 'webrtc', clientTools: tools,
+      onConnect: () => { st.textContent = 'Listening'; btn.textContent = 'End briefing'; btn.classList.add('live'); },
+      onDisconnect: () => { call = null; btn.textContent = 'Voice briefing'; btn.classList.remove('live'); st.textContent = 'Voice ended'; setTimeout(() => { if (!call) box.className = ''; }, 2500); },
+      onModeChange: ev => { st.textContent = ev && ev.mode === 'speaking' ? 'Speaking' : 'Listening'; },
+      onMessage: ev => { if (ev && ev.message) vsay(ev.message, ev.source === 'user'); },
+      onError: err => { st.textContent = 'Voice error'; vsay(String(err && err.message || err)); }});
+    setTimeout(() => { try { if (call && call.sendUserMessage) call.sendUserMessage('Give me a short briefing: the status, the critical cases, and what is waiting for my approval.'); } catch (err) {} }, 1200);
+  } catch (err) { call = null; st.textContent = 'Voice not available'; vsay(String(err && err.message || err) + '. Voice needs a microphone, network access and a page served over https or localhost.'); }
+  finally { btn.disabled = false; }
+}
+if (D.voiceAgent) { const b = $('brief'); b.hidden = false; b.title = 'Hear the status, the critical cases and what waits for approval'; b.onclick = briefing; }
 // The official ElevenLabs widget, bottom right. Its client tools are the handlers above, so the agent
 // acts through this page's own code and rules. Loaded only when the page was built with an agent id.
 if (D.voiceAgent) {
