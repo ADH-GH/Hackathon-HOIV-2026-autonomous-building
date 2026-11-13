@@ -44,6 +44,7 @@ def main() -> None:
     d.add_argument("decisions")
     d.add_argument("--actions", default=None)
     d.add_argument("--out", default="out/dashboard.html")
+    d.add_argument("--web-fonts", action="store_true", help="load IBM Plex and Sora from Google Fonts (one network request); default is system fonts")
     d.add_argument("--voice-agent", default=None, help="ElevenLabs agent id; adds an opt-in voice button (needs network and a microphone)")
     n = sub.add_parser("insights", help="recompute the Level 3 findings and write insights.md and insights.jsonl")
     n.add_argument("data_dir")
@@ -61,7 +62,7 @@ def main() -> None:
     elif args.cmd == "report":
         print(build(args.decisions, args.out, args.actions))
     elif args.cmd == "dashboard":
-        print(build_dashboard(args.data_dir, args.decisions, args.out, args.actions, voice_agent=args.voice_agent))
+        print(build_dashboard(args.data_dir, args.decisions, args.out, args.actions, voice_agent=args.voice_agent, web_fonts=args.web_fonts))
     elif args.cmd == "insights":
         measured = write_insights(args.data_dir, args.out, args.decisions, str(args.out).replace(".md", ".jsonl"))
         print(json.dumps(measured, indent=1, ensure_ascii=False, default=str))

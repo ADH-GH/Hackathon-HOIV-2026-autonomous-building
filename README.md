@@ -3,7 +3,7 @@
 Team Alf & Friends · proximata Hackathon '26 · Rhomberg track
 "PLATO · CLARA Future — The Autonomous Building".
 
-**Live dashboard:** https://adh-gh.github.io/Hackathon-HOIV-2026-autonomous-building/ (the file `docs/index.html`, written by the dashboard command below from `decisions.jsonl`; no voice, no network requests).
+**Live dashboard:** https://adh-gh.github.io/Hackathon-HOIV-2026-autonomous-building/ (the file `docs/index.html`, written by the dashboard command below from `decisions.jsonl` with `--web-fonts`; no voice, and its only network request is for the fonts).
 
 PLATO-40 is a fictional 40-room self-check-in hotel. All data is synthetic.
 Nothing here is a statement about real PLATO buildings or about what CLARA does today.
@@ -141,7 +141,7 @@ Cold-snap pre-heating uses the newest forecast issued at the decision time (mini
 
 ## Dashboard
 
-`python -m building_ops dashboard data/dev decisions.jsonl --out docs/index.html` writes the hosted copy.
+`python -m building_ops dashboard data/dev decisions.jsonl --out docs/index.html --web-fonts` writes the hosted copy.
 `python -m building_ops dashboard data/dev decisions.jsonl --actions out/actions.jsonl` writes one
 HTML file that opens from disk and makes no network request. Overview, one tab per scenario and
 the full decision log. Each case shows the slice of raw data the decision rests on (meter flow,
@@ -149,7 +149,9 @@ COP against the model, the forecast that was issued, the room's readings or its 
 day), the decisions in order with autonomy level, evidence and verification, and the mock
 executor's status. Where the dataset has a later corrective work order it is shown as a check
 and labelled as such; detectors never read it. Deep links work: `dashboard.html#S02` or
-`#S02:<episode id>`. Dark by default with a light theme toggle.
+`#S02:<episode id>`. Dark by default with a light theme toggle. Colours and fonts follow the
+showcase page; without `--web-fonts` the fonts fall back to the system's and the page makes no
+network request.
 
 ## Maintenance cascade (S04)
 

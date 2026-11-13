@@ -63,7 +63,7 @@ def _kind(episode_id: str) -> tuple[str, str]:
 
 def build(data_dir: str | Path, decisions_path: str | Path, out: str | Path,
           actions_path: str | Path | None = None, title: str = "PLATO-40 autonomous operations",
-          voice_agent: str | None = None) -> Path:
+          voice_agent: str | None = None, web_fonts: bool = False) -> Path:
     ds = Dataset(data_dir)
     decisions = _read(decisions_path)
     actions = {a["event_id"]: a for a in _read(actions_path)}
@@ -123,7 +123,11 @@ def build(data_dir: str | Path, decisions_path: str | Path, out: str | Path,
     data = json.dumps(payload, ensure_ascii=False).replace("</", "<\\/")
     out = Path(out)
     out.parent.mkdir(parents=True, exist_ok=True)
-    out.write_text(PAGE.replace("__DATA__", data).replace("__TITLE__", title), encoding="utf-8")
+    # The page asks for IBM Plex and Sora and falls back to system fonts. With web_fonts it loads them
+    # from Google Fonts, which is the only network request the page then makes (besides opt-in voice).
+    fonts = ('<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600'
+             '&family=IBM+Plex+Sans:wght@400;500;600&family=Sora:wght@500;600;700&display=swap">') if web_fonts else ""
+    out.write_text(PAGE.replace("__FONTS__", fonts).replace("__DATA__", data).replace("__TITLE__", title), encoding="utf-8")
     return out
 
 
