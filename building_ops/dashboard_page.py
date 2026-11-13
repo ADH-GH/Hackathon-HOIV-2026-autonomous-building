@@ -111,6 +111,32 @@ input[type=search]{font:inherit;color:var(--ink);background:var(--bg);border:1px
   .log li{grid-template-columns:1fr;gap:0}
   svg text{font-size:11px}
 }
+/* comfort: motion, hover, focus */
+header{position:sticky;top:0;z-index:5;background:color-mix(in srgb,var(--bg) 88%,transparent);backdrop-filter:blur(8px)}
+.tile{transition:transform .15s ease,border-color .15s ease,box-shadow .15s ease}
+.tile.go{cursor:pointer}.tile.go:hover{transform:translateY(-2px);border-color:var(--accent);box-shadow:0 0 0 3px var(--glow)}
+.card,.step,.list{animation:rise .28s ease both}
+@keyframes rise{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.row{transition:background .12s ease;position:relative}
+.row .spark{position:absolute;right:10px;top:10px;width:72px;height:24px;opacity:.85;pointer-events:none}
+.tag{cursor:default}
+.tag.p-critical::before{animation:pulse 1.6s ease-in-out infinite}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 color-mix(in srgb,var(--crit) 60%,transparent)}50%{box-shadow:0 0 0 5px transparent}}
+path.draw{stroke-dasharray:var(--len);stroke-dashoffset:var(--len);animation:draw .9s ease-out forwards}
+@keyframes draw{to{stroke-dashoffset:0}}
+circle.dot{transition:r .12s ease}
+circle.dot:hover{r:8}
+.split-bar{display:flex;height:12px;border-radius:6px;overflow:hidden;gap:2px;margin:8px 0 6px}
+.split-bar div{height:100%;transition:width .6s ease}
+.keys{font:400 11px/1.5 var(--mono);color:var(--mute);margin-top:6px}
+kbd{font:600 10.5px/1 var(--mono);border:1px solid var(--line);border-bottom-width:2px;border-radius:4px;padding:2px 5px;color:var(--ink2);background:var(--panel)}
+#toast{position:fixed;left:50%;bottom:22px;transform:translate(-50%,20px);background:var(--ink);color:var(--bg);font:600 12.5px/1.3 var(--sans);padding:10px 14px;border-radius:8px;opacity:0;transition:opacity .2s ease,transform .2s ease;pointer-events:none;z-index:10}
+#toast.on{opacity:1;transform:translate(-50%,0)}
+.copy{font:600 10.5px/1 var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--ink2);background:transparent;border:1px solid var(--line);border-radius:6px;padding:6px 8px;cursor:pointer;margin-top:8px}
+.copy:hover,nav button:focus-visible,.row:focus-visible,.act button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}path.draw{stroke-dashoffset:0}}
+.still *{animation:none!important;transition:none!important}
+@media (max-width:700px){header{position:static}.row .spark{display:none}}
 footer{max-width:1440px;margin:0 auto;padding:4px 16px 28px;color:var(--mute);font-size:12px}
 </style>
 </head>
@@ -129,6 +155,7 @@ footer{max-width:1440px;margin:0 auto;padding:4px 16px 28px;color:var(--mute);fo
 <div class="wrap" id="view"></div>
 <footer>PLATO-40 synthetic dataset, proximata Hackathon '26 · Rhomberg track (CC BY 4.0). Every finding concerns the fictional PLATO-40 only. Simulated effects are labelled; nothing here was measured on a real building.</footer>
 <div id="tip"></div>
+<div id="toast" role="status" aria-live="polite"></div>
 <script id="data" type="application/json">__DATA__</script>
 <script>
 const D = JSON.parse(document.getElementById('data').textContent);
@@ -159,7 +186,7 @@ let approvals = {}; try { approvals = JSON.parse(localStorage.getItem(KEY) || '{
 const saveApprovals = () => { try { localStorage.setItem(KEY, JSON.stringify(approvals)); } catch (err) {} };
 const needs = d => level(d) !== 'autonomous';
 const pending = () => all.filter(d => needs(d) && !(approvals[d.event_id] && approvals[d.event_id].state));
-function decide(d, state) { const a = approvals[d.event_id] || {}; approvals[d.event_id] = Object.assign(a, {state, at: new Date().toISOString(), action: d.action, assets: d.affected_assets, episode_id: d.episode_id, simulated: true}); saveApprovals(); render(); }
+function decide(d, state) { const a = approvals[d.event_id] || {}; approvals[d.event_id] = Object.assign(a, {state, at: new Date().toISOString(), action: d.action, assets: d.affected_assets, episode_id: d.episode_id, simulated: true}); saveApprovals(); render(); toast((state === 'approved' ? 'Approved: ' : 'Rejected: ') + d.action.replace(/_/g, ' ') + (state === 'approved' ? ' · executed in simulation' : '')); }
 function controls(d) {
   const box = el('div', 'act'), a = approvals[d.event_id] || {}, consent = level(d) === 'approval_and_consent';
   if (a.state) { box.append(el('span', 'state ' + a.state, (a.state === 'approved' ? 'Approved' : 'Rejected') + ' ' + lt(Date.parse(a.at)) + (a.state === 'approved' ? ' · executed in simulation' : ' · not executed')));
@@ -184,6 +211,22 @@ function showTip(ev, html) { tip.innerHTML = html; tip.style.display = 'block'; 
 function hideTip() { tip.style.display = 'none'; }
 const esc = s => String(s).replace(/[&<>"]/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c]));
 
+let toastTimer = null;
+function toast(msg) { const t = $('toast'); t.textContent = msg; t.classList.add('on'); clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('on'), 2200); }
+// ?still in the address switches all motion off (for screenshots and print)
+const calm = /[?&]still\b/.test(location.search) || (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+if (calm) document.documentElement.classList.add('still');
+function countUp(node, target, suffix) { if (calm || !isFinite(target)) { node.textContent = target + (suffix || ''); return; }
+  const t0 = performance.now(), dur = 600; (function tick(now) { const k = Math.min(1, (now - t0) / dur), v = Math.round(target * (1 - Math.pow(1 - k, 3)));
+    node.textContent = v + (suffix || ''); if (k < 1) requestAnimationFrame(tick); })(t0); }
+function spark(e) { const S = e.series; if (!S || !S.v) return null; const pts = S.v.map((v, i) => [S.t[i], v]).filter(p => p[1] != null); if (pts.length < 4) return null;
+  const xs = pts.map(p => p[0]), ys = pts.map(p => p[1]), x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys);
+  const step = Math.max(1, Math.floor(pts.length / 60)), d = pts.filter((p, i) => i % step === 0).map((p, i) => (i ? 'L' : 'M') + ((p[0] - x0) / (x1 - x0 || 1) * 72).toFixed(1) + ' ' + (22 - (p[1] - y0) / (y1 - y0 || 1) * 20).toFixed(1)).join('');
+  const s = svg('svg', {viewBox: '0 0 72 24', class: 'spark', 'aria-hidden': 'true'}); s.append(svg('path', {d, fill: 'none', stroke: 'var(--series)', 'stroke-width': 1.5}));
+  const mx = (e.start - x0) / (x1 - x0 || 1) * 72; if (mx >= 0 && mx <= 72) s.append(svg('line', {x1: mx, x2: mx, y1: 1, y2: 23, stroke: 'var(--mark)', 'stroke-width': 1.5})); return s; }
+const HINT = {critical: 'Critical: act now, guests or the building are affected', high: 'High: act today', medium: 'Medium: plan it', low: 'Low: routine, for the record',
+  autonomous: 'Runs on its own in the mock executor; logged and explainable', human_approval: 'Waits for a person: technician, contractor, room block, on-call, notable cost',
+  approval_and_consent: 'Waits for a person and for the guest: entering an occupied room, water shutoff'};
 /* ---------- line chart: one axis, hover crosshair ---------- */
 function niceTicks(lo, hi, n) { const span = hi - lo || 1, step0 = Math.pow(10, Math.floor(Math.log10(span / n)));
   const step = [1, 2, 5, 10].map(m => m * step0).find(s => span / s <= n) || step0 * 10; const out = [];
@@ -206,17 +249,20 @@ function lineChart(host, o) {
   s.append(svg('text', {x: m.l, y: 10, class: 'lbl'}, o.unit));
   for (const l of lines) { let dpath = '', pen = false;
     l.v.forEach((v, i) => { if (v == null) { pen = false; return; } dpath += (pen ? 'L' : 'M') + x(t[i]).toFixed(1) + ' ' + y(v).toFixed(1); pen = true; });
-    s.append(svg('path', {d: dpath, fill: 'none', stroke: l.ref ? 'var(--ref)' : 'var(--series)', 'stroke-width': 2, 'stroke-dasharray': l.ref ? '5 4' : '', 'stroke-linejoin': 'round'})); }
+    const pe = svg('path', {d: dpath, fill: 'none', stroke: l.ref ? 'var(--ref)' : 'var(--series)', 'stroke-width': 2, 'stroke-dasharray': l.ref ? '5 4' : '', 'stroke-linejoin': 'round'}); s.append(pe);
+    if (!l.ref && !calm) { pe.setAttribute('class', 'draw'); pe.style.setProperty('--len', '6000'); } }
   (o.marks || []).forEach((mk, i) => { if (mk.t < t0 || mk.t > t1) return; const X = x(mk.t);
     s.append(svg('line', {x1: X, x2: X, y1: m.t, y2: H - m.b, stroke: mk.check ? 'var(--mute)' : 'var(--mark)', 'stroke-width': 2, 'stroke-dasharray': mk.check ? '2 3' : ''}));
     const flip = X > W - (narrow ? 150 : 190); s.append(svg('text', {x: X + (flip ? -5 : 5), y: m.t + 10 + i * 13, 'text-anchor': flip ? 'end' : 'start', class: 'lbl'}, mk.label)); });
   const cross = svg('line', {y1: m.t, y2: H - m.b, stroke: 'var(--ink2)', 'stroke-width': 1, visibility: 'hidden'}); s.append(cross);
+  const dots = lines.map(l => { const c = svg('circle', {r: 4.5, fill: l.ref ? 'var(--ref)' : 'var(--series)', stroke: 'var(--panel)', 'stroke-width': 2, visibility: 'hidden'}); s.append(c); return c; });
   const hit = svg('rect', {x: m.l, y: m.t, width: W - m.l - m.r, height: H - m.t - m.b, fill: 'transparent'});
   hit.addEventListener('mousemove', ev => { const r = s.getBoundingClientRect(), px = (ev.clientX - r.left) / r.width * W, tv = t0 + (px - m.l) / (W - m.l - m.r) * (t1 - t0);
     let i = 0, best = Infinity; t.forEach((q, k) => { const dd = Math.abs(q - tv); if (dd < best) { best = dd; i = k; } });
     cross.setAttribute('x1', x(t[i])); cross.setAttribute('x2', x(t[i])); cross.setAttribute('visibility', 'visible');
+    lines.forEach((l, k) => { const v = l.v[i]; if (v == null) dots[k].setAttribute('visibility', 'hidden'); else { dots[k].setAttribute('cx', x(t[i])); dots[k].setAttribute('cy', y(v)); dots[k].setAttribute('visibility', 'visible'); } });
     showTip(ev, '<b>' + esc(lt(t[i])) + '</b><br>' + lines.map(l => esc(l.name) + ': ' + ((l.raw || l.v)[i] == null ? 'missing' : (l.raw || l.v)[i] + ' ' + (o.short || ''))).join('<br>')); });
-  hit.addEventListener('mouseleave', () => { cross.setAttribute('visibility', 'hidden'); hideTip(); });
+  hit.addEventListener('mouseleave', () => { cross.setAttribute('visibility', 'hidden'); dots.forEach(c => c.setAttribute('visibility', 'hidden')); hideTip(); });
   s.append(hit);
   const lg = el('div', 'legend');
   for (const l of lines) { const sp = el('span'); sp.append(el('i', l.ref ? 'ref' : ''), document.createTextNode(l.name)); lg.append(sp); }
@@ -225,7 +271,7 @@ function lineChart(host, o) {
 }
 
 /* ---------- parts ---------- */
-function tags(d) { const w = el('span'); w.append(el('span', 'tag p-' + d.priority, d.priority), el('span', 'tag l-' + level(d), LEVEL[level(d)])); return w; }
+function tags(d) { const w = el('span'), a = el('span', 'tag p-' + d.priority, d.priority), b = el('span', 'tag l-' + level(d), LEVEL[level(d)]); a.title = HINT[d.priority]; b.title = HINT[level(d)]; w.append(a, b); return w; }
 function step(d) {
   const s = el('div', 'step'), h = el('div', 'h');
   h.append(el('b', null, d.action.replace(/_/g, ' ')), el('time', null, lt(tsOf(d))), tags(d));
@@ -292,6 +338,7 @@ function detail(e) {
   for (const lv of [...new Set(e.decisions.map(level))]) tg.append(el('span', 'tag l-' + lv, LEVEL[lv]));
   head.append(tg);
   if (e.check) { const ck = el('div', 'check'); ck.append(el('b', null, 'Checked against the dataset: '), document.createTextNode('work order ' + e.check.id + ' was written ' + lt(e.check.t) + ', ' + e.check.lead_h + ' h after our decision: “' + e.check.text + '”. The detector does not read work orders.')); head.append(ck); }
+  const cp = el('button', 'copy', 'Copy link to this case'); cp.type = 'button'; cp.onclick = () => { const u = location.href.split('#')[0] + '#' + e.scenario + ':' + encodeURIComponent(e.id); (navigator.clipboard ? navigator.clipboard.writeText(u) : Promise.reject()).then(() => toast('Link copied'), () => toast(u)); }; head.append(cp);
   box.append(head, evidenceCard(e));
   const ch = el('div', 'card'); ch.append(el('h2', null, 'Decisions and actions'), el('p', 'note', 'In order. Autonomous actions run in the mock executor; the others wait for a person, or for a person and the guest.'));
   const chain = el('div', 'chain'); const ORDER = ['flag_anomaly', 'schedule_cleaning', 'dispatch_robot', 'adjust_room_setpoint', 'optimize_energy', 'request_inspection', 'dispatch_technician', 'order_service', 'block_room', 'request_human_approval', 'release_room', 'notify_guest'];
@@ -301,24 +348,31 @@ function detail(e) {
 }
 
 /* ---------- views ---------- */
-function tile(v, k, small, key) { const t = el('div', 'tile' + (key ? ' key' : '')); t.append(el('b', null, v), el('span', null, k)); if (small) t.append(el('small', null, small)); return t; }
+function tile(v, k, small, key, go) { const t = el('div', 'tile' + (key ? ' key' : '') + (go ? ' go' : '')), b = el('b', null, v); t.append(b, el('span', null, k)); if (small) t.append(el('small', null, small));
+  const mm = /^(\d+)( h)?$/.exec(String(v)); if (mm) countUp(b, +mm[1], mm[2] || '');
+  if (go) { t.tabIndex = 0; t.title = 'Open'; t.onclick = () => { tab = go; history.replaceState(null, '', '#' + go); render(); }; t.onkeydown = ev => { if (ev.key === 'Enter') t.onclick(); }; } return t; }
 function overview(root) {
   const inc = E.filter(e => !e.routine), by = s => inc.filter(e => e.scenario === s).length;
   const checked = E.filter(e => e.check), leads = checked.map(e => e.check.lead_h).sort((a, b) => a - b);
   const tl = el('div', 'tiles');
   tl.append(tile(inc.length, 'cases that needed a decision', E.length - inc.length + ' routine guest answers besides'),
-    tile(by('S01'), 'S01 turnaround cases'), tile(by('S02'), 'S02 water cases'), tile(by('S03'), 'S03 heating cases'), tile(by('S04'), 'S04 maintenance cases'),
-    tile(all.filter(d => level(d) === 'autonomous').length, 'autonomous decisions'), tile(all.filter(d => level(d) === 'human_approval').length, 'need human approval', pending().length + ' still open'),
-    tile(all.filter(d => level(d) === 'approval_and_consent').length, 'need guest consent too'),
+    tile(by('S01'), 'S01 turnaround cases', null, false, 'S01'), tile(by('S02'), 'S02 water cases', null, false, 'S02'), tile(by('S03'), 'S03 heating cases', null, false, 'S03'), tile(by('S04'), 'S04 maintenance cases', null, false, 'S04'),
+    tile(all.filter(d => level(d) !== 'autonomous').length, 'decisions wait for a person', pending().length + ' still open', false, 'queue'),
     tile(leads.length ? Math.round(leads[Math.floor(leads.length / 2)]) + ' h' : 'n/a', 'median lead over the repair', leads.length ? checked.length + ' cases with a later work order' : 'no work order to compare', true));
   root.append(tl);
+  const na = all.filter(d => level(d) === 'autonomous').length, nh = all.filter(d => level(d) === 'human_approval').length, nc = all.length - na - nh;
+  const sb = el('div', 'card'); sb.append(el('h2', null, 'Who decides'), el('p', 'note', 'Share of all decisions by autonomy level. The gate is code: a detector can ask for more oversight, never for less.'));
+  const bar = el('div', 'split-bar'); [[na, 'var(--auto)', 'autonomous'], [nh, 'var(--appr)', 'human approval'], [nc, 'var(--cons)', 'approval + guest consent']].forEach(([n, col, name]) => { const seg = el('div'); seg.style.background = col; seg.style.width = Math.max(n ? 0.8 : 0, n / all.length * 100) + '%';
+    seg.addEventListener('mousemove', ev => showTip(ev, '<b>' + name + '</b><br>' + n + ' of ' + all.length + ' decisions (' + (n / all.length * 100).toFixed(1) + ' %)')); seg.addEventListener('mouseleave', hideTip); bar.append(seg); });
+  const lgd = el('div', 'legend'); [[na, 'l-autonomous', 'autonomous'], [nh, 'l-human_approval', 'human approval'], [nc, 'l-approval_and_consent', 'approval + guest consent']].forEach(([n, cls, name]) => { const sp = el('span', 'tag ' + cls, name + ' · ' + n); sp.title = HINT[cls.slice(2)]; lgd.append(sp); });
+  sb.append(bar, lgd); root.append(sb);
   // time strip
-  const c = el('div', 'card'); c.append(el('h2', null, 'When the cases happened'), el('p', 'note', 'One dot per case, one lane per scenario. Hover for details, click to open.'));
+  const c = el('div', 'card'); c.append(el('h2', null, 'When the cases happened'), el('p', 'note', 'One dot per case, one lane per scenario; red dots are critical. Hover for details, click to open.'));
   const narrow = window.innerWidth < 700, W = narrow ? Math.max(300, window.innerWidth - 66) : 1000, gap = narrow ? 46 : 38, H = narrow ? 236 : 188, m = {l: narrow ? 4 : 110, r: narrow ? 8 : 14, t: 10, b: 24}, lanes = ['S01', 'S02', 'S03', 'S04'];
   const t0 = Math.min(...E.map(e => e.start)), t1 = Math.max(...E.map(e => e.start), t0 + 1);
   const x = v => m.l + (v - t0) / (t1 - t0) * (W - m.l - m.r), s = svg('svg', {viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': 'Cases over time'});
   lanes.forEach((ln, i) => { const y = m.t + (narrow ? 30 : 20) + i * gap; s.append(svg('line', {x1: m.l, x2: W - m.r, y1: y, y2: y, stroke: 'var(--grid)'})); s.append(svg('text', {x: narrow ? m.l : 0, y: narrow ? y - 12 : y + 4, class: 'lbl'}, SC[ln]));
-    for (const e of inc.filter(q => q.scenario === ln)) { const cc = svg('circle', {cx: x(e.start), cy: y, r: (e.priority === 'critical' ? 6 : 4.5) + (narrow ? 1 : 0), fill: 'var(--series)', stroke: 'var(--panel)', 'stroke-width': 2, style: 'cursor:pointer'});
+    for (const e of inc.filter(q => q.scenario === ln)) { const cc = svg('circle', {cx: x(e.start), cy: y, r: (e.priority === 'critical' ? 6 : 4.5) + (narrow ? 1 : 0), fill: e.priority === 'critical' ? 'var(--crit)' : 'var(--series)', stroke: 'var(--panel)', 'stroke-width': 2, style: 'cursor:pointer', class: 'dot'});
       cc.addEventListener('mousemove', ev => showTip(ev, '<b>' + esc(episodeTitle(e)) + '</b><br>' + esc(lt(e.start)) + '<br>risk: ' + e.priority)); cc.addEventListener('mouseleave', hideTip);
       cc.addEventListener('click', () => open(e)); s.append(cc); } });
   const ticks = narrow ? 3 : 6; for (let i = 0; i <= ticks; i++) { const tv = t0 + (t1 - t0) * i / ticks; s.append(svg('text', {x: x(tv), y: H - 6, 'text-anchor': i === 0 ? 'start' : i === ticks ? 'end' : 'middle'}, F_DAY.format(new Date(tv)))); }
@@ -340,11 +394,12 @@ function scenario(root, sc) {
   if (routine) { const lb = el('label'); lb.style.marginLeft = '10px'; const cb = el('input'); cb.type = 'checkbox'; cb.checked = !!showRoutine[sc]; cb.onchange = () => { showRoutine[sc] = cb.checked; render(); };
     lb.append(cb, document.createTextNode(' show ' + routine + ' routine guest answers')); tools.append(lb); }
   const q = el('input'); q.type = 'search'; q.placeholder = 'Filter by room, booking or text'; q.value = query; q.onchange = () => { query = q.value.trim().toLowerCase(); render(); }; tools.append(q);
+  const kh = el('div', 'keys'); kh.append(el('kbd', null, '↑'), document.createTextNode(' '), el('kbd', null, '↓'), document.createTextNode(' next case  '), el('kbd', null, '←'), document.createTextNode(' '), el('kbd', null, '→'), document.createTextNode(' next tab')); tools.append(kh);
   L.append(tools);
   if (!shown.length) L.append(el('div', 'empty', 'No case matches.'));
   for (const e of shown) { const r = el('div', 'row' + (e === selected[sc] ? ' on' : '')); r.append(el('div', 't', lt(e.start)), el('div', 'a', episodeTitle(e)));
     const tg = el('div'); tg.append(el('span', 'tag p-' + e.priority, e.priority), el('span', 'tag plain', e.decisions.length + ' decision' + (e.decisions.length > 1 ? 's' : ''))); if (e.check) tg.append(el('span', 'tag l-autonomous', e.check.lead_h + ' h early'));
-    r.append(tg); r.onclick = () => { selected[sc] = e; render(); }; L.append(r); }
+    r.append(tg); const sp = spark(e); if (sp) r.append(sp); r.tabIndex = 0; r.onclick = () => { selected[sc] = e; history.replaceState(null, '', '#' + sc + ':' + encodeURIComponent(e.id)); render(); }; L.append(r); }
   split.append(L, detail(selected[sc])); root.append(split);
   const on = L.querySelector('.row.on'); if (on) L.scrollTop = Math.max(0, on.offsetTop - 90);
 }
@@ -395,6 +450,12 @@ function setTheme(t) { if (t === 'light') document.documentElement.setAttribute(
   themeBtn.textContent = t === 'light' ? 'Dark' : 'Light'; try { localStorage.setItem('theme', t); } catch (err) {} }
 themeBtn.onclick = () => setTheme(document.documentElement.getAttribute('data-theme') === 'light' ? 'dark' : 'light');
 try { setTheme(localStorage.getItem('theme') || 'dark'); } catch (err) { setTheme('dark'); }
+// keyboard: arrows move through cases and tabs (not while typing)
+document.addEventListener('keydown', ev => { if (/^(INPUT|TEXTAREA|SELECT)$/.test((ev.target.tagName || ''))) return;
+  const order = ['overview', ...Object.keys(SC), 'queue', 'trail'];
+  if (ev.key === 'ArrowRight' || ev.key === 'ArrowLeft') { const i = order.indexOf(tab), j = (i + (ev.key === 'ArrowRight' ? 1 : order.length - 1)) % order.length; tab = order[j]; history.replaceState(null, '', '#' + tab); render(); ev.preventDefault(); }
+  else if ((ev.key === 'ArrowDown' || ev.key === 'ArrowUp') && tab in SC) { const list = E.filter(e => e.scenario === tab && (showRoutine[tab] || !e.routine) && (!query || JSON.stringify(e.decisions).toLowerCase().includes(query)));
+    const i = list.indexOf(selected[tab]), j = Math.max(0, Math.min(list.length - 1, i + (ev.key === 'ArrowDown' ? 1 : -1))); if (list[j] && j !== i) { selected[tab] = list[j]; history.replaceState(null, '', '#' + tab + ':' + encodeURIComponent(list[j].id)); render(); } ev.preventDefault(); } });
 let lastW = window.innerWidth, timer = null;
 window.addEventListener('resize', () => { clearTimeout(timer); timer = setTimeout(() => { if (Math.abs(window.innerWidth - lastW) > 40) { lastW = window.innerWidth; render(); } }, 150); });
 render();
