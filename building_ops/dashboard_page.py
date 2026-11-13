@@ -93,6 +93,15 @@ tr.go{cursor:pointer}tr.go:hover{background:var(--raise)}
 .scroll{overflow-x:auto}
 .empty{padding:28px 14px;color:var(--mute)}
 input[type=search]{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:7px;padding:6px 9px;width:100%;margin-top:8px}
+.act{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:10px;padding-top:10px;border-top:1px dashed var(--line)}
+.act button{font:600 12px/1 var(--mono);letter-spacing:.04em;border-radius:6px;padding:8px 12px;cursor:pointer;border:1px solid var(--line);background:var(--panel);color:var(--ink)}
+.act button.ok{border-color:var(--auto);color:var(--auto)}
+.act button.no{border-color:var(--crit);color:var(--crit)}
+.act button:disabled{opacity:.4;cursor:not-allowed}
+.act label{font-size:12.5px;color:var(--ink2)}
+.act .state{font:600 12px/1.4 var(--mono)}
+.act .state.approved{color:var(--auto)}.act .state.rejected{color:var(--crit)}
+.act small{flex-basis:100%;color:var(--mute);font-size:11.5px}
 footer{max-width:1440px;margin:0 auto;padding:4px 16px 28px;color:var(--mute);font-size:12px}
 </style>
 </head>
@@ -135,6 +144,25 @@ const tsOf = d => Date.parse(d.timestamp_utc);
 const E = D.episodes;
 const all = E.flatMap(e => e.decisions);
 let tab = 'overview', selected = {}, showRoutine = {}, query = '';
+/* ---------- approvals: a person decides, the effect is simulated, the log stays in this browser ---------- */
+const KEY = 'approvals:' + D.profile + ':' + D.source;
+let approvals = {}; try { approvals = JSON.parse(localStorage.getItem(KEY) || '{}'); } catch (err) {}
+const saveApprovals = () => { try { localStorage.setItem(KEY, JSON.stringify(approvals)); } catch (err) {} };
+const needs = d => level(d) !== 'autonomous';
+const pending = () => all.filter(d => needs(d) && !(approvals[d.event_id] && approvals[d.event_id].state));
+function decide(d, state) { const a = approvals[d.event_id] || {}; approvals[d.event_id] = Object.assign(a, {state, at: new Date().toISOString(), action: d.action, assets: d.affected_assets, episode_id: d.episode_id, simulated: true}); saveApprovals(); render(); }
+function controls(d) {
+  const box = el('div', 'act'), a = approvals[d.event_id] || {}, consent = level(d) === 'approval_and_consent';
+  if (a.state) { box.append(el('span', 'state ' + a.state, (a.state === 'approved' ? 'Approved' : 'Rejected') + ' ' + lt(Date.parse(a.at)) + (a.state === 'approved' ? ' · executed in simulation' : ' · not executed')));
+    const undo = el('button', null, 'Undo'); undo.type = 'button'; undo.onclick = () => { delete approvals[d.event_id]; saveApprovals(); render(); }; box.append(undo); }
+  else { const ok = el('button', 'ok', 'Approve'), no = el('button', 'no', 'Reject'); ok.type = no.type = 'button';
+    if (consent) { const lb = el('label'), cb = el('input'); cb.type = 'checkbox'; cb.checked = !!a.consent; ok.disabled = !a.consent;
+      cb.onchange = () => { approvals[d.event_id] = Object.assign(approvals[d.event_id] || {}, {consent: cb.checked}); saveApprovals(); ok.disabled = !cb.checked; };
+      lb.append(cb, document.createTextNode(' Guest consent is on record')); box.append(lb); }
+    ok.onclick = () => decide(d, 'approved'); no.onclick = () => decide(d, 'rejected'); box.append(ok, no); }
+  box.append(el('small', null, 'Operator action in this demo. The replay does not change; the effect is simulated and the choice is kept in this browser only.'));
+  return box;
+}
 
 $('title').textContent = D.title;
 $('source').textContent = 'Dataset: ' + D.profile + ' · ' + all.length + ' decisions in ' + E.length + ' episodes · all times Vienna local time (CET/CEST) · PLATO-40 is fictional, the data is synthetic, effects of actions are simulated';
@@ -200,7 +228,8 @@ function step(d) {
   add('Evidence', d.evidence && d.evidence.length ? d.evidence : null);
   add('Expected outcome', d.expected_outcome); add('Verification', d.verification_plan);
   const a = D.actions[d.event_id];
-  if (a) add('Mock executor', a.status.replace(/_/g, ' ') + ' · simulated, no effect was measured');
+  if (a && !needs(d)) add('Mock executor', a.status.replace(/_/g, ' ') + ' · simulated, no effect was measured');
+  if (needs(d)) s.append(controls(d));
   return s;
 }
 function evidenceCard(e) {
@@ -261,7 +290,7 @@ function overview(root) {
   const tl = el('div', 'tiles');
   tl.append(tile(inc.length, 'cases that needed a decision', E.length - inc.length + ' routine guest answers besides'),
     tile(by('S01'), 'S01 turnaround cases'), tile(by('S02'), 'S02 water cases'), tile(by('S03'), 'S03 heating cases'),
-    tile(all.filter(d => level(d) === 'autonomous').length, 'autonomous decisions'), tile(all.filter(d => level(d) === 'human_approval').length, 'wait for human approval'),
+    tile(all.filter(d => level(d) === 'autonomous').length, 'autonomous decisions'), tile(all.filter(d => level(d) === 'human_approval').length, 'need human approval', pending().length + ' still open'),
     tile(all.filter(d => level(d) === 'approval_and_consent').length, 'need guest consent too'),
     tile(leads.length ? Math.round(leads[Math.floor(leads.length / 2)]) + ' h' : 'n/a', 'median lead over the repair', leads.length ? checked.length + ' cases with a later work order' : 'no work order to compare', true));
   root.append(tl);
@@ -310,18 +339,37 @@ function trail(root) {
     tr.append(p, l, el('td', null, d.reason.length > 170 ? d.reason.slice(0, 170) + '…' : d.reason)); table.append(tr); }
   sc.append(table); c.append(sc); if (rows.length > cap) c.append(el('p', 'note', 'Showing the first ' + cap + ' of ' + rows.length + '.')); root.append(c);
 }
+function queue(root) {
+  const open_ = pending(), done = all.filter(d => approvals[d.event_id] && approvals[d.event_id].state);
+  const tl = el('div', 'tiles'); tl.append(tile(open_.length, 'waiting for a person', null, true), tile(open_.filter(d => level(d) === 'approval_and_consent').length, 'of these need guest consent'),
+    tile(done.filter(d => approvals[d.event_id].state === 'approved').length, 'approved'), tile(done.filter(d => approvals[d.event_id].state === 'rejected').length, 'rejected')); root.append(tl);
+  const c = el('div', 'card'); c.append(el('h2', null, 'Approval queue'), el('p', 'note', 'Everything the building may not do on its own: technician and contractor call-outs, blocking a room, the on-call housekeeper, entering an occupied room. Most urgent first.'));
+  const rank = {critical: 0, high: 1, medium: 2, low: 3}, chain = el('div', 'chain');
+  for (const d of open_.slice().sort((a, b) => rank[a.priority] - rank[b.priority] || tsOf(a) - tsOf(b))) chain.append(step(d));
+  if (!open_.length) chain.append(el('div', 'empty', 'Nothing is waiting.')); c.append(chain); root.append(c);
+  const lg = el('div', 'card'); lg.append(el('h2', null, 'Approval log'), el('p', 'note', 'Who decided what in this session. Kept in this browser; export it to keep it.'));
+  if (done.length) { const sc = el('div', 'scroll'), table = el('table'), hr = el('tr'); ['Decided (Vienna)', 'Result', 'Action', 'Assets', 'Case'].forEach(h => hr.append(el('th', null, h))); table.append(hr);
+    for (const d of done.sort((a, b) => approvals[b.event_id].at.localeCompare(approvals[a.event_id].at))) { const a = approvals[d.event_id], tr = el('tr', 'go'); tr.onclick = () => open(E.find(e => e.id === d.episode_id));
+      tr.append(el('td', 'm', lt(Date.parse(a.at)))); const td = el('td'); td.append(el('span', 'tag ' + (a.state === 'approved' ? 'l-autonomous' : 'p-critical'), a.state)); tr.append(td, el('td', null, d.action.replace(/_/g, ' ')), el('td', null, (d.affected_assets || []).slice(0, 4).join(', ')), el('td', 'm', d.episode_id)); table.append(tr); }
+    sc.append(table); lg.append(sc);
+    const row = el('div', 'act'), ex = el('button', null, 'Export log (JSON)'), cl = el('button', 'no', 'Clear log'); ex.type = cl.type = 'button';
+    ex.onclick = () => { const blob = new Blob([JSON.stringify(Object.entries(approvals).filter(([, v]) => v.state).map(([event_id, v]) => Object.assign({event_id}, v)), null, 1)], {type: 'application/json'}), a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'approvals.json'; a.click(); URL.revokeObjectURL(a.href); };
+    cl.onclick = () => { approvals = {}; saveApprovals(); render(); }; row.append(ex, cl); lg.append(row); }
+  else lg.append(el('div', 'empty', 'No decision taken yet.'));
+  root.append(lg);
+}
 function open(e) { tab = e.scenario in SC ? e.scenario : 'trail'; history.replaceState(null, '', '#' + tab + ':' + encodeURIComponent(e.id)); if (e.routine) showRoutine[e.scenario] = true; selected[e.scenario] = e; query = ''; render(); window.scrollTo(0, 0); }
 function render() {
   hideTip();
   const nav = $('nav'); nav.replaceChildren();
-  const tabs = [['overview', 'Overview', ''], ...Object.keys(SC).map(k => [k, SC[k], E.filter(e => e.scenario === k && !e.routine).length]), ['trail', 'All decisions', all.length]];
+  const tabs = [['overview', 'Overview', ''], ...Object.keys(SC).map(k => [k, SC[k], E.filter(e => e.scenario === k && !e.routine).length]), ['queue', 'Approvals', pending().length], ['trail', 'All decisions', all.length]];
   for (const [k, name, n] of tabs) { const b = el('button', k === tab ? 'on' : '', name); if (n !== '') b.append(el('span', null, n)); b.onclick = () => { tab = k; history.replaceState(null, '', '#' + k); render(); }; nav.append(b); }
   const root = $('view'); root.replaceChildren();
-  if (tab === 'overview') overview(root); else if (tab === 'trail') trail(root); else scenario(root, tab);
+  if (tab === 'overview') overview(root); else if (tab === 'trail') trail(root); else if (tab === 'queue') queue(root); else scenario(root, tab);
 }
 // deep links: #S02 opens a tab, #S02:<episode id> opens a case
 (function () { const h = decodeURIComponent(location.hash.slice(1)); if (!h) return; const i = h.indexOf(':'), k = i < 0 ? h : h.slice(0, i);
-  if (k === 'overview' || k === 'trail' || k in SC) tab = k;
+  if (k === 'overview' || k === 'trail' || k === 'queue' || k in SC) tab = k;
   if (i > 0) { const e = E.find(q => q.id === h.slice(i + 1)); if (e) { if (e.routine) showRoutine[e.scenario] = true; selected[e.scenario] = e; } } })();
 const themeBtn = $('theme');
 function setTheme(t) { if (t === 'light') document.documentElement.setAttribute('data-theme', 'light'); else document.documentElement.removeAttribute('data-theme');
