@@ -378,7 +378,7 @@ function evidenceCard(e) {
   else if (e.kind === 'logistics') { const waste = e.subject.startsWith('WASTE'); if (e.outage) marks.push({t: e.outage.t, label: (waste ? 'container full ' : 'out of stock ') + dhm(e.outage.t), check: true});
     c.append(el('h2', null, waste ? 'Fill level of the central waste container' : 'Stock of the vending machine'), el('p', 'note', waste ? 'Per cent full. It rises in one step per day when the floor bins are emptied and drops at each pickup. The replay does not react to our order.' : 'Units left. It drops with the guests in the house and jumps at each restock. The replay does not react to our order.'));
     lineChart(c, {t: S && S.t, lines: [{name: waste ? 'fill level' : 'stock', v: S && S.v}], unit: waste ? '% full' : 'units', short: waste ? '%' : 'units', zero: true, marks, label: 'Level'});
-    c.append(el('div', 'check', e.outage ? 'Checked against the dataset: the replay shows ' + (waste ? 'a full container' : 'an empty machine') + ' ' + e.outage.lead_h + ' h after our order. An extra service needs about 24 h.' : 'Checked against the dataset: no outage followed in the replay, so this extra service would not have been needed.')); }
+    c.append(el('div', 'check', e.outage ? 'Checked against the dataset: the replay shows ' + (waste ? 'a full container' : 'an empty machine') + ' ' + Math.round(e.outage.lead_h) + ' h after our order. An extra service needs about 24 h.' : 'Checked against the dataset: no outage followed in the replay, so this extra service would not have been needed.')); }
   else if (e.kind === 'forecast') { c.append(el('h2', null, 'Outdoor temperature forecast used for the decision'), el('p', 'note', 'Solid: the forecast issued at the decision time. Dashed: what was measured afterwards, shown for checking only.'));
     lineChart(c, {t: S && S.t, lines: [{name: 'forecast', v: S && S.v}, {name: 'measured later', v: S && S.ref, ref: true}], unit: '°C outdoor', short: '°C', marks, label: 'Forecast'}); }
   else if (e.kind === 'room_temp') { c.append(el('h2', null, 'Room ' + e.subject + ': temperature and setpoint'), el('p', 'note', 'Shaded band: comfort range for occupied rooms, 20 to 23 °C. The replay does not react to our action.'));
@@ -405,7 +405,7 @@ function detail(e) {
   const tg = el('div'); tg.append(el('span', 'tag p-' + e.priority, 'risk: ' + e.priority));
   for (const lv of [...new Set(e.decisions.map(level))]) tg.append(el('span', 'tag l-' + lv, LEVEL[lv]));
   head.append(tg);
-  if (e.check) { const ck = el('div', 'check'); ck.append(el('b', null, 'Checked against the dataset: '), document.createTextNode('work order ' + e.check.id + ' was written ' + lt(e.check.t) + ', ' + e.check.lead_h + ' h after our decision: “' + e.check.text + '”. The detector does not read work orders.')); head.append(ck); }
+  if (e.check) { const ck = el('div', 'check'); ck.append(el('b', null, 'Checked against the dataset: '), document.createTextNode('work order ' + e.check.id + ' was written ' + lt(e.check.t) + ', ' + Math.round(e.check.lead_h) + ' h after our decision: “' + e.check.text + '”. The detector does not read work orders.')); head.append(ck); }
   const cp = el('button', 'copy', 'Copy link to this case'); cp.type = 'button'; cp.onclick = () => { const u = location.href.split('#')[0] + '#' + e.scenario + ':' + encodeURIComponent(e.id); (navigator.clipboard ? navigator.clipboard.writeText(u) : Promise.reject()).then(() => toast('Link copied'), () => toast(u)); }; head.append(cp);
   box.append(head, evidenceCard(e));
   const ch = el('div', 'card'); ch.append(el('h2', null, 'Decisions and actions'), el('p', 'note', 'In order. Autonomous actions run in the mock executor; the others wait for a person, or for a person and the guest.'));
@@ -421,7 +421,7 @@ function tile(v, k, small, key, go) { const t = el('div', 'tile' + (key ? ' key'
   if (go) { t.tabIndex = 0; t.title = 'Open this view'; t.onclick = () => { tab = go; history.replaceState(null, '', '#' + go); render(); }; t.onkeydown = ev => { if (ev.key === 'Enter') t.onclick(); }; } return t; }
 function overview(root) {
   const inc = E.filter(e => !e.routine), by = s => inc.filter(e => e.scenario === s).length;
-  const checked = E.filter(e => e.check), leads = checked.map(e => e.check.lead_h).sort((a, b) => a - b);
+  const checked = E.filter(e => e.check), leads = checked.map(e => Math.round(e.check.lead_h)).sort((a, b) => a - b);
   const tech = E.filter(q => ['room_flow', 'main_gap', 'cop'].includes(q.kind) || (q.kind === 'ahu' && q.issue_type !== 'data_quality'));
   const tl = el('div', 'tiles');
   tl.append(tile(leads.length ? Math.round(leads[Math.floor(leads.length / 2)]) + ' h' : 'n/a', 'seen earlier than the repair, median', 'time from our first decision to the repair order in the dataset', true),
@@ -465,12 +465,12 @@ function overview(root) {
   const ticks = narrow ? 3 : 6; for (let i = 0; i <= ticks; i++) { const tv = t0 + (t1 - t0) * i / ticks; s.append(svg('text', {x: x(tv), y: H - 6, 'text-anchor': i === 0 ? 'start' : i === ticks ? 'end' : 'middle'}, F_DAY.format(new Date(tv)))); }
   c.append(s); root.append(c);
   // table
-  const tb = el('div', 'card'); tb.append(el('h2', null, 'Technical incidents and how early they were seen'), el('p', 'note', 'How much earlier the system saw each fault than the building did. "Seen earlier by" is the time between our first decision and the moment the repair was logged in the dataset: 186.5 h means we flagged it 186.5 hours before anyone wrote the repair order. Longer is better. The repair orders are used for this comparison only; no detector reads them.'));
+  const tb = el('div', 'card'); tb.append(el('h2', null, 'Technical incidents and how early they were seen'), el('p', 'note', 'How much earlier the system saw each fault than the building did. "Seen earlier by" is the time between our first decision and the moment the repair was logged in the dataset: 187 h means we flagged it 187 hours before anyone wrote the repair order. Longer is better. The repair orders are used for this comparison only; no detector reads them.'));
   const sc = el('div', 'scroll'), table = el('table'), hr = el('tr'); ['Case', 'Our first decision (Vienna)', 'Risk', 'Repair logged in the dataset', 'Seen earlier by'].forEach(h => hr.append(el('th', null, h))); table.append(hr);
   for (const e of E.filter(q => ['room_flow', 'main_gap', 'cop'].includes(q.kind) || (q.kind === 'ahu' && q.issue_type !== 'data_quality'))) { const tr = el('tr', 'go'); tr.onclick = () => open(e);
     tr.append(el('td', null, episodeTitle(e)), el('td', 'm', lt(e.start))); const td = el('td'); td.append(el('span', 'tag p-' + e.priority, e.priority)); tr.append(td);
-    const lead = el('td', 'n', e.check ? e.check.lead_h + ' h' : '');
-    if (e.check) lead.title = 'Our first decision was taken ' + e.check.lead_h + ' hours before the repair order ' + e.check.id + ' was written (' + lt(e.check.t) + ')';
+    const lead = el('td', 'n', e.check ? Math.round(e.check.lead_h) + ' h' : '');
+    if (e.check) lead.title = 'Our first decision was taken ' + Math.round(e.check.lead_h) + ' hours before the repair order ' + e.check.id + ' was written (' + lt(e.check.t) + ')';
     tr.append(el('td', null, e.check ? e.check.text + ' · ' + dhm(e.check.t) : 'none within 14 days'), lead); table.append(tr); }
   sc.append(table); tb.append(sc); root.append(tb);
 }
@@ -487,7 +487,7 @@ function scenario(root, sc) {
   L.append(tools);
   if (!shown.length) L.append(el('div', 'empty', 'No case matches.'));
   for (const e of shown) { const r = el('div', 'row' + (e === selected[sc] ? ' on' : '')); r.append(el('div', 't', lt(e.start)), el('div', 'a', episodeTitle(e)));
-    const tg = el('div'); tg.append(el('span', 'tag p-' + e.priority, e.priority), el('span', 'tag plain', e.decisions.length + ' decision' + (e.decisions.length > 1 ? 's' : ''))); if (e.check) { const tgl = el('span', 'tag l-autonomous', e.check.lead_h + ' h early'); tgl.title = 'Flagged ' + e.check.lead_h + ' hours before the repair was logged in the dataset'; tg.append(tgl); }
+    const tg = el('div'); tg.append(el('span', 'tag p-' + e.priority, e.priority), el('span', 'tag plain', e.decisions.length + ' decision' + (e.decisions.length > 1 ? 's' : ''))); if (e.check) { const tgl = el('span', 'tag l-autonomous', Math.round(e.check.lead_h) + ' h early'); tgl.title = 'Flagged ' + Math.round(e.check.lead_h) + ' hours before the repair was logged in the dataset'; tg.append(tgl); }
     r.append(tg); const sp = spark(e); if (sp) r.append(sp); r.tabIndex = 0; r.onclick = () => { selected[sc] = e; history.replaceState(null, '', '#' + sc + ':' + encodeURIComponent(e.id)); render(); }; L.append(r); }
   split.append(L, detail(selected[sc])); root.append(split);
   const on = L.querySelector('.row.on'); if (on) L.scrollTop = Math.max(0, on.offsetTop - 90);
@@ -544,14 +544,14 @@ const VIEW = {overview: 'overview', turnaround: 'S01', water: 'S02', heating: 'S
 function summary(e) { const main = e.decisions.find(d => d.action === 'flag_anomaly') || e.decisions[0];
   return {title: episodeTitle(e), when: lt(e.start), risk: e.priority, decisions: e.decisions.length, actions: [...new Set(e.decisions.map(d => d.action.replace(/_/g, ' ')))],
     oversight: [...new Set(e.decisions.map(d => LEVEL[level(d)]))], finding: short(main.reason, 320),
-    checked_against_dataset: e.check ? 'A work order was written ' + e.check.lead_h + ' hours after our decision: ' + e.check.text : 'no later work order to compare' }; }
+    checked_against_dataset: e.check ? 'A work order was written ' + Math.round(e.check.lead_h) + ' hours after our decision: ' + e.check.text : 'no later work order to compare' }; }
 const VT = {
   get_status() { const inc = E.filter(e => !e.routine), by = s => inc.filter(e => e.scenario === s).length, p = pending(), rank = {critical: 0, high: 1, medium: 2, low: 3};
     return {dataset: D.profile, decisions_total: all.length, cases: {turnaround: by('S01'), water: by('S02'), heating: by('S03'), maintenance: by('S04'), event_weekends: by('S05'), energy_plans: by('ENG'), logistics_orders: by('LOG')}, routine_guest_answers: E.length - inc.length,
       waiting_for_a_person: p.length, of_these_need_guest_consent: p.filter(d => level(d) === 'approval_and_consent').length,
       most_urgent_open: p.slice().sort((a, b) => rank[a.priority] - rank[b.priority] || tsOf(a) - tsOf(b)).slice(0, 3).map(d => ({action: d.action.replace(/_/g, ' '), assets: (d.affected_assets || []).slice(0, 3), risk: d.priority, when: lt(tsOf(d))})),
       critical_cases: inc.filter(e => e.priority === 'critical').length,
-      latest_critical_cases: inc.filter(e => e.priority === 'critical').sort((a, b) => b.start - a.start).slice(0, 4).map(e => ({case: episodeTitle(e), when: lt(e.start), flagged_before_repair_hours: e.check ? e.check.lead_h : null})),
+      latest_critical_cases: inc.filter(e => e.priority === 'critical').sort((a, b) => b.start - a.start).slice(0, 4).map(e => ({case: episodeTitle(e), when: lt(e.start), flagged_before_repair_hours: e.check ? Math.round(e.check.lead_h) : null})),
       note: 'Replay of a fictional building. Effects of actions are simulated.'}; },
   open_view({view}) { const k = VIEW[String(view || '').toLowerCase()]; if (!k) return {error: 'Unknown view. Use one of: ' + Object.keys(VIEW).join(', ')};
     tab = k; history.replaceState(null, '', '#' + k); render(); return {ok: true, showing: view}; },
