@@ -5,6 +5,7 @@
     python -m building_ops check decisions.jsonl
     python -m building_ops report decisions.jsonl [--actions actions.jsonl] [--out out/report.html]
     python -m building_ops dashboard <data_dir> decisions.jsonl [--actions actions.jsonl] [--out out/dashboard.html]
+    python -m building_ops insights <data_dir> [--decisions decisions.jsonl] [--out insights.md]
     python -m building_ops sample [--out out/sample]
 """
 from __future__ import annotations
@@ -16,6 +17,7 @@ import sys
 from .check import check
 from .dashboard import build as build_dashboard
 from .dataset import Dataset, inspect
+from .insights import write as write_insights
 from .pipeline import run
 from .report import build
 from .sample import write_sample
@@ -42,6 +44,10 @@ def main() -> None:
     d.add_argument("decisions")
     d.add_argument("--actions", default=None)
     d.add_argument("--out", default="out/dashboard.html")
+    n = sub.add_parser("insights", help="recompute the Level 3 findings and write insights.md and insights.jsonl")
+    n.add_argument("data_dir")
+    n.add_argument("--decisions", default=None, help="decisions.jsonl of the same dataset, for lead times")
+    n.add_argument("--out", default="insights.md")
     s = sub.add_parser("sample", help="write hand-made sample decisions and their viewer, labelled as sample")
     s.add_argument("--out", default="out/sample")
     args = ap.parse_args()
@@ -55,6 +61,9 @@ def main() -> None:
         print(build(args.decisions, args.out, args.actions))
     elif args.cmd == "dashboard":
         print(build_dashboard(args.data_dir, args.decisions, args.out, args.actions))
+    elif args.cmd == "insights":
+        measured = write_insights(args.data_dir, args.out, args.decisions, str(args.out).replace(".md", ".jsonl"))
+        print(json.dumps(measured, indent=1, ensure_ascii=False, default=str))
     elif args.cmd == "sample":
         print(write_sample(args.out))
     else:
