@@ -458,11 +458,11 @@ function overview(root) {
   const ticks = narrow ? 3 : 6; for (let i = 0; i <= ticks; i++) { const tv = t0 + (t1 - t0) * i / ticks; s.append(svg('text', {x: x(tv), y: H - 6, 'text-anchor': i === 0 ? 'start' : i === ticks ? 'end' : 'middle'}, F_DAY.format(new Date(tv)))); }
   c.append(s); root.append(c);
   // table
-  const tb = el('div', 'card'); tb.append(el('h2', null, 'Technical incidents and how early they were seen'), el('p', 'note', 'How much earlier the system saw each fault than the building did. "Seen earlier by" is the time between our first decision and the moment the repair was logged in the dataset: 186.5 h means we flagged it 186.5 hours, almost 8 days, before anyone wrote the repair order. Longer is better. The repair orders are used for this comparison only; no detector reads them.'));
+  const tb = el('div', 'card'); tb.append(el('h2', null, 'Technical incidents and how early they were seen'), el('p', 'note', 'How much earlier the system saw each fault than the building did. "Seen earlier by" is the time between our first decision and the moment the repair was logged in the dataset: 186.5 h means we flagged it 186.5 hours before anyone wrote the repair order. Longer is better. The repair orders are used for this comparison only; no detector reads them.'));
   const sc = el('div', 'scroll'), table = el('table'), hr = el('tr'); ['Case', 'Our first decision (Vienna)', 'Risk', 'Repair logged in the dataset', 'Seen earlier by'].forEach(h => hr.append(el('th', null, h))); table.append(hr);
   for (const e of E.filter(q => ['room_flow', 'main_gap', 'cop'].includes(q.kind) || (q.kind === 'ahu' && q.issue_type !== 'data_quality'))) { const tr = el('tr', 'go'); tr.onclick = () => open(e);
     tr.append(el('td', null, episodeTitle(e)), el('td', 'm', lt(e.start))); const td = el('td'); td.append(el('span', 'tag p-' + e.priority, e.priority)); tr.append(td);
-    const days = e.check ? e.check.lead_h / 24 : 0, lead = el('td', 'n', e.check ? e.check.lead_h + ' h' + (days >= 2 ? ' · ' + days.toFixed(1) + ' days' : '') : '');
+    const lead = el('td', 'n', e.check ? e.check.lead_h + ' h' : '');
     if (e.check) lead.title = 'Our first decision was taken ' + e.check.lead_h + ' hours before the repair order ' + e.check.id + ' was written (' + lt(e.check.t) + ')';
     tr.append(el('td', null, e.check ? e.check.text + ' · ' + dhm(e.check.t) : 'none within 14 days'), lead); table.append(tr); }
   sc.append(table); tb.append(sc); root.append(tb);
