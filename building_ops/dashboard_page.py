@@ -262,7 +262,7 @@ function controls(d) {
 
 $('title').textContent = D.title;
 const INC = E.filter(e => !e.routine).length, ROUTINE = E.length - INC;
-$('source').textContent = 'Dataset: ' + D.profile + ' · ' + all.length + ' decisions in ' + E.length + ' cases (' + INC + ' incidents and plans + ' + ROUTINE + ' routine guest answers; a case can hold several decisions) · Vienna local time · PLATO-40 is fictional, data synthetic, effects simulated';
+$('source').style.whiteSpace = 'pre-line'; $('source').textContent = 'Dataset: ' + D.profile + ' · ' + all.length + ' decisions in ' + E.length + ' cases (' + INC + ' incidents and plans + ' + ROUTINE + ' routine guest answers; a case can hold several decisions)\nVienna local time · PLATO-40 is fictional, data synthetic, effects simulated';
 
 /* ---------- tooltip ---------- */
 const tip = $('tip');
@@ -500,7 +500,11 @@ function scenario(root, sc) {
     const tg = el('div'); tg.append(el('span', 'tag p-' + e.priority, e.priority), el('span', 'tag plain', e.decisions.length + ' decision' + (e.decisions.length > 1 ? 's' : ''))); if (e.check) { const tgl = el('span', 'tag l-autonomous', Math.round(e.check.lead_h) + ' h early'); tgl.title = 'Flagged ' + Math.round(e.check.lead_h) + ' hours before the repair was logged in the dataset'; tg.append(tgl); }
     r.append(tg); const sp = spark(e); if (sp) r.append(sp); r.tabIndex = 0; r.onclick = () => { selected[sc] = e; history.replaceState(null, '', '#' + sc + ':' + encodeURIComponent(e.id)); render(); }; L.append(r); }
   split.append(L, detail(selected[sc])); root.append(split);
-  const on = L.querySelector('.row.on'); if (on) L.scrollTop = Math.max(0, on.offsetTop - 90);
+  // Put the selected case directly under the pinned filter bar, measured rather than assumed: the bar's
+  // height changes with the tab (the routine checkbox) and once the web fonts have loaded.
+  const place = () => { const on = L.querySelector('.row.on'); if (!on || !L.isConnected) return;
+    L.scrollTop = Math.max(0, L.scrollTop + on.getBoundingClientRect().top - tools.getBoundingClientRect().bottom); };
+  place(); requestAnimationFrame(place); if (document.fonts && document.fonts.ready) document.fonts.ready.then(place);
 }
 function trail(root) {
   const c = el('div', 'card'); c.style.marginTop = '0'; c.append(el('h2', null, 'Every decision, in order'), el('p', 'note', 'The complete log as written to ' + D.source + '. Click a row to open its case.'));
