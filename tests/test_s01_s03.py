@@ -8,6 +8,7 @@ from building_ops.dataset import Dataset
 from building_ops.detectors import s01_turnaround as s01
 from building_ops.detectors import s03_energy_comfort as s03
 from building_ops.detectors import s04_maintenance as s04
+from building_ops.detectors import logistics
 from building_ops.signals import fmt_local, local_day_time
 
 Q = timedelta(minutes=15)
@@ -155,6 +156,41 @@ class MaintenanceCascadeTest(unittest.TestCase):
         services = [d for d in found if d["action"] != "flag_anomaly"]
         self.assertTrue(all(d["action"] == "order_service" and d["requires_human_approval"] for d in services))   # absent technician is not scheduled
         self.assertEqual(found[-1]["priority"], "critical")
+
+
+class LogisticsTest(unittest.TestCase):
+    """Vending stock drops one unit per guest every four hours; restock Monday and Thursday 10:00 local."""
+
+    def run_vending(self, guests_by_day):
+        t0 = datetime(2026, 3, 2, 0, 0, tzinfo=timezone.utc)          # a Monday
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            base(root)
+            bookings, rows, stock = [], [], 100.0
+            for day, n in enumerate(guests_by_day):
+                for g in range(n):
+                    a = t0 + timedelta(days=day, hours=14)
+                    bookings.append((f"B{day}-{g}", f"R{101 + g}", z(a - timedelta(days=20)), z(a), z(a + timedelta(hours=20)), 1, "web", "confirmed"))
+            write(root, "bookings.csv", "booking_id,room_id,created_utc,arrival_utc,departure_utc,guest_count,channel,status", bookings)
+            for h in range(len(guests_by_day) * 24):
+                ts, day, hour = t0 + timedelta(hours=h), h // 24, h % 24
+                if ts.weekday() in (0, 3) and hour == 9:
+                    stock = 100.0
+                here = guests_by_day[day] if hour >= 14 else (guests_by_day[day - 1] if day and hour < 10 else 0)
+                stock = max(0.0, stock - here * 0.25)
+                rows.append((z(ts), "VEND1", "stock_drinks", round(stock, 1)))
+            write(root, "logistics.csv", "timestamp_utc,asset_id,metric,value", rows)
+            return [d.finalize() for d in logistics.detect(Dataset(root))]
+
+    def test_quiet_week_orders_nothing(self):
+        self.assertEqual(self.run_vending([4] * 10), [])
+
+    def test_full_weekend_orders_one_restock_ahead_autonomously(self):
+        found = self.run_vending([4, 4, 4, 4, 30, 30, 30, 4, 4, 4])      # Friday to Sunday full
+        self.assertEqual(len(found), 1)                                  # one order per service cycle
+        order = found[0]
+        self.assertEqual((order["action"], order["service_kind"], order["requires_human_approval"]), ("order_service", "restock", False))
+        self.assertLess(order["timestamp_utc"], "2026-03-08T00:00:00Z")  # ordered before Sunday, when the machine runs dry
 
 
 if __name__ == "__main__":

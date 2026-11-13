@@ -8,9 +8,9 @@ Nothing here is a statement about real PLATO buildings or about what CLARA does 
 
 ## Status
 
-**Status.** S01 to S04 are implemented and tested, Level 3 (`insights.md`) is computed from the dev
-year, and the dashboard shows every case. Not done: logistics planning (waste, vending) and
-battery or PV scheduling.
+**Status.** S01 to S04 and logistics are implemented and tested, Level 3 (`insights.md`) is computed
+from the dev year, and the dashboard shows every case. Not done: battery and PV scheduling, and
+robot transport of floor waste bins.
 
 | Part | State |
 |---|---|
@@ -24,7 +24,8 @@ battery or PV scheduling.
 | S01 turnaround (requests, day capacity, waiting guests; covers surge days) | implemented, tested, run on quickstart and dev |
 | S03 energy vs comfort (heat pump degradation, cold-snap pre-heating, cold-room reports) | implemented, tested, run on quickstart and dev |
 | S04 maintenance cascade (fast filter loading, sensor gap, technician away) | implemented, tested, run on quickstart and dev |
-| Logistics (waste, vending), battery and PV scheduling | not started; findings only, in `insights.md` |
+| Logistics: extra waste pickup and vending restock ordered ahead from the bookings | implemented, tested, run on quickstart and dev |
+| Battery and PV scheduling, robot transport of floor bins | not started |
 | Dashboard: every case with its evidence, decisions and autonomy level (`dashboard`) | working; checked by screenshot on dev |
 | Level 3: `insights.md`, `insights.jsonl` (`insights`) | computed from dev: 13 recommendations with numbers, evidence, uncertainty; target architecture |
 | Approval queue in the dashboard (approve, reject, guest consent, exportable log) | working; effect is simulated |
@@ -158,6 +159,22 @@ Service goes to the technician only if a shift within 48 hours is known as worke
 to a contractor, always with approval. Dev: both cascades flagged 11 and 9 days before the
 unplanned filter change in `work_orders.csv`, two harmless sensor gaps reported as low-priority
 data quality, nothing else. Quickstart: one cascade, flagged 8 days before the change.
+
+## Logistics
+
+Consumption is estimated per guest over the past 72 hours and projected forward over the guests
+booked for each coming hour, as known at that moment: guests in the house for the vending
+machine, departing guests for the waste container, which fills in one step per day after the
+check-outs. An extra service is ordered when the limit would be reached more than 8 hours before
+the regular visit and the extra visit (24 h lead) still comes at least 6 hours before it. For
+the container the projection must overshoot by 15 points, because an extra pickup costs money
+and the daily step varies; that margin was chosen on the dev year.
+
+Dev, against the outage events in the replay: the vending machine ran dry 20 times; 15 of those
+had an order at least 24 hours earlier, and 16 of the 20 orders were followed by a real
+stock-out. The container was full 3 times; all 3 had an order at least 24 hours earlier, 5 further
+orders were not followed by an overflow (two of them reached 87 and 90 %). Quickstart: no
+outage, no order. Robot transport of floor bins is not planned: no floor bin exceeded 59 %.
 
 ## Voice control (optional)
 

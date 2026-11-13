@@ -184,10 +184,10 @@ const lt = ms => F_FULL.format(new Date(ms));
 const dhm = ms => F_DHM.format(new Date(ms));
 const level = d => d.autonomy || (d.requires_guest_consent ? 'approval_and_consent' : d.requires_human_approval ? 'human_approval' : 'autonomous');
 const LEVEL = {autonomous: 'autonomous', human_approval: 'human approval', approval_and_consent: 'approval + guest consent'};
-const SC = {S01: 'S01 Turnaround', S02: 'S02 Water', S03: 'S03 Heating', S04: 'S04 Maintenance'};
+const SC = {S01: 'S01 Turnaround', S02: 'S02 Water', S03: 'S03 Heating', S04: 'S04 Maintenance', LOG: 'Logistics'};
 const KIND = {room_flow: 'Water leak in a room', main_gap: 'Water loss outside the rooms', room_meter: 'Unreliable water meter',
   cop: 'Heat pump degradation', forecast: 'Cold snap ahead', room_temp: 'Guest reports a cold room',
-  room_day: 'Room turnaround', day_plan: 'Day capacity shortfall', ahu: 'Ventilation filter'};
+  room_day: 'Room turnaround', day_plan: 'Day capacity shortfall', ahu: 'Ventilation filter', logistics: 'Extra service ordered'};
 const tsOf = d => Date.parse(d.timestamp_utc);
 const E = D.episodes;
 const all = E.flatMap(e => e.decisions);
@@ -323,6 +323,10 @@ function evidenceCard(e) {
     c.append(el('h2', null, 'Airflow'), el('p', 'note', 'Nominal is 4,200 m³/h. Once the fan is at its limit, airflow falls.'));
     c.lastChild.previousSibling.style.marginTop = '14px';
     lineChart(c, {t: S && S.t, lines: [{name: 'airflow', v: S && S.air}], unit: 'm³/h', short: 'm³/h', marks: dm, label: 'Airflow'}); }
+  else if (e.kind === 'logistics') { const waste = e.subject.startsWith('WASTE'); if (e.outage) marks.push({t: e.outage.t, label: (waste ? 'container full ' : 'out of stock ') + dhm(e.outage.t), check: true});
+    c.append(el('h2', null, waste ? 'Fill level of the central waste container' : 'Stock of the vending machine'), el('p', 'note', waste ? 'Per cent full. It rises in one step per day when the floor bins are emptied and drops at each pickup. The replay does not react to our order.' : 'Units left. It drops with the guests in the house and jumps at each restock. The replay does not react to our order.'));
+    lineChart(c, {t: S && S.t, lines: [{name: waste ? 'fill level' : 'stock', v: S && S.v}], unit: waste ? '% full' : 'units', short: waste ? '%' : 'units', zero: true, marks, label: 'Level'});
+    c.append(el('div', 'check', e.outage ? 'Checked against the dataset: the replay shows ' + (waste ? 'a full container' : 'an empty machine') + ' ' + e.outage.lead_h + ' h after our order. An extra service needs about 24 h.' : 'Checked against the dataset: no outage followed in the replay, so this extra service would not have been needed.')); }
   else if (e.kind === 'forecast') { c.append(el('h2', null, 'Outdoor temperature forecast used for the decision'), el('p', 'note', 'Solid: the forecast issued at the decision time. Dashed: what was measured afterwards, shown for checking only.'));
     lineChart(c, {t: S && S.t, lines: [{name: 'forecast', v: S && S.v}, {name: 'measured later', v: S && S.ref, ref: true}], unit: '°C outdoor', short: '°C', marks, label: 'Forecast'}); }
   else if (e.kind === 'room_temp') { c.append(el('h2', null, 'Room ' + e.subject + ': temperature and setpoint'), el('p', 'note', 'Shaded band: comfort range for occupied rooms, 20 to 23 °C. The replay does not react to our action.'));
@@ -340,7 +344,7 @@ function evidenceCard(e) {
         b.append(el('span', null, w.room), holder, el('span', null, w.min + ' min')); bs.append(b); } c.append(bs); } }
   return c;
 }
-function episodeTitle(e) { if (e.kind === 'ahu') return e.issue_type === 'data_quality' ? 'Filter sensor gap, plant healthy' : 'Ventilation filter cascade'; return (KIND[e.kind] || e.issue_type) + (e.subject && e.subject !== 'BUILDING' && e.kind !== 'cop' && e.kind !== 'main_gap' ? ' · ' + e.subject : ''); }
+function episodeTitle(e) { if (e.kind === 'logistics') return (e.subject.startsWith('WASTE') ? 'Extra waste pickup' : 'Extra vending restock') + ' · ' + e.subject.replace(':', ' ').replace('_', ' '); if (e.kind === 'ahu') return e.issue_type === 'data_quality' ? 'Filter sensor gap, plant healthy' : 'Ventilation filter cascade'; return (KIND[e.kind] || e.issue_type) + (e.subject && e.subject !== 'BUILDING' && e.kind !== 'cop' && e.kind !== 'main_gap' ? ' · ' + e.subject : ''); }
 function detail(e) {
   const box = el('div', 'detail');
   if (!e) { box.append(el('div', 'empty', 'Select a case.')); return box; }
@@ -368,7 +372,7 @@ function overview(root) {
   const checked = E.filter(e => e.check), leads = checked.map(e => e.check.lead_h).sort((a, b) => a - b);
   const tl = el('div', 'tiles');
   tl.append(tile(inc.length, 'cases that needed a decision', E.length - inc.length + ' routine guest answers besides'),
-    tile(by('S01'), 'S01 turnaround cases', null, false, 'S01'), tile(by('S02'), 'S02 water cases', null, false, 'S02'), tile(by('S03'), 'S03 heating cases', null, false, 'S03'), tile(by('S04'), 'S04 maintenance cases', null, false, 'S04'),
+    tile(by('S01'), 'S01 turnaround cases', null, false, 'S01'), tile(by('S02'), 'S02 water cases', null, false, 'S02'), tile(by('S03'), 'S03 heating cases', null, false, 'S03'), tile(by('S04'), 'S04 maintenance cases', null, false, 'S04'), tile(by('LOG'), 'logistics orders', null, false, 'LOG'),
     tile(all.filter(d => level(d) !== 'autonomous').length, 'decisions wait for a person', pending().length + ' still open', false, 'queue'),
     tile(leads.length ? Math.round(leads[Math.floor(leads.length / 2)]) + ' h' : 'n/a', 'median lead over the repair', leads.length ? checked.length + ' cases with a later work order' : 'no work order to compare', true));
   root.append(tl);
@@ -380,7 +384,7 @@ function overview(root) {
   sb.append(bar, lgd); root.append(sb);
   // time strip
   const c = el('div', 'card'); c.append(el('h2', null, 'When the cases happened'), el('p', 'note', 'One dot per case, one lane per scenario; red dots are critical. Hover for details, click to open.'));
-  const narrow = window.innerWidth < 700, W = narrow ? Math.max(300, window.innerWidth - 66) : 1000, gap = narrow ? 46 : 38, H = narrow ? 236 : 188, m = {l: narrow ? 4 : 110, r: narrow ? 8 : 14, t: 10, b: 24}, lanes = ['S01', 'S02', 'S03', 'S04'];
+  const narrow = window.innerWidth < 700, W = narrow ? Math.max(300, window.innerWidth - 66) : 1000, gap = narrow ? 46 : 38, H = narrow ? 282 : 226, m = {l: narrow ? 4 : 110, r: narrow ? 8 : 14, t: 10, b: 24}, lanes = ['S01', 'S02', 'S03', 'S04', 'LOG'];
   const t0 = Math.min(...E.map(e => e.start)), t1 = Math.max(...E.map(e => e.start), t0 + 1);
   const x = v => m.l + (v - t0) / (t1 - t0) * (W - m.l - m.r), s = svg('svg', {viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': 'Cases over time'});
   lanes.forEach((ln, i) => { const y = m.t + (narrow ? 30 : 20) + i * gap; s.append(svg('line', {x1: m.l, x2: W - m.r, y1: y, y2: y, stroke: 'var(--grid)'})); s.append(svg('text', {x: narrow ? m.l : 0, y: narrow ? y - 12 : y + 4, class: 'lbl'}, SC[ln]));
@@ -457,14 +461,14 @@ function render() {
 /* ---------- voice control (opt-in): the agent's tools run here, in the page ---------- */
 let VQ = [];
 const short = (t, n) => t.length > n ? t.slice(0, n) + '…' : t;
-const VIEW = {overview: 'overview', turnaround: 'S01', water: 'S02', heating: 'S03', maintenance: 'S04', approvals: 'queue', decisions: 'trail'};
+const VIEW = {overview: 'overview', turnaround: 'S01', water: 'S02', heating: 'S03', maintenance: 'S04', logistics: 'LOG', approvals: 'queue', decisions: 'trail'};
 function summary(e) { const main = e.decisions.find(d => d.action === 'flag_anomaly') || e.decisions[0];
   return {title: episodeTitle(e), when: lt(e.start), risk: e.priority, decisions: e.decisions.length, actions: [...new Set(e.decisions.map(d => d.action.replace(/_/g, ' ')))],
     oversight: [...new Set(e.decisions.map(d => LEVEL[level(d)]))], finding: short(main.reason, 320),
     checked_against_dataset: e.check ? 'A work order was written ' + e.check.lead_h + ' hours after our decision: ' + e.check.text : 'no later work order to compare' }; }
 const VT = {
   get_status() { const inc = E.filter(e => !e.routine), by = s => inc.filter(e => e.scenario === s).length, p = pending(), rank = {critical: 0, high: 1, medium: 2, low: 3};
-    return {dataset: D.profile, decisions_total: all.length, cases: {turnaround: by('S01'), water: by('S02'), heating: by('S03'), maintenance: by('S04')}, routine_guest_answers: E.length - inc.length,
+    return {dataset: D.profile, decisions_total: all.length, cases: {turnaround: by('S01'), water: by('S02'), heating: by('S03'), maintenance: by('S04'), logistics_orders: by('LOG')}, routine_guest_answers: E.length - inc.length,
       waiting_for_a_person: p.length, of_these_need_guest_consent: p.filter(d => level(d) === 'approval_and_consent').length,
       most_urgent_open: p.slice().sort((a, b) => rank[a.priority] - rank[b.priority] || tsOf(a) - tsOf(b)).slice(0, 3).map(d => ({action: d.action.replace(/_/g, ' '), assets: (d.affected_assets || []).slice(0, 3), risk: d.priority, when: lt(tsOf(d))})),
       note: 'Replay of a fictional building. Effects of actions are simulated.'}; },

@@ -25,7 +25,7 @@ from .signals import local
 
 PRIORITY_RANK = {"critical": 0, "high": 1, "medium": 2, "low": 3}
 SCENARIO = {"room_turnaround": "S01", "occupancy_surge": "S01", "water_leak": "S02",
-            "data_quality": "S02", "heating_comfort": "S03", "ventilation_maintenance": "S04"}
+            "data_quality": "S02", "heating_comfort": "S03", "ventilation_maintenance": "S04", "logistics": "LOG"}
 
 
 def _read(path: str | Path | None) -> list[dict[str, Any]]:
@@ -44,6 +44,8 @@ def _kind(episode_id: str) -> tuple[str, str]:
     head, subject = parts[0], parts[1] if len(parts) > 1 else ""
     if head == "water_leak":
         return ("main_gap", "WM_MAIN") if subject == "WM_MAIN" else ("room_flow", subject)
+    if head == "logistics":
+        return "logistics", subject + ":" + (parts[2] if len(parts) > 2 else "")
     if head == "ventilation_maintenance" or (head == "data_quality" and subject == "AHU1"):
         return "ahu", "AHU1"
     if head == "data_quality":
@@ -89,6 +91,7 @@ def build(data_dir: str | Path, decisions_path: str | Path, out: str | Path,
     _water(ds, episodes)
     _heat_pump(ds, episodes)
     _ahu(ds, episodes)
+    _logistics(ds, episodes, events)
     _forecast(ds, episodes)
     _room_temp(ds, episodes)
     _room_days(episodes, events, requests)
@@ -216,6 +219,25 @@ def _ahu(ds: Dataset, episodes: dict[str, dict]) -> None:
         pick = lambda h, k: round(statistics.median(hours[h][k]), 2) if h in hours and hours[h][k] else None
         ep["series"] = {"t": [_ms(h) for h in keys], "v": [pick(h, "filter_dp_pa") for h in keys],
                         "fan": [pick(h, "fan_kw") for h in keys], "air": [pick(h, "airflow_m3h") for h in keys]}
+
+
+def _logistics(ds: Dataset, episodes: dict[str, dict], events: list[dict]) -> None:
+    targets = [ep for ep in episodes.values() if ep["kind"] == "logistics"]
+    if not targets or not ds.has("logistics"):
+        return
+    levels: dict[str, list[tuple[datetime, float | None]]] = defaultdict(list)
+    for r in ds.rows("logistics"):
+        levels[r["asset_id"] + ":" + r["metric"]].append((parse_ts(r["timestamp_utc"]), to_float(r["value"])))
+    outages = [e for e in events if e["type"] in ("waste_bin_full", "vending_out_of_stock")]
+    for ep in targets:
+        lo, hi = ep["start"] - timedelta(days=3), ep["start"] + timedelta(days=5)
+        points = [(t, v) for t, v in levels.get(ep["subject"], []) if lo <= t <= hi]
+        ep["series"] = {"t": [_ms(t) for t, _ in points], "v": [v for _, v in points]}
+        asset = ep["subject"].split(":")[0]
+        later = [e for e in outages if e.get("asset_id") == asset and timedelta(0) <= e["ts"] - ep["start"] <= timedelta(days=4)]
+        if later:
+            e = min(later, key=lambda e: e["ts"])
+            ep["outage"] = {"t": _ms(e["ts"]), "type": e["type"], "lead_h": round((e["ts"] - ep["start"]).total_seconds() / 3600, 1)}
 
 
 def _forecast(ds: Dataset, episodes: dict[str, dict]) -> None:
