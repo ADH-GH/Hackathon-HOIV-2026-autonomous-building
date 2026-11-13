@@ -63,6 +63,14 @@ body = {
         "tts": {"voice_id": "JBFqnCBsd6RMkjVDRZzb"},
         "conversation": {"max_duration_seconds": 300},
     },
+    # The widget wears the dashboard's style set (dark card, blue primary button, 8 px radius).
+    "platform_settings": {"widget": {
+        "bg_color": "#181e29", "text_color": "#eef1f6", "btn_color": "#508cdc", "btn_text_color": "#0a0e15", "border_color": "#2c3442",
+        "focus_color": "#508cdc", "border_radius": 8, "btn_radius": 8, "avatar": {"type": "orb", "color_1": "#508cdc", "color_2": "#9cc3f0"},
+        "text_contents": {"main_label": "Talk to the building", "start_call": "Start voice", "end_call": "End", "start_chat": "Type instead"},
+        "styles": {"base": "#181e29", "base_hover": "#222a38", "base_active": "#2a3344", "base_border": "#2c3442", "base_subtle": "#9aa3b2",
+                   "base_primary": "#eef1f6", "accent": "#508cdc", "accent_hover": "#6aa0e6", "accent_active": "#3f7bcb", "accent_border": "#508cdc",
+                   "accent_primary": "#0a0e15", "button_radius": 8, "input_radius": 8, "bubble_radius": 8, "sheet_radius": 8}}},
 }
 if len(sys.argv) > 1 and sys.argv[1] == "dump":
     print(json.dumps(body, indent=1)); sys.exit()
