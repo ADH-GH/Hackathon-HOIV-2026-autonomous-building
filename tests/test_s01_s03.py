@@ -8,7 +8,7 @@ from building_ops.dataset import Dataset
 from building_ops.detectors import s01_turnaround as s01
 from building_ops.detectors import s03_energy_comfort as s03
 from building_ops.detectors import s04_maintenance as s04
-from building_ops.detectors import logistics
+from building_ops.detectors import energy, logistics
 from building_ops.signals import fmt_local, local_day_time
 
 Q = timedelta(minutes=15)
@@ -190,6 +190,37 @@ class MaintenanceCascadeTest(unittest.TestCase):
         services = [d for d in found if d["action"] != "flag_anomaly"]
         self.assertTrue(all(d["action"] == "order_service" and d["requires_human_approval"] for d in services))   # absent technician is not scheduled
         self.assertEqual(found[-1]["priority"], "critical")
+
+
+class BatteryPlanTest(unittest.TestCase):
+    BAT = {"lo": 10.0, "hi": 95.0, "charge": 40.0, "discharge": 40.0, "eff": 0.9 ** 0.5}
+
+    def test_flat_prices_leave_the_battery_alone(self):
+        plan, with_plan, without = energy.plan_day([0.2] * 24, [20.0] * 24, self.BAT)
+        self.assertEqual(sum(abs(x) for x in plan), 0)
+        self.assertAlmostEqual(with_plan, without)
+
+    def test_charges_cheap_and_discharges_expensive_within_limits(self):
+        prices = [0.10] * 6 + [0.20] * 12 + [0.40] * 6
+        plan, with_plan, without = energy.plan_day(prices, [20.0] * 24, self.BAT)
+        self.assertGreater(sum(plan[:6]), 0)                     # charges at night
+        self.assertLess(sum(plan[18:]), 0)                       # discharges in the evening peak
+        self.assertLess(with_plan, without)
+        soc = 10.0
+        for move in plan:
+            self.assertLessEqual(abs(move), 40.0)
+            soc += move
+            self.assertTrue(10.0 - 1e-9 <= soc <= 95.0 + 1e-9)   # never outside the state-of-charge bounds
+
+    def test_stores_pv_surplus_instead_of_exporting_it(self):
+        net = [15.0] * 10 + [-20.0] * 4 + [15.0] * 10            # PV surplus at midday
+        plan, with_plan, without = energy.plan_day([0.2] * 24, net, self.BAT)
+        self.assertGreater(sum(plan[10:14]), 0)
+        self.assertLess(with_plan, without)
+
+    def test_a_plan_is_clipped_to_what_the_battery_can_do(self):
+        cost = energy.cost_of([-40.0] * 24, [0.2] * 24, [20.0] * 24, self.BAT)   # asks to discharge an empty battery
+        self.assertAlmostEqual(cost, 20.0 * 24 * 0.2)
 
 
 class LogisticsTest(unittest.TestCase):

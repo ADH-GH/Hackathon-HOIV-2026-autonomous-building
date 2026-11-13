@@ -10,9 +10,9 @@ Nothing here is a statement about real PLATO buildings or about what CLARA does 
 
 ## Status
 
-**Status.** S01 to S05 and logistics are implemented and tested, Level 3 (`insights.md`) is computed
-from the dev year, and the dashboard shows every case. Not done: battery and PV scheduling, and
-robot transport of floor waste bins.
+**Status.** S01 to S05 and both unnumbered Level 2 items (energy optimisation, logistics) are implemented and tested, Level 3 (`insights.md`) is computed
+from the dev year, and the dashboard shows every case. Not done: robot transport of
+floor waste bins.
 
 | Part | State |
 |---|---|
@@ -28,7 +28,8 @@ robot transport of floor waste bins.
 | S03 energy vs comfort (heat pump degradation, cold-snap pre-heating, cold-room reports) | implemented, tested, run on quickstart and dev |
 | S04 maintenance cascade (fast filter loading, sensor gap, technician away) | implemented, tested, run on quickstart and dev |
 | Logistics: extra waste pickup and vending restock ordered ahead from the bookings | implemented, tested, run on quickstart and dev |
-| Battery and PV scheduling, robot transport of floor bins | not started |
+| Level 2 energy optimisation: a day-ahead battery plan from published prices and a persistence forecast | implemented, tested, run on quickstart and dev |
+| Robot transport of floor bins | not started |
 | Dashboard: every case with its evidence, decisions and autonomy level (`dashboard`) | working; checked by screenshot on dev |
 | Level 3: `insights.md`, `insights.jsonl` (`insights`) | computed from dev: 13 recommendations with numbers, evidence, uncertainty; target architecture |
 | Approval queue in the dashboard (approve, reject, guest consent, exportable log) | working; effect is simulated |
@@ -139,6 +140,9 @@ Cover always needs approval; no capacity is assumed that the roster does not sho
 days flagged, 3 of them already the day before; the replay shows 13 of the year's 24 waiting guests
 on those days. Dashboard tab "S05 Event weekend".
 
+The tabs follow the brief: S01 to S05 are its five numbered scenarios; energy optimisation and
+logistics are its two unnumbered Level 2 items and are labelled that way, not as S06 or S07.
+
 ## Energy vs comfort (S03)
 
 The heat pump's COP follows the outdoor temperature: `COP = 2.796 + 0.0761 * T` (fitted on
@@ -178,7 +182,24 @@ to a contractor, always with approval. Dev: both cascades flagged 11 and 9 days 
 unplanned filter change in `work_orders.csv`, two harmless sensor gaps reported as low-priority
 data quality, nothing else. Quickstart: one cascade, flagged 8 days before the change.
 
-## Logistics
+## Energy optimisation (Level 2)
+
+When a day's prices are published (13:00 Vienna time the day before), the battery is planned for
+that day by dynamic programming over its state of charge: charge from PV surplus and in the
+cheapest hours, discharge in the most expensive ones, within 40 kW and 10 to 95 kWh, with the
+round-trip efficiency split between charging and discharging. The forecast is the load and PV of
+the last complete day. Electricity fed into the grid is valued at zero; that is our assumption,
+the dataset does not say. The plan moves electricity in time only and never touches a setpoint.
+A plan is logged as a decision when it saves at least 10 EUR against no battery on the forecast.
+
+Dev, simulated, each day's plan run against the load and PV measured that day (361 days):
+28,807 EUR grid cost without a battery, 27,038 EUR in the replay with its own battery control,
+26,653 EUR with our plans, 25,907 EUR with perfect foresight. That is 1.4 % below the replay, and
+on 130 of the 361 days our plan was the more expensive one, because yesterday's sun is a weak
+forecast. No saving was measured: the replay does not react to a plan. Dashboard tab
+"Level 2 · Energy".
+
+## Logistics (Level 2)
 
 Consumption is estimated per guest over the past 72 hours and projected forward over the guests
 booked for each coming hour, as known at that moment: guests in the house for the vending

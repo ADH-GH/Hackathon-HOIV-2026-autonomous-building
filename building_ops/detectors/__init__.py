@@ -10,7 +10,7 @@ from typing import Callable, Iterable
 
 from ..dataset import Dataset
 from ..decisions import Decision
-from . import logistics, s01_turnaround, s02_water_leak, s03_energy_comfort, s04_maintenance
+from . import energy, logistics, s01_turnaround, s02_water_leak, s03_energy_comfort, s04_maintenance
 
 Detector = Callable[[Dataset], Iterable[Decision]]
 
@@ -20,5 +20,6 @@ REGISTRY: dict[str, tuple[Detector, bool]] = {
     "s02_water_leak": (s02_water_leak.detect, s02_water_leak.IMPLEMENTED),
     "s03_energy_comfort": (s03_energy_comfort.detect, s03_energy_comfort.IMPLEMENTED),
     "s04_maintenance": (s04_maintenance.detect, s04_maintenance.IMPLEMENTED),
+    "energy": (energy.detect, energy.IMPLEMENTED),
     "logistics": (logistics.detect, logistics.IMPLEMENTED),
 }

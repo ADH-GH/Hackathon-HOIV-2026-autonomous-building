@@ -19,13 +19,14 @@ from typing import Any
 
 from .dashboard_page import PAGE
 from .dataset import Dataset, parse_ts, to_float
+from .detectors import energy as energy_plan
 from .detectors.s02_water_leak import HIDDEN_MIN_ROOMS, NIGHT
 from .detectors.s03_energy_comfort import COP_A, COP_B, HEATING_SEASON_BELOW_C
 from .signals import local
 
 PRIORITY_RANK = {"critical": 0, "high": 1, "medium": 2, "low": 3}
 SCENARIO = {"room_turnaround": "S01", "occupancy_surge": "S05", "water_leak": "S02",
-            "data_quality": "S02", "heating_comfort": "S03", "ventilation_maintenance": "S04", "logistics": "LOG"}
+            "data_quality": "S02", "heating_comfort": "S03", "ventilation_maintenance": "S04", "logistics": "LOG", "energy_optimization": "ENG"}
 
 
 def _read(path: str | Path | None) -> list[dict[str, Any]]:
@@ -44,6 +45,8 @@ def _kind(episode_id: str) -> tuple[str, str]:
     head, subject = parts[0], parts[1] if len(parts) > 1 else ""
     if head == "water_leak":
         return ("main_gap", "WM_MAIN") if subject == "WM_MAIN" else ("room_flow", subject)
+    if head == "energy_optimization":
+        return "energy", parts[-1]
     if head == "logistics":
         return "logistics", subject + ":" + (parts[2] if len(parts) > 2 else "")
     if head == "ventilation_maintenance" or (head == "data_quality" and subject == "AHU1"):
@@ -92,6 +95,7 @@ def build(data_dir: str | Path, decisions_path: str | Path, out: str | Path,
     _heat_pump(ds, episodes)
     _ahu(ds, episodes)
     _logistics(ds, episodes, events)
+    _energy(ds, episodes)
     _forecast(ds, episodes)
     _room_temp(ds, episodes)
     _room_days(episodes, events, requests)
@@ -242,6 +246,25 @@ def _logistics(ds: Dataset, episodes: dict[str, dict], events: list[dict]) -> No
         if later:
             e = min(later, key=lambda e: e["ts"])
             ep["outage"] = {"t": _ms(e["ts"]), "type": e["type"], "lead_h": round((e["ts"] - ep["start"]).total_seconds() / 3600, 1)}
+
+
+def _energy(ds: Dataset, episodes: dict[str, dict]) -> None:
+    targets = [ep for ep in episodes.values() if ep["kind"] == "energy"]
+    if not targets or not (ds.has("tariff") and ds.has("energy")):
+        return
+    days, bat = energy_plan.Days(ds), energy_plan.battery(ds)
+    for ep in targets:
+        day = datetime.fromisoformat(ep["subject"]).date()
+        d = ep["decisions"][0]
+        hours, plan = d.get("plan_hours_local") or days.hours(day), d.get("plan_kwh") or []
+        prices = [days.price[day].get(h) for h in hours]
+        base = datetime(day.year, day.month, day.day, tzinfo=local(ep["start"]).tzinfo)
+        ep["series"] = {"t": [_ms(base + timedelta(hours=h)) for h in hours], "v": prices, "plan": plan}
+        actual, imported = days.net(day, hours), days.grid_import.get(day)
+        if actual and imported and all(h in imported for h in hours) and None not in prices and len(plan) == len(hours):
+            ep["costs"] = {"replay": round(sum(imported[h] * p for h, p in zip(hours, prices)), 1),
+                           "plan": round(energy_plan.cost_of(plan, prices, actual, bat), 1),
+                           "no_battery": round(sum(max(0.0, x) * p for x, p in zip(actual, prices)), 1)}
 
 
 def _forecast(ds: Dataset, episodes: dict[str, dict]) -> None:
