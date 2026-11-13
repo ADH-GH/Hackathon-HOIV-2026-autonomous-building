@@ -4,7 +4,7 @@
     python -m building_ops inspect <data_dir>
     python -m building_ops check decisions.jsonl
     python -m building_ops report decisions.jsonl [--actions actions.jsonl] [--out out/report.html]
-    python -m building_ops dashboard <data_dir> decisions.jsonl [--actions actions.jsonl] [--out out/dashboard.html]
+    python -m building_ops dashboard <data_dir> decisions.jsonl [--actions actions.jsonl] [--out out/dashboard.html] [--voice-agent AGENT_ID]
     python -m building_ops insights <data_dir> [--decisions decisions.jsonl] [--out insights.md]
     python -m building_ops sample [--out out/sample]
 """
@@ -44,6 +44,7 @@ def main() -> None:
     d.add_argument("decisions")
     d.add_argument("--actions", default=None)
     d.add_argument("--out", default="out/dashboard.html")
+    d.add_argument("--voice-agent", default=None, help="ElevenLabs agent id; adds an opt-in voice button (needs network and a microphone)")
     n = sub.add_parser("insights", help="recompute the Level 3 findings and write insights.md and insights.jsonl")
     n.add_argument("data_dir")
     n.add_argument("--decisions", default=None, help="decisions.jsonl of the same dataset, for lead times")
@@ -60,7 +61,7 @@ def main() -> None:
     elif args.cmd == "report":
         print(build(args.decisions, args.out, args.actions))
     elif args.cmd == "dashboard":
-        print(build_dashboard(args.data_dir, args.decisions, args.out, args.actions))
+        print(build_dashboard(args.data_dir, args.decisions, args.out, args.actions, voice_agent=args.voice_agent))
     elif args.cmd == "insights":
         measured = write_insights(args.data_dir, args.out, args.decisions, str(args.out).replace(".md", ".jsonl"))
         print(json.dumps(measured, indent=1, ensure_ascii=False, default=str))

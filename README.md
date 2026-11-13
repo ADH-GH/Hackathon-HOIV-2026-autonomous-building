@@ -28,6 +28,7 @@ battery or PV scheduling.
 | Dashboard: every case with its evidence, decisions and autonomy level (`dashboard`) | working; checked by screenshot on dev |
 | Level 3: `insights.md`, `insights.jsonl` (`insights`) | computed from dev: 13 recommendations with numbers, evidence, uncertainty; target architecture |
 | Approval queue in the dashboard (approve, reject, guest consent, exportable log) | working; effect is simulated |
+| Voice control of the dashboard through an ElevenLabs agent (`--voice-agent`) | tool handlers verified by self-test; spoken conversation untested |
 
 ## Run
 
@@ -157,6 +158,20 @@ Service goes to the technician only if a shift within 48 hours is known as worke
 to a contractor, always with approval. Dev: both cascades flagged 11 and 9 days before the
 unplanned filter change in `work_orders.csv`, two harmless sensor gaps reported as low-priority
 data quality, nothing else. Quickstart: one cascade, flagged 8 days before the change.
+
+## Voice control (optional)
+
+`python -m building_ops dashboard ... --voice-agent <agent id>` adds a Voice button. An
+ElevenLabs agent then answers status questions, opens cases and reads the approval queue; it
+approves or rejects only after it has read the item back and heard a clear yes. Its eight
+tools are client tools that run in the page (`voice/create_agent.py` holds the full agent
+configuration), so there is no server. The rules stay in the page's code, not in the prompt:
+an item that needs guest consent cannot be approved until consent is recorded, by voice or by
+click. Without the flag the dashboard makes no network request at all. Voice needs network,
+a microphone and a page served over https or localhost
+(`python -m http.server` in `out/dev`, then `http://localhost:8000/dashboard-voice.html`).
+The tool handlers can be checked without network or microphone: open the page with
+`?voicetest`. The spoken conversation itself has not been tested by us.
 
 ## Local time
 

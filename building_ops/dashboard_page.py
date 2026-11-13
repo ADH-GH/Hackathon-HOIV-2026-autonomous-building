@@ -137,6 +137,17 @@ kbd{font:600 10.5px/1 var(--mono);border:1px solid var(--line);border-bottom-wid
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}path.draw{stroke-dashoffset:0}}
 .still *{animation:none!important;transition:none!important}
 @media (max-width:700px){header{position:static}.row .spark{display:none}}
+#voice{font:600 11px/1 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--bg);background:var(--accent);border:1px solid var(--accent);border-radius:6px;padding:8px 10px;cursor:pointer;margin-right:8px}
+#voice.live{background:var(--crit);border-color:var(--crit)}
+#voice[hidden]{display:none}
+#vpanel{position:fixed;right:16px;bottom:16px;width:min(360px,calc(100vw - 32px));background:var(--panel);border:1px solid var(--accent);box-shadow:0 0 0 3px var(--glow);border-radius:10px;padding:12px 14px;z-index:8;display:none}
+#vpanel.on{display:block}
+#vpanel .st{font:600 10.5px/1 var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--accent);display:flex;align-items:center;gap:8px}
+#vpanel .st i{width:8px;height:8px;border-radius:50%;background:var(--accent)}
+#vpanel.speaking .st i{animation:pulse 1s ease-in-out infinite}
+#vpanel .cap{margin-top:8px;font-size:13px;max-height:150px;overflow:auto;color:var(--ink2)}
+#vpanel .cap p{margin:4px 0}#vpanel .cap p.me{color:var(--ink)}
+#vpanel small{display:block;margin-top:8px;color:var(--mute);font-size:11px}
 footer{max-width:1440px;margin:0 auto;padding:4px 16px 28px;color:var(--mute);font-size:12px}
 </style>
 </head>
@@ -148,7 +159,7 @@ footer{max-width:1440px;margin:0 auto;padding:4px 16px 28px;color:var(--mute);fo
       <h1 id="title"></h1>
       <div class="sub" id="source"></div>
     </div>
-    <button id="theme" type="button">Light</button>
+    <div><button id="voice" type="button" hidden>Voice</button><button id="theme" type="button">Light</button></div>
   </div>
   <nav id="nav"></nav>
 </header>
@@ -156,6 +167,7 @@ footer{max-width:1440px;margin:0 auto;padding:4px 16px 28px;color:var(--mute);fo
 <footer>PLATO-40 synthetic dataset, proximata Hackathon '26 · Rhomberg track (CC BY 4.0). Every finding concerns the fictional PLATO-40 only. Simulated effects are labelled; nothing here was measured on a real building.</footer>
 <div id="tip"></div>
 <div id="toast" role="status" aria-live="polite"></div>
+<div id="vpanel" aria-live="polite"><div class="st"><i></i><span id="vstate">Voice</span></div><div class="cap" id="vcap"></div><small>Voice assistant by ElevenLabs. It can show cases and set approvals only on your word; effects are simulated.</small></div>
 <script id="data" type="application/json">__DATA__</script>
 <script>
 const D = JSON.parse(document.getElementById('data').textContent);
@@ -183,7 +195,7 @@ let tab = 'overview', selected = {}, showRoutine = {}, query = '';
 /* ---------- approvals: a person decides, the effect is simulated, the log stays in this browser ---------- */
 const KEY = 'approvals:' + D.profile + ':' + D.source;
 let approvals = {}; try { approvals = JSON.parse(localStorage.getItem(KEY) || '{}'); } catch (err) {}
-const saveApprovals = () => { try { localStorage.setItem(KEY, JSON.stringify(approvals)); } catch (err) {} };
+const saveApprovals = () => { if (window.__nosave) return; try { localStorage.setItem(KEY, JSON.stringify(approvals)); } catch (err) {} };
 const needs = d => level(d) !== 'autonomous';
 const pending = () => all.filter(d => needs(d) && !(approvals[d.event_id] && approvals[d.event_id].state));
 function decide(d, state) { const a = approvals[d.event_id] || {}; approvals[d.event_id] = Object.assign(a, {state, at: new Date().toISOString(), action: d.action, assets: d.affected_assets, episode_id: d.episode_id, simulated: true}); saveApprovals(); render(); toast((state === 'approved' ? 'Approved: ' : 'Rejected: ') + d.action.replace(/_/g, ' ') + (state === 'approved' ? ' · executed in simulation' : '')); }
@@ -441,6 +453,71 @@ function render() {
   const root = $('view'); root.replaceChildren();
   if (tab === 'overview') overview(root); else if (tab === 'trail') trail(root); else if (tab === 'queue') queue(root); else scenario(root, tab);
 }
+
+/* ---------- voice control (opt-in): the agent's tools run here, in the page ---------- */
+let VQ = [];
+const short = (t, n) => t.length > n ? t.slice(0, n) + '…' : t;
+const VIEW = {overview: 'overview', turnaround: 'S01', water: 'S02', heating: 'S03', maintenance: 'S04', approvals: 'queue', decisions: 'trail'};
+function summary(e) { const main = e.decisions.find(d => d.action === 'flag_anomaly') || e.decisions[0];
+  return {title: episodeTitle(e), when: lt(e.start), risk: e.priority, decisions: e.decisions.length, actions: [...new Set(e.decisions.map(d => d.action.replace(/_/g, ' ')))],
+    oversight: [...new Set(e.decisions.map(d => LEVEL[level(d)]))], finding: short(main.reason, 320),
+    checked_against_dataset: e.check ? 'A work order was written ' + e.check.lead_h + ' hours after our decision: ' + e.check.text : 'no later work order to compare' }; }
+const VT = {
+  get_status() { const inc = E.filter(e => !e.routine), by = s => inc.filter(e => e.scenario === s).length, p = pending(), rank = {critical: 0, high: 1, medium: 2, low: 3};
+    return {dataset: D.profile, decisions_total: all.length, cases: {turnaround: by('S01'), water: by('S02'), heating: by('S03'), maintenance: by('S04')}, routine_guest_answers: E.length - inc.length,
+      waiting_for_a_person: p.length, of_these_need_guest_consent: p.filter(d => level(d) === 'approval_and_consent').length,
+      most_urgent_open: p.slice().sort((a, b) => rank[a.priority] - rank[b.priority] || tsOf(a) - tsOf(b)).slice(0, 3).map(d => ({action: d.action.replace(/_/g, ' '), assets: (d.affected_assets || []).slice(0, 3), risk: d.priority, when: lt(tsOf(d))})),
+      note: 'Replay of a fictional building. Effects of actions are simulated.'}; },
+  open_view({view}) { const k = VIEW[String(view || '').toLowerCase()]; if (!k) return {error: 'Unknown view. Use one of: ' + Object.keys(VIEW).join(', ')};
+    tab = k; history.replaceState(null, '', '#' + k); render(); return {ok: true, showing: view}; },
+  open_case({query}) { const words = String(query || '').toLowerCase().split(/[^a-z0-9äöü.-]+/).filter(w => w.length > 1); if (!words.length) return {error: 'Say what to look for, for example a room or heat pump.'};
+    let best = null, bestScore = 0; const pr = {critical: 3, high: 2, medium: 1, low: 0};
+    for (const e of E) { const hay = (episodeTitle(e) + ' ' + e.id + ' ' + e.decisions.map(d => d.reason).join(' ')).toLowerCase(); let sc = 0;
+      for (const w of words) { if (episodeTitle(e).toLowerCase().includes(w) || e.id.toLowerCase().includes(w)) sc += 3; else if (hay.includes(w)) sc += 1; }
+      if (!sc) continue; sc = sc * 10 + pr[e.priority] + (e.routine ? 0 : 2) + (e.check ? 1 : 0); if (sc > bestScore) { bestScore = sc; best = e; } }
+    if (!best) return {error: 'No case found for: ' + query}; open(best); return Object.assign({ok: true}, summary(best)); },
+  describe_current_case() { const e = tab in SC ? selected[tab] : null; if (!e) return {error: 'No case is open. Open one first.'}; return summary(e); },
+  list_pending_approvals({limit} = {}) { const rank = {critical: 0, high: 1, medium: 2, low: 3}, n = Math.max(1, Math.min(10, +limit || 3));
+    VQ = pending().slice().sort((a, b) => rank[a.priority] - rank[b.priority] || tsOf(a) - tsOf(b)); tab = 'queue'; history.replaceState(null, '', '#queue'); render();
+    return {waiting: VQ.length, items: VQ.slice(0, n).map((d, i) => ({item: i + 1, action: d.action.replace(/_/g, ' '), assets: (d.affected_assets || []).slice(0, 3), risk: d.priority,
+      needs_guest_consent: level(d) === 'approval_and_consent', consent_on_record: !!(approvals[d.event_id] && approvals[d.event_id].consent), when: lt(tsOf(d)), reason: short(d.reason, 220)}))}; },
+  _item(item) { const d = VQ[(+item || 0) - 1]; if (!d) return {error: 'No such item. Call list_pending_approvals first.'}; if (approvals[d.event_id] && approvals[d.event_id].state) return {error: 'That item was already ' + approvals[d.event_id].state + '.'}; return {d}; },
+  record_guest_consent({item}) { const r = VT._item(item); if (r.error) return r; if (level(r.d) !== 'approval_and_consent') return {error: 'That item does not need guest consent.'};
+    approvals[r.d.event_id] = Object.assign(approvals[r.d.event_id] || {}, {consent: true}); saveApprovals(); render(); return {ok: true, result: 'Guest consent recorded for item ' + item + '. It can now be approved.'}; },
+  approve({item}) { const r = VT._item(item); if (r.error) return r; const d = r.d;
+    if (level(d) === 'approval_and_consent' && !(approvals[d.event_id] && approvals[d.event_id].consent)) return {error: 'Guest consent is not on record for this item. Not approved.'};
+    decide(d, 'approved'); return {ok: true, result: 'approved in the simulation', action: d.action.replace(/_/g, ' '), assets: (d.affected_assets || []).slice(0, 3), still_waiting: pending().length}; },
+  reject({item}) { const r = VT._item(item); if (r.error) return r; decide(r.d, 'rejected'); return {ok: true, result: 'rejected, not executed', action: r.d.action.replace(/_/g, ' '), still_waiting: pending().length}; },
+};
+let conv = null;
+function vstate(text, cls) { $('vstate').textContent = text; const p = $('vpanel'); p.className = 'on' + (cls ? ' ' + cls : ''); }
+function vcap(text, me) { const c = $('vcap'), p = el('p', me ? 'me' : '', (me ? 'You: ' : '') + text); c.append(p); while (c.children.length > 8) c.firstChild.remove(); c.scrollTop = c.scrollHeight; }
+async function startVoice() {
+  const btn = $('voice');
+  if (conv) { try { await conv.endSession(); } catch (err) {} return; }
+  try { vstate('Asking for the microphone'); btn.disabled = true;
+    await navigator.mediaDevices.getUserMedia({audio: true});
+    vstate('Connecting');
+    let mod; try { mod = await import('https://cdn.jsdelivr.net/npm/@elevenlabs/client@1.36.1/+esm'); } catch (err) { mod = await import('https://esm.sh/@elevenlabs/client@1.36.1'); }
+    const tools = {}; for (const k of Object.keys(VT)) if (k[0] !== '_') tools[k] = async args => { let out; try { out = VT[k](args || {}); } catch (err) { out = {error: String(err && err.message || err)}; } return JSON.stringify(out); };
+    conv = await mod.Conversation.startSession({agentId: D.voiceAgent, connectionType: 'webrtc', clientTools: tools,
+      onConnect: () => { vstate('Listening'); btn.textContent = 'End voice'; btn.classList.add('live'); },
+      onDisconnect: () => { conv = null; btn.textContent = 'Voice'; btn.classList.remove('live'); vstate('Voice ended'); setTimeout(() => { if (!conv) $('vpanel').className = ''; }, 2500); },
+      onModeChange: ev => vstate(ev && ev.mode === 'speaking' ? 'Speaking' : 'Listening', ev && ev.mode === 'speaking' ? 'speaking' : ''),
+      onMessage: ev => { if (ev && ev.message) vcap(ev.message, ev.source === 'user'); },
+      onError: err => { vstate('Voice error'); vcap(String(err && err.message || err)); }});
+  } catch (err) { conv = null; vstate('Voice not available'); vcap(String(err && err.message || err) + '. Voice needs a microphone, network access and a page served over https or localhost.'); }
+  finally { btn.disabled = false; }
+}
+if (D.voiceAgent) { const b = $('voice'); b.hidden = false; b.title = 'Talk to the building: status, cases, approvals'; b.onclick = startVoice; }
+// ?voicetest runs the tool handlers without any network or microphone and shows what they return
+function voiceTest() { const KEYBAK = approvals; approvals = {}; const log = [], run = (name, args) => log.push(name + '(' + JSON.stringify(args || {}) + ') -> ' + JSON.stringify(VT[name](args || {}), null, 1));
+  const real = saveApprovals; window.__nosave = true;
+  run('get_status'); run('open_case', {query: 'R403 water'}); run('describe_current_case'); run('open_case', {query: 'heat pump'}); run('open_case', {query: 'filter cascade'}); run('open_view', {view: 'heating'});
+  run('list_pending_approvals', {limit: 10}); const ci = VQ.findIndex(d => level(d) === 'approval_and_consent') + 1;
+  run('approve', {item: ci}); run('record_guest_consent', {item: 1}); run('record_guest_consent', {item: ci}); run('approve', {item: ci}); run('approve', {item: ci}); run('reject', {item: 1}); run('approve', {item: 99}); run('get_status');
+  approvals = KEYBAK; window.__nosave = false; tab = 'overview'; render();
+  const c = el('div', 'card'); c.append(el('h2', null, 'Voice tool self-test'), el('pre', null, log.join('\n\n'))); c.querySelector('pre').style.cssText = 'white-space:pre-wrap;font:11.5px/1.45 var(--mono);color:var(--ink2)'; $('view').prepend(c); }
 // deep links: #S02 opens a tab, #S02:<episode id> opens a case
 (function () { const h = decodeURIComponent(location.hash.slice(1)); if (!h) return; const i = h.indexOf(':'), k = i < 0 ? h : h.slice(0, i);
   if (k === 'overview' || k === 'trail' || k === 'queue' || k in SC) tab = k;
@@ -457,6 +534,7 @@ document.addEventListener('keydown', ev => { if (/^(INPUT|TEXTAREA|SELECT)$/.tes
   else if ((ev.key === 'ArrowDown' || ev.key === 'ArrowUp') && tab in SC) { const list = E.filter(e => e.scenario === tab && (showRoutine[tab] || !e.routine) && (!query || JSON.stringify(e.decisions).toLowerCase().includes(query)));
     const i = list.indexOf(selected[tab]), j = Math.max(0, Math.min(list.length - 1, i + (ev.key === 'ArrowDown' ? 1 : -1))); if (list[j] && j !== i) { selected[tab] = list[j]; history.replaceState(null, '', '#' + tab + ':' + encodeURIComponent(list[j].id)); render(); } ev.preventDefault(); } });
 let lastW = window.innerWidth, timer = null;
+if (/[?&]voicetest\b/.test(location.search)) setTimeout(voiceTest, 0);
 window.addEventListener('resize', () => { clearTimeout(timer); timer = setTimeout(() => { if (Math.abs(window.innerWidth - lastW) > 40) { lastW = window.innerWidth; render(); } }, 150); });
 render();
 </script>
