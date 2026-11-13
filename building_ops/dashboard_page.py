@@ -102,6 +102,15 @@ input[type=search]{font:inherit;color:var(--ink);background:var(--bg);border:1px
 .act .state{font:600 12px/1.4 var(--mono)}
 .act .state.approved{color:var(--auto)}.act .state.rejected{color:var(--crit)}
 .act small{flex-basis:100%;color:var(--mute);font-size:11.5px}
+@media (max-width:700px){
+  header{padding:16px 12px 0}.wrap{padding:12px}h1{font-size:22px}
+  nav{flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none}nav::-webkit-scrollbar{display:none}nav button{white-space:nowrap;flex:0 0 auto}
+  .tiles{grid-template-columns:repeat(2,minmax(0,1fr))}.tile b{font-size:23px}
+  .card{padding:12px}.scroll table{min-width:680px}
+  .step .h b{flex-basis:100%}.act button{padding:11px 14px}
+  .log li{grid-template-columns:1fr;gap:0}
+  svg text{font-size:11px}
+}
 footer{max-width:1440px;margin:0 auto;padding:4px 16px 28px;color:var(--mute);font-size:12px}
 </style>
 </head>
@@ -180,7 +189,7 @@ function niceTicks(lo, hi, n) { const span = hi - lo || 1, step0 = Math.pow(10, 
   const step = [1, 2, 5, 10].map(m => m * step0).find(s => span / s <= n) || step0 * 10; const out = [];
   for (let v = Math.ceil(lo / step) * step; v <= hi + 1e-9; v += step) out.push(+v.toFixed(6)); return out; }
 function lineChart(host, o) {
-  const W = 820, H = 250, m = {l: 46, r: 14, t: 14, b: 26};
+  const narrow = window.innerWidth < 700, W = narrow ? Math.max(300, window.innerWidth - 66) : 820, H = narrow ? 230 : 250, m = {l: narrow ? 34 : 46, r: narrow ? 8 : 14, t: 14, b: 26};
   const t = o.t, lines = o.lines.filter(l => l.v && l.v.some(v => v != null)).map(l => o.cap ? Object.assign({}, l, {raw: l.v, v: l.v.map(v => v == null ? null : Math.min(v, o.cap))}) : l);
   if (!t || !t.length || !lines.length) { host.append(el('div', 'empty', 'No readings in this window.')); return; }
   const vals = lines.flatMap(l => l.v.filter(v => v != null)).concat(o.band || []).concat(o.zero ? [0] : []);
@@ -191,7 +200,7 @@ function lineChart(host, o) {
   for (const v of niceTicks(lo, hi, 5)) { s.append(svg('line', {x1: m.l, x2: W - m.r, y1: y(v), y2: y(v), stroke: 'var(--grid)'}));
     s.append(svg('text', {x: m.l - 6, y: y(v) + 4, 'text-anchor': 'end'}, v)); }
   if (o.band) s.append(svg('rect', {x: m.l, width: W - m.l - m.r, y: y(o.band[1]), height: y(o.band[0]) - y(o.band[1]), fill: 'var(--band)'}));
-  const spanH = (t1 - t0) / 36e5, nt = 5;
+  const spanH = (t1 - t0) / 36e5, nt = narrow ? 2 : 5;
   for (let i = 0; i <= nt; i++) { const tv = t0 + (t1 - t0) * i / nt;
     s.append(svg('text', {x: x(tv), y: H - 8, 'text-anchor': i === 0 ? 'start' : i === nt ? 'end' : 'middle'}, spanH > 96 ? F_DAY.format(new Date(tv)) : dhm(tv))); }
   s.append(svg('text', {x: m.l, y: 10, class: 'lbl'}, o.unit));
@@ -200,7 +209,7 @@ function lineChart(host, o) {
     s.append(svg('path', {d: dpath, fill: 'none', stroke: l.ref ? 'var(--ref)' : 'var(--series)', 'stroke-width': 2, 'stroke-dasharray': l.ref ? '5 4' : '', 'stroke-linejoin': 'round'})); }
   (o.marks || []).forEach((mk, i) => { if (mk.t < t0 || mk.t > t1) return; const X = x(mk.t);
     s.append(svg('line', {x1: X, x2: X, y1: m.t, y2: H - m.b, stroke: mk.check ? 'var(--mute)' : 'var(--mark)', 'stroke-width': 2, 'stroke-dasharray': mk.check ? '2 3' : ''}));
-    s.append(svg('text', {x: X + (X > W - 190 ? -5 : 5), y: m.t + 10 + i * 13, 'text-anchor': X > W - 190 ? 'end' : 'start', class: 'lbl'}, mk.label)); });
+    const flip = X > W - (narrow ? 150 : 190); s.append(svg('text', {x: X + (flip ? -5 : 5), y: m.t + 10 + i * 13, 'text-anchor': flip ? 'end' : 'start', class: 'lbl'}, mk.label)); });
   const cross = svg('line', {y1: m.t, y2: H - m.b, stroke: 'var(--ink2)', 'stroke-width': 1, visibility: 'hidden'}); s.append(cross);
   const hit = svg('rect', {x: m.l, y: m.t, width: W - m.l - m.r, height: H - m.t - m.b, fill: 'transparent'});
   hit.addEventListener('mousemove', ev => { const r = s.getBoundingClientRect(), px = (ev.clientX - r.left) / r.width * W, tv = t0 + (px - m.l) / (W - m.l - m.r) * (t1 - t0);
@@ -296,14 +305,14 @@ function overview(root) {
   root.append(tl);
   // time strip
   const c = el('div', 'card'); c.append(el('h2', null, 'When the cases happened'), el('p', 'note', 'One dot per case, one lane per scenario. Hover for details, click to open.'));
-  const W = 1000, H = 150, m = {l: 110, r: 14, t: 10, b: 24}, lanes = ['S01', 'S02', 'S03'];
+  const narrow = window.innerWidth < 700, W = narrow ? Math.max(300, window.innerWidth - 66) : 1000, gap = narrow ? 46 : 38, H = narrow ? 190 : 150, m = {l: narrow ? 4 : 110, r: narrow ? 8 : 14, t: 10, b: 24}, lanes = ['S01', 'S02', 'S03'];
   const t0 = Math.min(...E.map(e => e.start)), t1 = Math.max(...E.map(e => e.start), t0 + 1);
   const x = v => m.l + (v - t0) / (t1 - t0) * (W - m.l - m.r), s = svg('svg', {viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': 'Cases over time'});
-  lanes.forEach((ln, i) => { const y = m.t + 20 + i * 38; s.append(svg('line', {x1: m.l, x2: W - m.r, y1: y, y2: y, stroke: 'var(--grid)'})); s.append(svg('text', {x: 0, y: y + 4, class: 'lbl'}, SC[ln]));
-    for (const e of inc.filter(q => q.scenario === ln)) { const cc = svg('circle', {cx: x(e.start), cy: y, r: e.priority === 'critical' ? 6 : 4.5, fill: 'var(--series)', stroke: 'var(--panel)', 'stroke-width': 2, style: 'cursor:pointer'});
+  lanes.forEach((ln, i) => { const y = m.t + (narrow ? 30 : 20) + i * gap; s.append(svg('line', {x1: m.l, x2: W - m.r, y1: y, y2: y, stroke: 'var(--grid)'})); s.append(svg('text', {x: narrow ? m.l : 0, y: narrow ? y - 12 : y + 4, class: 'lbl'}, SC[ln]));
+    for (const e of inc.filter(q => q.scenario === ln)) { const cc = svg('circle', {cx: x(e.start), cy: y, r: (e.priority === 'critical' ? 6 : 4.5) + (narrow ? 1 : 0), fill: 'var(--series)', stroke: 'var(--panel)', 'stroke-width': 2, style: 'cursor:pointer'});
       cc.addEventListener('mousemove', ev => showTip(ev, '<b>' + esc(episodeTitle(e)) + '</b><br>' + esc(lt(e.start)) + '<br>risk: ' + e.priority)); cc.addEventListener('mouseleave', hideTip);
       cc.addEventListener('click', () => open(e)); s.append(cc); } });
-  for (let i = 0; i <= 6; i++) { const tv = t0 + (t1 - t0) * i / 6; s.append(svg('text', {x: x(tv), y: H - 6, 'text-anchor': i === 0 ? 'start' : i === 6 ? 'end' : 'middle'}, F_DAY.format(new Date(tv)))); }
+  const ticks = narrow ? 3 : 6; for (let i = 0; i <= ticks; i++) { const tv = t0 + (t1 - t0) * i / ticks; s.append(svg('text', {x: x(tv), y: H - 6, 'text-anchor': i === 0 ? 'start' : i === ticks ? 'end' : 'middle'}, F_DAY.format(new Date(tv)))); }
   c.append(s); root.append(c);
   // table
   const tb = el('div', 'card'); tb.append(el('h2', null, 'Technical incidents and how early they were seen'), el('p', 'note', 'Lead is the time from our first decision to the corrective work order in the dataset. Work orders are used for this comparison only.'));
@@ -328,6 +337,7 @@ function scenario(root, sc) {
     const tg = el('div'); tg.append(el('span', 'tag p-' + e.priority, e.priority), el('span', 'tag plain', e.decisions.length + ' decision' + (e.decisions.length > 1 ? 's' : ''))); if (e.check) tg.append(el('span', 'tag l-autonomous', e.check.lead_h + ' h early'));
     r.append(tg); r.onclick = () => { selected[sc] = e; render(); }; L.append(r); }
   split.append(L, detail(selected[sc])); root.append(split);
+  const on = L.querySelector('.row.on'); if (on) L.scrollTop = Math.max(0, on.offsetTop - 90);
 }
 function trail(root) {
   const c = el('div', 'card'); c.style.marginTop = '0'; c.append(el('h2', null, 'Every decision, in order'), el('p', 'note', 'The complete log as written to ' + D.source + '. Click a row to open its case.'));
@@ -376,6 +386,8 @@ function setTheme(t) { if (t === 'light') document.documentElement.setAttribute(
   themeBtn.textContent = t === 'light' ? 'Dark' : 'Light'; try { localStorage.setItem('theme', t); } catch (err) {} }
 themeBtn.onclick = () => setTheme(document.documentElement.getAttribute('data-theme') === 'light' ? 'dark' : 'light');
 try { setTheme(localStorage.getItem('theme') || 'dark'); } catch (err) { setTheme('dark'); }
+let lastW = window.innerWidth, timer = null;
+window.addEventListener('resize', () => { clearTimeout(timer); timer = setTimeout(() => { if (Math.abs(window.innerWidth - lastW) > 40) { lastW = window.innerWidth; render(); } }, 150); });
 render();
 </script>
 </body>
