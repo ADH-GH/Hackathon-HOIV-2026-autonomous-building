@@ -176,6 +176,14 @@ kbd{font:600 10.5px/1 var(--mono);border:1px solid var(--line);border-bottom-wid
 #vpanel .cap{margin-top:8px;font-size:13px;max-height:150px;overflow:auto;color:var(--ink2)}
 #vpanel .cap p{margin:4px 0}#vpanel .cap p.me{color:var(--ink)}
 #vpanel small{display:block;margin-top:8px;color:var(--mute);font-size:11px}
+/* scrollbars in the page's colours: thumb in the border tone, track in the panel tone */
+*{scrollbar-width:thin;scrollbar-color:var(--line) transparent}
+*::-webkit-scrollbar{width:10px;height:10px}
+*::-webkit-scrollbar-track{background:transparent}
+*::-webkit-scrollbar-thumb{background:var(--line);border-radius:999px;border:2px solid var(--panel)}
+*::-webkit-scrollbar-thumb:hover{background:var(--mute)}
+*::-webkit-scrollbar-corner{background:transparent}
+html{scrollbar-color:var(--line) var(--bg)}
 footer{max-width:1536px;margin:0 auto;padding:4px 48px 32px;color:var(--mute);font-size:12px}
 </style>
 </head>
