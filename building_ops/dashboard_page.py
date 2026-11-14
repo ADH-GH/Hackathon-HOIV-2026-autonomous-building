@@ -209,6 +209,7 @@ svg text.ax{font:400 11px/1 var(--mono);fill:var(--mute)}
 .bldwrap{position:relative}.seg{display:flex;gap:6px;flex-wrap:wrap}
 .bldhead{display:flex;align-items:center;justify-content:space-between;gap:10px 16px;flex-wrap:wrap}.bldhead h2{margin:0}.bldctl{display:flex;gap:6px 14px;align-items:center;flex-wrap:wrap}
 .duo>.card>.note{margin:6px 0 4px}.duo>.card>.note.one{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+@media (max-width:1100px){.duo>.card>.note.one{white-space:normal}}
 .duo>.card>h2{min-height:34px;display:flex;align-items:center;margin:0}.tlstrip{display:block;width:100%}
 .seg button{height:32px;font:600 13px/1 var(--sans);color:var(--ink2);background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:0 12px;cursor:pointer}
 .seg button.on{color:var(--ink);border-color:var(--accent);box-shadow:inset 0 -2px 0 var(--accent)}.bldzoom{display:flex;gap:6px}
@@ -574,9 +575,9 @@ function buildingView(inc) {
   const tipFor = b => { if (bldLayer !== 'cases') { if (b.gw) return '<b>' + b.gw.id + ' · sensor gateway, floor ' + b.gw.floor + '</b><br>' + b.gw.hours + ' room-hours without a temperature reading<br>' + b.gw.alarms + ' communication-loss alarms of the building system';
       if (!b.room) return '<b>' + b.label + '</b><br>not part of this layer'; const v = val(b); return '<b>' + b.label + '</b><br>' + (v ? LAYER[bldLayer].unit(v) : bldLayer === 'noise' ? 'no noise complaint' : 'no gap'); }
     const l = at[b.id] || []; return '<b>' + b.label + '</b><br>' + (l.length ? l.length + ' case' + (l.length > 1 ? 's' : '') + '<br>' + l.slice(0, 4).map(e => lt(e.start).slice(0, 10) + ' · ' + episodeTitle(e) + ' · ' + e.priority).join('<br>') + (l.length > 4 ? '<br>and ' + (l.length - 4) + ' more' : '') : 'no case of its own'); };
-  function draw() { s.replaceChildren(); const c = Math.cos(yaw), sn = Math.sin(yaw);
+  function draw() { s.replaceChildren(); const c = Math.cos(yaw), sn = Math.sin(yaw), small = innerWidth <= 700;
     const shown = s.getBoundingClientRect(), k = shown.height ? Math.min(shown.height / VH, shown.width / VW) : 1, fs = 13 / k;   // floor names keep 13 px on screen, whatever the view's size
-    const P = (x, y, z) => { const xr = (x - cx0) * c - y * sn, yr = (x - cx0) * sn + y * c; return [VW / 2 + 72 + xr * S * zoom, VH * 0.5 + panY + (yr * S * 0.4 - (z - top / 2) * S * 0.86) * zoom, yr]; };
+    const P = (x, y, z) => { const xr = (x - cx0) * c - y * sn, yr = (x - cx0) * sn + y * c; return [VW / 2 + (small ? 44 : 72) + xr * S * zoom * (small ? 0.84 : 1), VH * 0.5 + panY + (yr * S * 0.4 - (z - top / 2) * S * 0.86) * zoom, yr]; };
     const pts = a => a.map(p => p[0].toFixed(1) + ',' + p[1].toFixed(1)).join(' ');
     for (let f = 0; f <= nF; f++) { const z = f * GAP - 0.03, q = [P(-0.1, -1.55, z), P(W + 0.04, -1.55, z), P(W + 0.04, 1.55, z), P(-0.1, 1.55, z)];           // floor slab
       const slab = svg('polygon', {points: pts(q), fill: 'var(--bg)', 'fill-opacity': 0.55, stroke: 'var(--line)', 'stroke-width': 1}); slab.dataset.o = f * 1000 - 500; s.append(slab); }
@@ -642,7 +643,7 @@ function budgetView(root) { const B = D.budget, tl = el('div', 'tiles'), hp = B.
   c1.append(simpleTable(['Part of the building', 'Electricity', 'Cost at tariff', 'Share'], B.parts.map(p => { const n = el('span'); const sw = el('i', 'sw'); sw.style.background = PART[p.key][1]; n.className = 'legend'; n.style.margin = '0'; n.append(sw, PART[p.key][0]); return [n, kwh(p.kwh), eur(p.eur), Math.round(p.eur / B.load.eur * 100) + ' %']; })));
   c1.append(el('p', 'note', 'Assumption: the fan power is part of the metered building load. The dataset does not state this.')); root.append(c1);
   const c2 = el('div', 'card'); c2.append(el('h2', null, 'Cost by month'), el('p', 'note', 'Consumption valued at the tariff, by part. Winter is the heat pump; the fans and the rest hardly change over the year.'));
-  const M = B.months.filter(x => (x.heat_pump || 0) + (x.fans || 0) + (x.rest || 0) > 50), W = 1000, H = 250, m = {l: 54, r: 8, t: 10, b: 26}, mx = Math.max(...M.map(x => (x.heat_pump || 0) + (x.fans || 0) + (x.rest || 0))), s = svg('svg', {viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': 'Electricity cost per month by part of the building'});
+  const M = B.months.filter(x => (x.heat_pump || 0) + (x.fans || 0) + (x.rest || 0) > 50), W = innerWidth < 700 ? 440 : 1000, H = 250, m = {l: 44, r: 6, t: 10, b: 26}, mx = Math.max(...M.map(x => (x.heat_pump || 0) + (x.fans || 0) + (x.rest || 0))), s = svg('svg', {viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': 'Electricity cost per month by part of the building'});
   const y = v => m.t + (H - m.t - m.b) * (1 - v / mx), bw = (W - m.l - m.r) / M.length;
   for (const g of [0, 0.25, 0.5, 0.75, 1]) { const v = mx * g; s.append(svg('line', {x1: m.l, x2: W - m.r, y1: y(v), y2: y(v), stroke: 'var(--grid)'}), svg('text', {x: m.l - 6, y: y(v) + 4, 'text-anchor': 'end', class: 'ax'}, Math.round(v / 100) * 100)); }
   M.forEach((x, i) => { let acc = 0; const g = svg('g'); for (const k of ['rest', 'fans', 'heat_pump']) { const v = x[k] || 0, x0 = m.l + i * bw + bw * 0.16;
@@ -682,7 +683,7 @@ function staffView(root) { const S = D.staff, R = S.resources, inn = R.filter(r 
   const c2 = el('div', 'card'); c2.append(el('h2', null, 'External partners'), el('p', 'note', 'From the work orders and the event log. On schedule means finished within ' + S.on_time_h + ' hours of the planned slot.'));
   c2.append(simpleTable(['Partner', 'Service', 'Contact', 'Jobs', 'Service quality'], ext.map(r => [r.id, SERVICE[r.id] || 'External service', none(), work(r), quality(r)]))); root.append(c2);
   const c3 = el('div', 'card'); c3.append(el('h2', null, 'Absences by month'), el('p', 'note', 'Shifts that did not take place, by role. An event weekend with a sick cleaner is scenario S05.'));
-  const M = S.absent_months, keys = ['cleaner', 'robot', 'technician'], col = {cleaner: 'var(--series)', robot: 'var(--c2)', technician: 'var(--c3)'}, W = 1000, H = 190, m = {l: 34, r: 8, t: 10, b: 26};
+  const M = S.absent_months, keys = ['cleaner', 'robot', 'technician'], col = {cleaner: 'var(--series)', robot: 'var(--c2)', technician: 'var(--c3)'}, W = innerWidth < 700 ? 440 : 1000, H = 190, m = {l: 30, r: 6, t: 10, b: 26};
   const mx = Math.max(1, ...M.map(x => keys.reduce((a, k) => a + (x[k] || 0), 0))), s = svg('svg', {viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': 'Absent shifts per month by role'}), y = v => m.t + (H - m.t - m.b) * (1 - v / mx), bw = (W - m.l - m.r) / Math.max(1, M.length);
   for (let v = 0; v <= mx; v += Math.max(1, Math.ceil(mx / 4))) s.append(svg('line', {x1: m.l, x2: W - m.r, y1: y(v), y2: y(v), stroke: 'var(--grid)'}), svg('text', {x: m.l - 6, y: y(v) + 4, 'text-anchor': 'end', class: 'ax'}, v));
   M.forEach((x, i) => { let acc = 0; const g = svg('g'); for (const k of keys) { const v = x[k] || 0; if (!v) continue; g.append(svg('rect', {x: m.l + i * bw + bw * 0.2, width: bw * 0.6, y: y(acc + v), height: Math.max(0, y(acc) - y(acc + v) - 2), rx: 3, fill: col[k]})); acc += v; }
