@@ -204,8 +204,8 @@ input[type=search]{height:36px;font:inherit;color:var(--ink);background:var(--bg
 .duo{display:grid;grid-template-columns:minmax(0,1.75fr) minmax(0,1fr);gap:12px;align-items:stretch;margin-bottom:12px}
 .duo>.card{margin:0;display:flex;flex-direction:column}
 .duo .tiles{flex:1;grid-auto-flow:row;grid-template-columns:repeat(2,minmax(0,1fr));grid-auto-rows:1fr}
-.duo .tiles .tile{display:flex;flex-direction:column;justify-content:center;padding:14px 14px 16px}
-.duo .tiles .tile b{font-size:30px}
+.duo .tiles .tile{display:flex;flex-direction:column;justify-content:center;padding:10px 14px 11px}
+.duo .tiles .tile b{font-size:28px}
 @media (max-width:1100px){.duo{grid-template-columns:1fr}.duo .tiles{flex:none;grid-auto-rows:auto}.duo .tiles .tile{justify-content:flex-start}.duo .tiles .tile b{font-size:23px}}
 @media (max-width:700px){.duo .tiles .tile b{font-size:21px}.duo .tiles .tile{padding:9px 10px 10px}}
 /* comfort: motion, hover, focus */
@@ -503,7 +503,7 @@ function labelCells(table) { const hs = [...table.querySelectorAll('th')].map(h 
   for (const r of table.querySelectorAll('tr')) [...r.children].forEach((c, i) => { if (c.tagName === 'TD') c.dataset.l = hs[i] || ''; }); }
 function tile(v, k, small, key, go) { const t = el('div', 'tile' + (key ? ' key' : '') + (go ? ' go' : '')), b = el('b', null, v); t.append(b, el('span', null, k)); if (small) t.append(el('small', null, small));
   const mm = /^(\d+)( h)?$/.exec(String(v)); if (mm) countUp(b, +mm[1], mm[2] || '');
-  if (go) { t.tabIndex = 0; t.title = 'Open this view'; t.onclick = () => { tab = go; history.replaceState(null, '', '#' + go); render(); }; t.onkeydown = ev => { if (ev.key === 'Enter') t.onclick(); }; } return t; }
+  if (go) { t.tabIndex = 0; t.onclick = () => { tab = go; history.replaceState(null, '', '#' + go); render(); }; t.onkeydown = ev => { if (ev.key === 'Enter') t.onclick(); }; } return t; }
 // Where it happened: a schematic 3D building, drawn here from building.json. The dataset gives each room a floor and
 // an orientation and no floor plan, so rooms are placed by number: five south rooms in front, five north rooms behind,
 // floors pulled apart so every room stays visible. Drag turns it. A case that touches many rooms at once (a cold snap,
@@ -581,11 +581,15 @@ function overview(root) {
   const checked = E.filter(e => e.check), leads = checked.map(e => Math.round(e.check.lead_h)).sort((a, b) => a - b);
   const tech = E.filter(q => ['room_flow', 'main_gap', 'cop'].includes(q.kind) || (q.kind === 'ahu' && q.issue_type !== 'data_quality'));
   const tl = el('div', 'tiles');
-  tl.append(tile(leads.length ? Math.round(leads[Math.floor(leads.length / 2)]) + ' h' : 'n/a', 'seen earlier than the repair, median', 'time from our first decision to the repair order in the dataset', true),
-    tile(checked.length + ' of ' + tech.length, 'technical incidents with a later work order', 'used for checking only, never read by a detector'),
-    tile(inc.filter(e => e.priority === 'critical').length, 'critical cases', 'the red dots below'),
-    tile(E.length - inc.length, 'routine guest answers', 'not counted as incidents; tick the box in S01 or S03 to see them'));
-  const kf = el('div', 'card'); kf.style.marginTop = '0'; kf.append(el('h2', null, 'Key figures'), el('p', 'note', 'How early the system was, how that was checked, and what is counted where.'), tl);
+  const wait = pending(), needConsent = wait.filter(d => level(d) === 'approval_and_consent').length;
+  const kt = (v, k, small, hint, key, go) => { const t = tile(v, k, small, key, go); t.title = hint; return t; };     // short on the box, the full sentence on hover
+  tl.append(kt(leads.length ? Math.round(leads[Math.floor(leads.length / 2)]) + ' h' : 'n/a', 'median head start', 'first decision to repair order', 'Median time from our first decision to the repair order in the dataset, over the technical incidents', true),
+    kt(leads.length ? leads[0] + '–' + leads[leads.length - 1] + ' h' : 'n/a', 'shortest to longest', 'burst pipe to slow leak', 'A burst pipe shows within hours; a slow leak or a clogging filter shows days ahead'),
+    kt(checked.length + ' of ' + tech.length, 'incidents confirmed', 'by a later work order', 'Technical incidents for which the dataset holds a later corrective work order. Work orders are used for checking only; no detector reads them'),
+    kt(inc.filter(e => e.priority === 'critical').length, 'critical cases', 'red in building and timeline', 'Cases whose highest priority is critical'),
+    kt(wait.length, 'waiting for a person', needConsent + ' also need guest consent', 'Decisions that wait for approval. Click to open the approvals', false, 'queue'),
+    kt(E.length - inc.length, 'routine guest answers', 'not counted as incidents', 'Routine answers to guests. Tick the box in S01 or S03 to see them'));
+  const kf = el('div', 'card'); kf.style.marginTop = '0'; kf.append(el('h2', null, 'Key figures'), el('p', 'note', 'Head start, how it was checked, what waits, what is counted. Hover a box for details.'), tl);
   const bld = buildingView(inc);            // the building on the left, the four key figures as a 2 x 2 block on the right
   if (bld) { const duo = el('div', 'duo'); bld.style.marginTop = '0'; duo.append(bld, kf); root.append(duo); } else root.append(kf);
   const na = all.filter(d => level(d) === 'autonomous').length, nh = all.filter(d => level(d) === 'human_approval').length, nc = all.length - na - nh;
