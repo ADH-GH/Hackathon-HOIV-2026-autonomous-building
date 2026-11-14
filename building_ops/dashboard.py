@@ -71,7 +71,34 @@ def _building(ds) -> dict | None:
         return None
     b = ds.building.get("building", {})
     rooms = [{"id": r["id"], "floor": r.get("floor"), "o": r.get("orientation")} for r in b.get("rooms", []) if r.get("id") and r.get("floor")]
-    return {"floors": b.get("floors"), "rooms": rooms, "assets": [a["id"] for a in b.get("assets", []) if a.get("id")]} if rooms else None
+    if not rooms:
+        return None
+    out = {"floors": b.get("floors"), "rooms": rooms, "assets": [a["id"] for a in b.get("assets", []) if a.get("id")]}
+    ids = {r["id"] for r in rooms}
+    # Two further layers for the view, plain counts from the dataset: noise complaints per room, and how long each
+    # room sent no temperature reading, with the gateway its sensors hang on.
+    if ds.has("guest_requests"):
+        noise: dict[str, int] = defaultdict(int)
+        for r in ds.rows("guest_requests"):
+            if r.get("request_type") == "noise_complaint" and r.get("room_id") in ids:
+                noise[r["room_id"]] += 1
+        out["noise"] = dict(noise)
+    if ds.has("room_telemetry"):
+        gaps: dict[str, int] = defaultdict(int)
+        for r in ds.rows("room_telemetry"):
+            if r.get("room_id") in ids and r.get("temperature_c") in ("", None):
+                gaps[r["room_id"]] += 1
+        out["gaps_h"] = {k: round(v * 0.25, 1) for k, v in gaps.items()}
+        gateway = {x["asset_id"]: x.get("gateway") for x in b.get("sensors", []) if x.get("metric") == "temperature_c"}
+        alarms: dict[str, int] = defaultdict(int)
+        if ds.has("events"):
+            for e in ds.events():
+                if e.get("type") == "bms_alarm" and e.get("alarm_code") == "SENSOR_COMM_LOSS" and e.get("state") == "raised" and e.get("asset_id") in ids:
+                    alarms[gateway.get(e["asset_id"]) or ""] += 1
+        out["gateways"] = [{"id": g["id"], "floor": g.get("floor"), "alarms": alarms.get(g["id"], 0),
+                            "hours": round(sum(h for room, h in out["gaps_h"].items() if gateway.get(room) == g["id"]), 1)}
+                           for g in b.get("gateways", []) if g.get("id")]
+    return out
 
 
 def build(data_dir: str | Path, decisions_path: str | Path, out: str | Path,

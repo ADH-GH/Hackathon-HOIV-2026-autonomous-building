@@ -268,7 +268,8 @@ Changes after `pre-holdout`: presentation only. The dashboard page got a backgro
 favicon and a reworked phone layout (header, navigation boxes, tables as cards). The overview got
 a schematic 3D view of the building that locates the cases (drawn from `building.json`), and the
 title and spacing were adjusted. Two planning views, Budget and Staff, were added; they summarise the
-year from the dataset and feed no decision. No detector, threshold or rule was changed, so the decisions are the same.
+year from the dataset and feed no decision. The building view got two more layers, noise complaints and data
+gaps per gateway, which are plain counts from the dataset. No detector, threshold or rule was changed, so the decisions are the same.
 
 ## Planning views
 

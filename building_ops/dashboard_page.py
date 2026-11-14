@@ -201,7 +201,9 @@ input[type=search]{height:36px;font:inherit;color:var(--ink);background:var(--bg
 svg text.ax{font:400 11px/1 var(--mono);fill:var(--mute)}
 .card h3{font:600 14px/1.3 var(--display);margin:16px 0 4px}
 .legend.big{font-size:14px;gap:22px;margin-top:10px;margin-bottom:0}.legend.big .wide{color:var(--mute);margin-left:auto;cursor:help}.legend.big i.sw{width:15px;height:15px;border-radius:4px;vertical-align:-2px;margin-right:8px}
-.bldwrap{position:relative}.bldzoom{position:absolute;top:8px;right:0;display:flex;flex-direction:column;gap:6px}
+.bldwrap{position:relative}.seg{position:absolute;top:8px;left:0;display:flex;gap:6px;z-index:1}
+.seg button{height:32px;font:600 13px/1 var(--sans);color:var(--ink2);background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:0 12px;cursor:pointer}
+.seg button.on{color:var(--ink);border-color:var(--accent);box-shadow:inset 0 -2px 0 var(--accent)}.bldzoom{position:absolute;top:8px;right:0;display:flex;flex-direction:column;gap:6px}
 .bldzoom button{width:36px;height:36px;font:500 20px/1 var(--sans);color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:8px;cursor:pointer}
 .bldzoom button:hover{border-color:var(--mute);background:var(--raise)}
 .duo{display:grid;grid-template-columns:minmax(0,1.75fr) minmax(0,1fr);gap:12px;align-items:stretch;margin-bottom:12px}
@@ -514,11 +516,12 @@ function tile(v, k, small, key, go) { const t = el('div', 'tile' + (key ? ' key'
 // an orientation and no floor plan, so rooms are placed by number: five south rooms in front, five north rooms behind,
 // floors pulled apart so every room stays visible. Drag turns it. A case that touches many rooms at once (a cold snap,
 // an event weekend) is a building-wide case and is not painted onto single rooms.
-let yaw = 0.62, zoom = 1, panY = 0, bldFit = null; window.addEventListener('resize', () => bldFit && bldFit());
+let yaw = 0.62, zoom = 1, panY = 0, bldLayer = 'cases', bldFit = null; window.addEventListener('resize', () => bldFit && bldFit());
 function buildingView(inc) {
   const B = D.building; if (!B || !B.rooms || !B.rooms.length) return null;
-  const card = el('div', 'card'); card.append(el('h2', null, 'Where it happened'),
-    el('p', 'note', 'Rooms and plant, coloured by their most serious case, with the number of cases. Drag to turn or move, click to open a case. Schematic: the dataset gives floor and orientation per room, no floor plan.'));
+  const NOTE = {cases: 'Rooms and plant, coloured by their most serious case, with the number of cases. Drag to turn or move, click to open a case.', noise: 'Noise complaints of guests per room over the year. Drag to turn or move.', gaps: 'Hours in which a room sent no temperature reading, and per floor the gateway its sensors hang on. Drag to turn or move.'};
+  const note = el('p', 'note'), setNote = () => { note.textContent = NOTE[bldLayer] + ' Schematic: the dataset gives floor and orientation per room, no floor plan.'; }; setNote();
+  const card = el('div', 'card'); card.append(el('h2', null, 'Where it happened'), note);
   const rank = {critical: 3, high: 2, medium: 1, low: 0}, at = {}, wide = [];
   for (const e of inc) { const as = [...new Set(e.decisions.flatMap(d => d.affected_assets || []).map(a => a.replace(/^WM_(R\d+)$/, '$1')))], rooms = as.filter(a => /^R\d{3}$/.test(a));
     if (rooms.length > 6) wide.push(e);
@@ -528,6 +531,7 @@ function buildingView(inc) {
   const perFloor = {}; for (const r of B.rooms) (perFloor[r.floor + r.o] = perFloor[r.floor + r.o] || []).push(r);
   for (const key in perFloor) perFloor[key].sort((a, b) => a.id.localeCompare(b.id)).forEach((r, i) => { const north = r.o === 'N', z = (r.floor - 1) * GAP;
     boxes.push({id: r.id, label: r.id + ' · floor ' + r.floor + ', faces ' + (north ? 'north' : 'south'), x0: i, x1: i + 0.94, y0: north ? -1.45 : 0.25, y1: north ? -0.25 : 1.45, z0: z, z1: z + FH, room: true}); });
+  for (const g of (B.gateways || [])) if (g.floor) boxes.push({id: g.id, label: g.id, gw: g, name: g.id, x0: 5.12, x1: 5.62, y0: -0.25, y1: 0.25, z0: (g.floor - 1) * GAP, z1: (g.floor - 1) * GAP + 0.5});
   const W = 5, roof = nF * GAP, top = roof + 0.5, plant = (id, label, x0, y0, w, d, z0, h) => boxes.push({id, label, x0, x1: x0 + w, y0, y1: y0 + d, z0, z1: z0 + h, name: id});
   const has = id => B.assets.includes(id) || at[id];
   if (has('HP1')) plant('HP1', 'HP1 · heat pump', -1.9, 0.3, 0.9, 0.9, 0, 0.7);
@@ -538,8 +542,17 @@ function buildingView(inc) {
   if (has('AHU1')) plant('AHU1', 'AHU1 · air handling unit, roof', 0.3, -1.1, 1.5, 0.9, roof, 0.45);
   if (has('PV1')) plant('PV1', 'PV1 · photovoltaics, roof', 2.3, -1.2, 2.5, 2.4, roof, 0.08);
   const VW = 860, VH = 500, S = 66, cx0 = W / 2, s = svg('svg', {viewBox: `0 0 ${VW} ${VH}`, class: 'bld', role: 'img', 'aria-label': 'Schematic 3D view of the building with the number of cases per room and asset'});
-  const colour = b => { const l = at[b.id]; if (!l) return ['var(--raise)', 0.9]; const p = l[0].priority; return [p === 'critical' ? 'var(--crit)' : p === 'high' ? 'var(--appr)' : 'var(--series)', Math.min(0.95, 0.55 + 0.1 * l.length)]; };
-  const tipFor = b => { const l = at[b.id] || []; return '<b>' + b.label + '</b><br>' + (l.length ? l.length + ' case' + (l.length > 1 ? 's' : '') + '<br>' + l.slice(0, 4).map(e => lt(e.start).slice(0, 10) + ' · ' + episodeTitle(e) + ' · ' + e.priority).join('<br>') + (l.length > 4 ? '<br>and ' + (l.length - 4) + ' more' : '') : 'no case of its own'); };
+  // Three layers over the same building: the cases, the noise complaints, and the hours a room sent no reading.
+  const NOISE = B.noise || {}, GAPS = B.gaps_h || {}, GW = B.gateways || [], maxOf = o => Math.max(1, ...Object.values(o));
+  const LAYER = {cases: {name: 'Cases'}, noise: {name: 'Noise complaints', data: NOISE, max: maxOf(NOISE), unit: n => n + ' noise complaint' + (n === 1 ? '' : 's')},
+    gaps: {name: 'Data gaps', data: GAPS, max: Math.max(maxOf(GAPS), ...GW.map(g => g.hours)), unit: n => n + ' h without a temperature reading'}};
+  const val = b => bldLayer === 'cases' ? (at[b.id] || []).length : b.gw ? b.gw.hours : (LAYER[bldLayer].data[b.id] || 0);
+  const colour = b => { if (bldLayer !== 'cases') { const v = val(b), L = LAYER[bldLayer]; if (!v || (!b.room && !b.gw)) return ['var(--raise)', b.room || b.gw ? 0.9 : 0.35];
+      return ['var(--c2)', 0.18 + 0.77 * Math.sqrt(v / (b.gw ? Math.max(...GW.map(g => g.hours), 1) : maxOf(L.data)))]; }
+    const l = at[b.id]; if (!l) return ['var(--raise)', 0.9]; const p = l[0].priority; return [p === 'critical' ? 'var(--crit)' : p === 'high' ? 'var(--appr)' : 'var(--series)', Math.min(0.95, 0.55 + 0.1 * l.length)]; };
+  const tipFor = b => { if (bldLayer !== 'cases') { if (b.gw) return '<b>' + b.gw.id + ' · sensor gateway, floor ' + b.gw.floor + '</b><br>' + b.gw.hours + ' room-hours without a temperature reading<br>' + b.gw.alarms + ' communication-loss alarms of the building system';
+      if (!b.room) return '<b>' + b.label + '</b><br>not part of this layer'; const v = val(b); return '<b>' + b.label + '</b><br>' + (v ? LAYER[bldLayer].unit(v) : bldLayer === 'noise' ? 'no noise complaint' : 'no gap'); }
+    const l = at[b.id] || []; return '<b>' + b.label + '</b><br>' + (l.length ? l.length + ' case' + (l.length > 1 ? 's' : '') + '<br>' + l.slice(0, 4).map(e => lt(e.start).slice(0, 10) + ' · ' + episodeTitle(e) + ' · ' + e.priority).join('<br>') + (l.length > 4 ? '<br>and ' + (l.length - 4) + ' more' : '') : 'no case of its own'); };
   function draw() { s.replaceChildren(); const c = Math.cos(yaw), sn = Math.sin(yaw);
     const shown = s.getBoundingClientRect(), k = shown.height ? Math.min(shown.height / VH, shown.width / VW) : 1, fs = 13 / k;   // floor names keep 13 px on screen, whatever the view's size
     const P = (x, y, z) => { const xr = (x - cx0) * c - y * sn, yr = (x - cx0) * sn + y * c; return [VW / 2 + 30 + xr * S * zoom, VH * 0.5 + panY + (yr * S * 0.4 - (z - top / 2) * S * 0.86) * zoom, yr]; };
@@ -549,17 +562,17 @@ function buildingView(inc) {
     const order = boxes.map(b => ({b, k: Math.round(b.z0 / GAP) * 1000 + P((b.x0 + b.x1) / 2, (b.y0 + b.y1) / 2, 0)[2] * 10})).sort((a, b2) => a.k - b2.k);
     const slabs = [...s.children]; s.replaceChildren();
     let si = 0; const flush = k => { while (si < slabs.length && +slabs[si].dataset.o <= k) s.append(slabs[si++]); };
-    for (const {b, k} of order) { flush(k); const [fill, op] = colour(b), g = svg('g', {class: 'bx' + (at[b.id] ? ' hit' : '')});
+    for (const {b, k} of order) { flush(k); if (b.gw && bldLayer !== 'gaps') continue; const [fill, op] = colour(b), g = svg('g', {class: 'bx' + (bldLayer === 'cases' && at[b.id] ? ' hit' : '')});
       const sides = [[1, 0, [[b.x1, b.y0], [b.x1, b.y1]]], [-1, 0, [[b.x0, b.y1], [b.x0, b.y0]]], [0, 1, [[b.x1, b.y1], [b.x0, b.y1]]], [0, -1, [[b.x0, b.y0], [b.x1, b.y0]]]];
       for (const [nx, ny, [[xa, ya], [xb, yb]]] of sides) { const facing = nx * sn + ny * c; if (facing <= 0.02) continue;
         g.append(svg('polygon', {points: pts([P(xa, ya, b.z0), P(xb, yb, b.z0), P(xb, yb, b.z1), P(xa, ya, b.z1)]), fill, 'fill-opacity': op * (nx ? 0.42 : 0.6), stroke: 'var(--line)', 'stroke-width': 0.8, 'stroke-linejoin': 'round'})); }
       const tp = [P(b.x0, b.y0, b.z1), P(b.x1, b.y0, b.z1), P(b.x1, b.y1, b.z1), P(b.x0, b.y1, b.z1)];
       g.append(svg('polygon', {points: pts(tp), fill, 'fill-opacity': op, stroke: 'var(--line)', 'stroke-width': 0.8, 'stroke-linejoin': 'round'}));
-      const mx = (tp[0][0] + tp[2][0]) / 2, my = (tp[0][1] + tp[2][1]) / 2, n = (at[b.id] || []).length;
+      const mx = (tp[0][0] + tp[2][0]) / 2, my = (tp[0][1] + tp[2][1]) / 2, n = b.room || b.gw || bldLayer === 'cases' ? Math.round(val(b)) : 0;
       if (n) g.append(svg('text', {x: mx, y: my + 4, 'text-anchor': 'middle', class: 'bn'}, n));
       if (b.name) g.append(svg('text', {x: mx, y: my - (n ? 12 : -4), 'text-anchor': 'middle', class: 'bl'}, b.name));
       g.addEventListener('mousemove', ev => showTip(ev, tipFor(b))); g.addEventListener('mouseleave', hideTip);
-      if (n) g.addEventListener('click', () => { if (!moved) { hideTip(); open(at[b.id][0]); } });
+      if (n && bldLayer === 'cases') g.addEventListener('click', () => { if (!moved) { hideTip(); open(at[b.id][0]); } });
       s.append(g); }
     flush(1e9);
     for (let f = 0; f <= nF; f++) { const p = P(cx0, 0, f * GAP + FH / 2); s.append(svg('text', {x: 14, y: p[1] + fs * 0.35, class: 'bf', style: 'font-size:' + fs.toFixed(1) + 'px'}, f < nF ? 'Floor ' + (f + 1) : 'Roof')); } }
@@ -573,8 +586,16 @@ function buildingView(inc) {
   for (const [sym, f, name] of [['+', 1.2, 'Zoom in'], ['−', 1 / 1.2, 'Zoom out']]) { const b = el('button', null, sym); b.type = 'button'; b.title = name; b.setAttribute('aria-label', name);
     b.onclick = () => { zoom = Math.min(2.4, Math.max(0.6, zoom * f)); if (zoom <= 1) panY = 0; draw(); }; ctl.append(b); }
   wrap.append(s, ctl); card.append(wrap);
-  const lg = el('div', 'legend big'); lg.innerHTML = '<span><i class="sw" style="background:var(--crit)"></i>critical case</span><span><i class="sw" style="background:var(--appr)"></i>high</span><span><i class="sw" style="background:var(--series)"></i>medium or low</span><span><i class="sw" style="background:var(--raise);border:1px solid var(--line)"></i>no case of its own</span>'; card.append(lg);
-  if (wide.length) { const w = el('span', 'wide', wide.length + ' building-wide cases not shown per room'); w.title = 'Cold snaps, event weekends and building-wide energy plans concern many rooms at once. They are counted for the building as a whole.'; lg.append(w); }
+  const lg = el('div', 'legend big'), sw = (c, t) => '<span><i class="sw" style="background:' + c + '"></i>' + t + '</span>';
+  const legend = () => { if (bldLayer === 'cases') { lg.innerHTML = sw('var(--crit)', 'critical case') + sw('var(--appr)', 'high') + sw('var(--series)', 'medium or low') + '<span><i class="sw" style="background:var(--raise);border:1px solid var(--line)"></i>no case of its own</span>';
+      if (wide.length) { const w = el('span', 'wide', wide.length + ' building-wide cases not shown per room'); w.title = 'Cold snaps, event weekends and building-wide energy plans concern many rooms at once. They are counted for the building as a whole.'; lg.append(w); } }
+    else { const tot = bldLayer === 'noise' ? Object.values(NOISE).reduce((a, b) => a + b, 0) + ' noise complaints in the year' : Math.round(Object.values(GAPS).reduce((a, b) => a + b, 0)) + ' room-hours without a reading; end box: gateway';
+      lg.innerHTML = '<span><i class="sw" style="background:var(--c2);opacity:.3"></i>few</span><span><i class="sw" style="background:var(--c2)"></i>many</span><span><i class="sw" style="background:var(--raise);border:1px solid var(--line)"></i>none</span>';
+      const w = el('span', 'wide', tot); w.title = bldLayer === 'noise' ? 'Guest requests of the type noise complaint, counted per room' : 'Quarter hours in which a room sent no temperature, summed per room; the building system raised its own communication-loss alarms, shown on the gateway'; lg.append(w); } };
+  const seg = el('div', 'seg'); for (const k of Object.keys(LAYER)) { if (k !== 'cases' && !Object.keys(LAYER[k].data).length) continue; const b = el('button', k === bldLayer ? 'on' : '', LAYER[k].name); b.type = 'button';
+    b.onclick = () => { bldLayer = k; for (const x of seg.children) x.className = x === b ? 'on' : ''; setNote(); legend(); bldFit ? bldFit() : draw(); }; seg.append(b); }
+  if (seg.children.length > 1) wrap.prepend(seg);
+  legend(); card.append(lg);
   // On a wide screen the view takes exactly the height that is left, so building and key figures are visible without scrolling.
   bldFit = () => { if (!s.isConnected) return; if (innerWidth <= 1100) { s.style.height = ''; draw(); return; }
     s.style.height = '300px'; const r = s.getBoundingClientRect(), below = card.getBoundingClientRect().bottom - r.bottom;
