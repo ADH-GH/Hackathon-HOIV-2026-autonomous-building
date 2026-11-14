@@ -517,7 +517,7 @@ function tile(v, k, small, key, go) { const t = el('div', 'tile' + (key ? ' key'
 // an orientation and no floor plan, so rooms are placed by number: five south rooms in front, five north rooms behind,
 // floors pulled apart so every room stays visible. Drag turns it. A case that touches many rooms at once (a cold snap,
 // an event weekend) is a building-wide case and is not painted onto single rooms.
-let yaw = 0.62, zoom = 1, panY = 0, bldLayer = 'cases', bldFit = null, tlFit = null; window.addEventListener('resize', () => { if (bldFit) bldFit(); else if (tlFit) tlFit(); });
+let yaw = 0.62, zoom = 1.2, panY = 0, bldLayer = 'cases', bldFit = null, tlFit = null; window.addEventListener('resize', () => { if (bldFit) bldFit(); else if (tlFit) tlFit(); });
 function buildingView(inc) {
   const B = D.building; if (!B || !B.rooms || !B.rooms.length) return null;
   const NOTE = {cases: 'Most serious case per room, with the number of cases.', noise: 'Noise complaints of guests per room over the year.', gaps: 'Hours without a temperature reading per room, and each floor\'s gateway.'};
@@ -557,7 +557,7 @@ function buildingView(inc) {
     const l = at[b.id] || []; return '<b>' + b.label + '</b><br>' + (l.length ? l.length + ' case' + (l.length > 1 ? 's' : '') + '<br>' + l.slice(0, 4).map(e => lt(e.start).slice(0, 10) + ' · ' + episodeTitle(e) + ' · ' + e.priority).join('<br>') + (l.length > 4 ? '<br>and ' + (l.length - 4) + ' more' : '') : 'no case of its own'); };
   function draw() { s.replaceChildren(); const c = Math.cos(yaw), sn = Math.sin(yaw);
     const shown = s.getBoundingClientRect(), k = shown.height ? Math.min(shown.height / VH, shown.width / VW) : 1, fs = 13 / k;   // floor names keep 13 px on screen, whatever the view's size
-    const P = (x, y, z) => { const xr = (x - cx0) * c - y * sn, yr = (x - cx0) * sn + y * c; return [VW / 2 + 30 + xr * S * zoom, VH * 0.5 + panY + (yr * S * 0.4 - (z - top / 2) * S * 0.86) * zoom, yr]; };
+    const P = (x, y, z) => { const xr = (x - cx0) * c - y * sn, yr = (x - cx0) * sn + y * c; return [VW / 2 + 72 + xr * S * zoom, VH * 0.5 + panY + (yr * S * 0.4 - (z - top / 2) * S * 0.86) * zoom, yr]; };
     const pts = a => a.map(p => p[0].toFixed(1) + ',' + p[1].toFixed(1)).join(' ');
     for (let f = 0; f <= nF; f++) { const z = f * GAP - 0.03, q = [P(-0.1, -1.55, z), P(W + 0.04, -1.55, z), P(W + 0.04, 1.55, z), P(-0.1, 1.55, z)];           // floor slab
       const slab = svg('polygon', {points: pts(q), fill: 'var(--bg)', 'fill-opacity': 0.55, stroke: 'var(--line)', 'stroke-width': 1}); slab.dataset.o = f * 1000 - 500; s.append(slab); }
@@ -716,7 +716,7 @@ function overview(root) {
   const dens = lanes.map(ln => { const ts = inc.filter(q => q.scenario === ln).map(q => q.start); return grid.map(g => ts.reduce((a, t) => a + Math.exp(-0.5 * Math.pow((g - t) / BW, 2)), 0)); });
   const densCrit = lanes.map(ln => { const ts = inc.filter(q => q.scenario === ln && q.priority === 'critical').map(q => q.start); return grid.map(g => ts.reduce((a, t) => a + Math.exp(-0.5 * Math.pow((g - t) / BW, 2)), 0)); });
   const peak = Math.max(1e-9, ...dens.flat());
-  const lanesLabels = [];
+  const lanesLabels = [], laneName = ln => SC[ln].replace(/^S(\d\d)/, 'S-$1');
   lanes.forEach((ln, i) => { const y = m.t + i * gap, d = dens[i], cases = inc.filter(q => q.scenario === ln);
     let area = `M${x(grid[0]).toFixed(1)} ${y}`; d.forEach((v, k) => { area += `L${x(grid[k]).toFixed(1)} ${(y - v / peak * rise).toFixed(1)}`; }); area += `L${x(grid[N - 1]).toFixed(1)} ${y}Z`;
     let line = ''; d.forEach((v, k) => { line += (k ? 'L' : 'M') + x(grid[k]).toFixed(1) + ' ' + (y - v / peak * rise).toFixed(1); });
@@ -724,10 +724,10 @@ function overview(root) {
     const dc = densCrit[i]; if (dc.some(v => v > 0.01)) { let ca = `M${x(grid[0]).toFixed(1)} ${y}`, cl = ''; dc.forEach((v, k) => { const yy = (y - v / peak * rise).toFixed(1); ca += `L${x(grid[k]).toFixed(1)} ${yy}`; cl += (k ? 'L' : 'M') + x(grid[k]).toFixed(1) + ' ' + yy; }); ca += `L${x(grid[N - 1]).toFixed(1)} ${y}Z`;
       let seg = '', pen = false; dc.forEach((v, k) => { if (v / peak * rise < 0.6) { pen = false; return; } seg += (pen ? 'L' : 'M') + x(grid[k]).toFixed(1) + ' ' + (y - v / peak * rise).toFixed(1); pen = true; });
       s.append(svg('path', {d: ca, fill: 'var(--crit)', 'fill-opacity': 0.22}), svg('path', {d: seg, fill: 'none', stroke: 'var(--crit)', 'stroke-opacity': 0.75, 'stroke-width': 1.2})); }
-    s.append(svg('line', {x1: m.l, x2: W - m.r, y1: y, y2: y, stroke: 'var(--line)'})); lanesLabels.push(svg('text', {x: m.l + 2, y: y - 15, class: 'lbl in'}, SC[ln]));        // the lane's name sits inside the lane, just above its zero line
+    s.append(svg('line', {x1: m.l, x2: W - m.r, y1: y, y2: y, stroke: 'var(--line)'})); lanesLabels.push(svg('text', {x: m.l + 2, y: y - 21, class: 'lbl in'}, laneName(ln)));        // the lane's name sits inside the lane, just above its zero line
     const band = svg('rect', {x: m.l, y: y - rise, width: W - m.l - m.r, height: rise + 8, fill: 'transparent'});
     band.addEventListener('mousemove', ev => { const r = s.getBoundingClientRect(), tv = t0 + ((ev.clientX - r.left) / r.width * W - m.l) / (W - m.l - m.r) * (t1 - t0), near = cases.filter(q => Math.abs(q.start - tv) <= 15 * DAY), n = near.length, nc = near.filter(q => q.priority === 'critical').length;
-      showTip(ev, '<b>' + esc(SC[ln]) + '</b><br>' + n + ' case' + (n === 1 ? '' : 's') + ' in the 30 days around ' + esc(F_DAY.format(new Date(tv))) + (nc ? '<br>' + nc + ' of them critical' : '')); });
+      showTip(ev, '<b>' + esc(laneName(ln)) + '</b><br>' + n + ' case' + (n === 1 ? '' : 's') + ' in the 30 days around ' + esc(F_DAY.format(new Date(tv))) + (nc ? '<br>' + nc + ' of them critical' : '')); });
     band.addEventListener('mouseleave', hideTip); s.append(band);
     for (const e of cases) { const cc = svg('circle', {cx: x(e.start), cy: y, r: (e.priority === 'critical' ? 6 : 4.5) + (narrow ? 1 : 0), fill: e.priority === 'critical' ? 'var(--crit)' : 'var(--series)', stroke: 'var(--panel)', 'stroke-width': 2, style: 'cursor:pointer', class: 'dot'});
       cc.addEventListener('mousemove', ev => showTip(ev, '<b>' + esc(episodeTitle(e)) + '</b><br>' + esc(lt(e.start)) + '<br>risk: ' + e.priority)); cc.addEventListener('mouseleave', hideTip);
