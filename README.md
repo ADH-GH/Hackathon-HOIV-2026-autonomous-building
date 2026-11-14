@@ -264,6 +264,15 @@ on-call window are computed from local wall-clock times, so they move with dayli
 
 Changes after `pre-holdout`: none (tag not set yet).
 
+## Real data
+
+The submission runs on the replayed dataset. [`connectors.md`](connectors.md) plans the step to a
+real building: which connectors deliver the fifteen tables, which carry out the actions, and in
+which order to switch them on. The interface is an OpenAPI description, generated from the code
+with `python -m building_ops.openapi > docs/api/openapi.json` and readable at
+<https://adh-gh.github.io/Hackathon-HOIV-2026-autonomous-building/api/>. It is a design; no server
+implements it.
+
 ## Licence
 
 MIT, see [LICENSE](LICENSE).

@@ -1,0 +1,2977 @@
+{
+ "openapi": "3.1.0",
+ "info": {
+  "title": "PLATO-40 Building Operations API",
+  "version": "0.1.0-draft",
+  "description": "Interface for running the decision pipeline on live systems instead of the replayed dataset.\n\n**Status: a design, not a running service.** The hackathon submission reads a directory of files and writes `decisions.jsonl`; no server implements these paths yet. The field names are those of the PLATO-40 dataset and of DECISION_CONTRACT v2, so a connector that fills these feeds gives the detectors exactly what they read today.\n\nThree directions: **ingest** (real systems push rows in), **decisions and approvals** (people and dashboards read and answer), **actions** (the system calls a connector, the connector reports back). PLATO-40 is a fictional property; nothing here describes a real PLATO building or what CLARA does today.",
+  "license": {
+   "name": "MIT"
+  }
+ },
+ "servers": [
+  {
+   "url": "https://building-ops.example/v1",
+   "description": "Placeholder. There is no deployed server."
+  }
+ ],
+ "security": [
+  {
+   "XAuth": []
+  }
+ ],
+ "tags": [
+  {
+   "name": "Ingest",
+   "description": "Connectors push rows here, one feed per table the detectors read. Every row carries the time it happened; where the dataset has a column for when a row became known, that column is required, because a decision may only use what was known at its moment. Rows are idempotent: sending a row again changes nothing, sending a changed row replaces it."
+  },
+  {
+   "name": "Decisions",
+   "description": "What the system decided, with the evidence, as cases and as single decisions."
+  },
+  {
+   "name": "Approvals",
+   "description": "Decisions that wait for a person. The rules live in the pipeline, not in the caller: an approval for a decision that needs guest consent is refused until the consent is on record."
+  },
+  {
+   "name": "Actions",
+   "description": "Actions leave as webhooks to the connector of the target system. The connector reports back here."
+  },
+  {
+   "name": "Emergency",
+   "description": "Bridge a caller to the on-call team and hand the team one case."
+  },
+  {
+   "name": "System"
+  }
+ ],
+ "paths": {
+  "/ingest/bookings": {
+   "post": {
+    "tags": [
+     "Ingest"
+    ],
+    "operationId": "ingestBookings",
+    "summary": "Bookings — from: Property management system",
+    "description": "A reservation, created or changed. Send the full row again when it changes. Time of availability: `created_utc`.",
+    "parameters": [
+     {
+      "name": "Idempotency-Key",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "type": "string"
+      },
+      "description": "Repeat a batch safely after a timeout"
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "type": "object",
+        "required": [
+         "rows"
+        ],
+        "properties": {
+         "source": {
+          "type": "string",
+          "description": "Name of the connector instance"
+         },
+         "rows": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 5000,
+          "items": {
+           "$ref": "#/components/schemas/BookingsRow"
+          }
+         }
+        }
+       }
+      }
+     }
+    },
+    "responses": {
+     "202": {
+      "description": "Rows taken over",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/IngestResult"
+        }
+       }
+      }
+     },
+     "401": {
+      "description": "Missing or wrong X-Auth key"
+     },
+     "422": {
+      "description": "The request does not match the schema",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Error"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/ingest/room-events": {
+   "post": {
+    "tags": [
+     "Ingest"
+    ],
+    "operationId": "ingestRoomEvents",
+    "summary": "Room events — from: Property management system, housekeeping app, robot fleet, vending and waste telemetry",
+    "description": "Something that happened: a check-in, a check-out, a cleaning step, a restock, an alarm of the building management system.",
+    "parameters": [
+     {
+      "name": "Idempotency-Key",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "type": "string"
+      },
+      "description": "Repeat a batch safely after a timeout"
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "type": "object",
+        "required": [
+         "rows"
+        ],
+        "properties": {
+         "source": {
+          "type": "string",
+          "description": "Name of the connector instance"
+         },
+         "rows": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 5000,
+          "items": {
+           "$ref": "#/components/schemas/RoomEventsRow"
+          }
+         }
+        }
+       }
+      }
+     }
+    },
+    "responses": {
+     "202": {
+      "description": "Rows taken over",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/IngestResult"
+        }
+       }
+      }
+     },
+     "401": {
+      "description": "Missing or wrong X-Auth key"
+     },
+     "422": {
+      "description": "The request does not match the schema",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Error"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/ingest/guest-requests": {
+   "post": {
+    "tags": [
+     "Ingest"
+    ],
+    "operationId": "ingestGuestRequests",
+    "summary": "Guest requests — from: Guest messaging: chat, SMS, e-mail or the PMS inbox",
+    "description": "A message from a guest, with its language and the time an answer is due.",
+    "parameters": [
+     {
+      "name": "Idempotency-Key",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "type": "string"
+      },
+      "description": "Repeat a batch safely after a timeout"
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "type": "object",
+        "required": [
+         "rows"
+        ],
+        "properties": {
+         "source": {
+          "type": "string",
+          "description": "Name of the connector instance"
+         },
+         "rows": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 5000,
+          "items": {
+           "$ref": "#/components/schemas/GuestRequestsRow"
+          }
+         }
+        }
+       }
+      }
+     }
+    },
+    "responses": {
+     "202": {
+      "description": "Rows taken over",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/IngestResult"
+        }
+       }
+      }
+     },
+     "401": {
+      "description": "Missing or wrong X-Auth key"
+     },
+     "422": {
+      "description": "The request does not match the schema",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Error"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/ingest/access-log": {
+   "post": {
+    "tags": [
+     "Ingest"
+    ],
+    "operationId": "ingestAccessLog",
+    "summary": "Access log — from: Door and lock system",
+    "description": "One use of a credential at a door. Send a pseudonymous credential reference, never a name.",
+    "parameters": [
+     {
+      "name": "Idempotency-Key",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "type": "string"
+      },
+      "description": "Repeat a batch safely after a timeout"
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "type": "object",
+        "required": [
+         "rows"
+        ],
+        "properties": {
+         "source": {
+          "type": "string",
+          "description": "Name of the connector instance"
+         },
+         "rows": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 5000,
+          "items": {
+           "$ref": "#/components/schemas/AccessLogRow"
+          }
+         }
+        }
+       }
+      }
+     }
+    },
+    "responses": {
+     "202": {
+      "description": "Rows taken over",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/IngestResult"
+        }
+       }
+      }
+     },
+     "401": {
+      "description": "Missing or wrong X-Auth key"
+     },
+     "422": {
+      "description": "The request does not match the schema",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Error"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/ingest/room-telemetry": {
+   "post": {
+    "tags": [
+     "Ingest"
+    ],
+    "operationId": "ingestRoomTelemetry",
+    "summary": "Room telemetry — from: Room automation or building management system",
+    "description": "One reading per room, every 15 minutes in the dataset. A missing value stays missing: send null, not zero.",
+    "parameters": [
+     {
+      "name": "Idempotency-Key",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "type": "string"
+      },
+      "description": "Repeat a batch safely after a timeout"
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "type": "object",
+        "required": [
+         "rows"
+        ],
+        "properties": {
+         "source": {
+          "type": "string",
+          "description": "Name of the connector instance"
+         },
+         "rows": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 5000,
+          "items": {
+           "$ref": "#/components/schemas/RoomTelemetryRow"
+          }
+         }
+        }
+       }
+      }
+     }
+    },
+    "responses": {
+     "202": {
+      "description": "Rows taken over",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/IngestResult"
+        }
+       }
+      }
+     },
+     "401": {
+      "description": "Missing or wrong X-Auth key"
+     },
+     "422": {
+      "description": "The request does not match the schema",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Error"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/ingest/water-meters": {
+   "post": {
+    "tags": [
+     "Ingest"
+    ],
+    "operationId": "ingestWaterMeters",
+    "summary": "Water meters — from: Water meters of the rooms and the main supply",
+    "description": "A cumulative meter reading in litres. Use the meter id of the room (for example R403) or WM_MAIN for the main supply.",
+    "parameters": [
+     {
+      "name": "Idempotency-Key",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "type": "string"
+      },
+      "description": "Repeat a batch safely after a timeout"
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "type": "object",
+        "required": [
+         "rows"
+        ],
+        "properties": {
+         "source": {
+          "type": "string",
+          "description": "Name of the connector instance"
+         },
+         "rows": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 5000,
+          "items": {
+           "$ref": "#/components/schemas/WaterMetersRow"
+          }
+         }
+        }
+       }
+      }
+     }
+    },
+    "responses": {
+     "202": {
+      "description": "Rows taken over",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/IngestResult"
+        }
+       }
+      }
+     },
+     "401": {
+      "description": "Missing or wrong X-Auth key"
+     },
+     "422": {
+      "description": "The request does not match the schema",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Error"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/ingest/energy": {
+   "post": {
+    "tags": [
+     "Ingest"
+    ],
+    "operationId": "ingestEnergy",
+    "summary": "Energy — from: Grid meter, PV inverter and battery",
+    "description": "Building load, PV output, battery state and grid exchange at one moment.",
+    "parameters": [
+     {
+      "name": "Idempotency-Key",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "type": "string"
+      },
+      "description": "Repeat a batch safely after a timeout"
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "type": "object",
+        "required": [
+         "rows"
+        ],
+        "properties": {
+         "source": {
+          "type": "string",
+          "description": "Name of the connector instance"
+         },
+         "rows": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 5000,
+          "items": {
+           "$ref": "#/components/schemas/EnergyRow"
+          }
+         }
+        }
+       }
+      }
+     }
+    },
+    "responses": {
+     "202": {
+      "description": "Rows taken over",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/IngestResult"
+        }
+       }
+      }
+     },
+     "401": {
+      "description": "Missing or wrong X-Auth key"
+     },
+     "422": {
+      "description": "The request does not match the schema",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Error"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/ingest/equipment": {
+   "post": {
+    "tags": [
+     "Ingest"
+    ],
+    "operationId": "ingestEquipment",
+    "summary": "Equipment — from: Heat pump and air handling unit, through the building management system",
+    "description": "One metric of one plant asset at one moment.",
+    "parameters": [
+     {
+      "name": "Idempotency-Key",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "type": "string"
+      },
+      "description": "Repeat a batch safely after a timeout"
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "type": "object",
+        "required": [
+         "rows"
+        ],
+        "properties": {
+         "source": {
+          "type": "string",
+          "description": "Name of the connector instance"
+         },
+         "rows": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 5000,
+          "items": {
+           "$ref": "#/components/schemas/EquipmentRow"
+          }
+         }
+        }
+       }
+      }
+     }
+    },
+    "responses": {
+     "202": {
+      "description": "Rows taken over",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/IngestResult"
+        }
+       }
+      }
+     },
+     "401": {
+      "description": "Missing or wrong X-Auth key"
+     },
+     "422": {
+      "description": "The request does not match the schema",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Error"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/ingest/logistics": {
+   "post": {
+    "tags": [
+     "Ingest"
+    ],
+    "operationId": "ingestLogistics",
+    "summary": "Logistics — from: Vending machine and waste container telemetry",
+    "description": "A stock count or a fill level.",
+    "parameters": [
+     {
+      "name": "Idempotency-Key",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "type": "string"
+      },
+      "description": "Repeat a batch safely after a timeout"
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "type": "object",
+        "required": [
+         "rows"
+        ],
+        "properties": {
+         "source": {
+          "type": "string",
+          "description": "Name of the connector instance"
+         },
+         "rows": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 5000,
+          "items": {
+           "$ref": "#/components/schemas/LogisticsRow"
+          }
+         }
+        }
+       }
+      }
+     }
+    },
+    "responses": {
+     "202": {
+      "description": "Rows taken over",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/IngestResult"
+        }
+       }
+      }
+     },
+     "401": {
+      "description": "Missing or wrong X-Auth key"
+     },
+     "422": {
+      "description": "The request does not match the schema",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Error"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/ingest/weather": {
+   "post": {
+    "tags": [
+     "Ingest"
+    ],
+    "operationId": "ingestWeather",
+    "summary": "Weather — from: Weather station or weather service",
+    "description": "Observed outdoor conditions.",
+    "parameters": [
+     {
+      "name": "Idempotency-Key",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "type": "string"
+      },
+      "description": "Repeat a batch safely after a timeout"
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "type": "object",
+        "required": [
+         "rows"
+        ],
+        "properties": {
+         "source": {
+          "type": "string",
+          "description": "Name of the connector instance"
+         },
+         "rows": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 5000,
+          "items": {
+           "$ref": "#/components/schemas/WeatherRow"
+          }
+         }
+        }
+       }
+      }
+     }
+    },
+    "responses": {
+     "202": {
+      "description": "Rows taken over",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/IngestResult"
+        }
+       }
+      }
+     },
+     "401": {
+      "description": "Missing or wrong X-Auth key"
+     },
+     "422": {
+      "description": "The request does not match the schema",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Error"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/ingest/weather-forecast": {
+   "post": {
+    "tags": [
+     "Ingest"
+    ],
+    "operationId": "ingestWeatherForecast",
+    "summary": "Weather forecast — from: Weather service",
+    "description": "A forecast value with the time it was issued. A decision may only use forecasts issued before it. Time of availability: `issued_utc`.",
+    "parameters": [
+     {
+      "name": "Idempotency-Key",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "type": "string"
+      },
+      "description": "Repeat a batch safely after a timeout"
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "type": "object",
+        "required": [
+         "rows"
+        ],
+        "properties": {
+         "source": {
+          "type": "string",
+          "description": "Name of the connector instance"
+         },
+         "rows": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 5000,
+          "items": {
+           "$ref": "#/components/schemas/WeatherForecastRow"
+          }
+         }
+        }
+       }
+      }
+     }
+    },
+    "responses": {
+     "202": {
+      "description": "Rows taken over",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/IngestResult"
+        }
+       }
+      }
+     },
+     "401": {
+      "description": "Missing or wrong X-Auth key"
+     },
+     "422": {
+      "description": "The request does not match the schema",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Error"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/ingest/tariff": {
+   "post": {
+    "tags": [
+     "Ingest"
+    ],
+    "operationId": "ingestTariff",
+    "summary": "Tariff — from: Day-ahead electricity price feed",
+    "description": "An hourly price with the time it was published. A decision may only use prices published before it. Time of availability: `published_utc`.",
+    "parameters": [
+     {
+      "name": "Idempotency-Key",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "type": "string"
+      },
+      "description": "Repeat a batch safely after a timeout"
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "type": "object",
+        "required": [
+         "rows"
+        ],
+        "properties": {
+         "source": {
+          "type": "string",
+          "description": "Name of the connector instance"
+         },
+         "rows": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 5000,
+          "items": {
+           "$ref": "#/components/schemas/TariffRow"
+          }
+         }
+        }
+       }
+      }
+     }
+    },
+    "responses": {
+     "202": {
+      "description": "Rows taken over",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/IngestResult"
+        }
+       }
+      }
+     },
+     "401": {
+      "description": "Missing or wrong X-Auth key"
+     },
+     "422": {
+      "description": "The request does not match the schema",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Error"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/ingest/staff-roster": {
+   "post": {
+    "tags": [
+     "Ingest"
+    ],
+    "operationId": "ingestStaffRoster",
+    "summary": "Staff roster — from: Roster of cleaners, technicians and robots",
+    "description": "A shift and its status, with the time that status became known. Send the row again when someone calls in sick. Time of availability: `status_known_utc`.",
+    "parameters": [
+     {
+      "name": "Idempotency-Key",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "type": "string"
+      },
+      "description": "Repeat a batch safely after a timeout"
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "type": "object",
+        "required": [
+         "rows"
+        ],
+        "properties": {
+         "source": {
+          "type": "string",
+          "description": "Name of the connector instance"
+         },
+         "rows": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 5000,
+          "items": {
+           "$ref": "#/components/schemas/StaffRosterRow"
+          }
+         }
+        }
+       }
+      }
+     }
+    },
+    "responses": {
+     "202": {
+      "description": "Rows taken over",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/IngestResult"
+        }
+       }
+      }
+     },
+     "401": {
+      "description": "Missing or wrong X-Auth key"
+     },
+     "422": {
+      "description": "The request does not match the schema",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Error"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/ingest/work-orders": {
+   "post": {
+    "tags": [
+     "Ingest"
+    ],
+    "operationId": "ingestWorkOrders",
+    "summary": "Work orders — from: Maintenance or ticket system",
+    "description": "A work order and its state. The detectors do not read work orders; they close the loop: they show whether an action was carried out. Time of availability: `created_utc`.",
+    "parameters": [
+     {
+      "name": "Idempotency-Key",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "type": "string"
+      },
+      "description": "Repeat a batch safely after a timeout"
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "type": "object",
+        "required": [
+         "rows"
+        ],
+        "properties": {
+         "source": {
+          "type": "string",
+          "description": "Name of the connector instance"
+         },
+         "rows": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 5000,
+          "items": {
+           "$ref": "#/components/schemas/WorkOrdersRow"
+          }
+         }
+        }
+       }
+      }
+     }
+    },
+    "responses": {
+     "202": {
+      "description": "Rows taken over",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/IngestResult"
+        }
+       }
+      }
+     },
+     "401": {
+      "description": "Missing or wrong X-Auth key"
+     },
+     "422": {
+      "description": "The request does not match the schema",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Error"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/status": {
+   "get": {
+    "tags": [
+     "System"
+    ],
+    "operationId": "getStatus",
+    "summary": "Open cases, waiting approvals and the health of every feed",
+    "responses": {
+     "200": {
+      "description": "OK",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Status"
+        }
+       }
+      }
+     },
+     "401": {
+      "description": "Missing or wrong X-Auth key"
+     }
+    }
+   }
+  },
+  "/health": {
+   "get": {
+    "tags": [
+     "System"
+    ],
+    "operationId": "getHealth",
+    "summary": "Liveness",
+    "security": [],
+    "responses": {
+     "200": {
+      "description": "OK",
+      "content": {
+       "application/json": {
+        "schema": {
+         "type": "object",
+         "properties": {
+          "ok": {
+           "type": "boolean"
+          },
+          "version": {
+           "type": "string"
+          }
+         }
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/decisions": {
+   "get": {
+    "tags": [
+     "Decisions"
+    ],
+    "operationId": "listDecisions",
+    "summary": "Decisions, newest first",
+    "parameters": [
+     {
+      "name": "since",
+      "in": "query",
+      "schema": {
+       "type": "string",
+       "format": "date-time",
+       "description": "ISO 8601, UTC"
+      }
+     },
+     {
+      "name": "issue_type",
+      "in": "query",
+      "schema": {
+       "type": "string"
+      }
+     },
+     {
+      "name": "autonomy",
+      "in": "query",
+      "schema": {
+       "type": "string",
+       "enum": [
+        "autonomous",
+        "human_approval",
+        "approval_and_consent"
+       ]
+      }
+     },
+     {
+      "name": "state",
+      "in": "query",
+      "schema": {
+       "type": "string",
+       "enum": [
+        "executed",
+        "waiting_for_approval",
+        "waiting_for_consent",
+        "approved",
+        "rejected",
+        "failed",
+        "expired"
+       ]
+      }
+     },
+     {
+      "name": "asset_id",
+      "in": "query",
+      "schema": {
+       "type": "string"
+      }
+     },
+     {
+      "name": "limit",
+      "in": "query",
+      "schema": {
+       "type": "integer",
+       "minimum": 1,
+       "maximum": 500,
+       "default": 100
+      }
+     },
+     {
+      "name": "cursor",
+      "in": "query",
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "OK",
+      "content": {
+       "application/json": {
+        "schema": {
+         "type": "object",
+         "properties": {
+          "items": {
+           "type": "array",
+           "items": {
+            "$ref": "#/components/schemas/DecisionState"
+           }
+          },
+          "next_cursor": {
+           "type": "string"
+          }
+         }
+        }
+       }
+      }
+     },
+     "401": {
+      "description": "Missing or wrong X-Auth key"
+     }
+    }
+   }
+  },
+  "/decisions/{event_id}": {
+   "get": {
+    "tags": [
+     "Decisions"
+    ],
+    "operationId": "getDecision",
+    "summary": "One decision with its state",
+    "parameters": [
+     {
+      "name": "event_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "OK",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/DecisionState"
+        }
+       }
+      }
+     },
+     "404": {
+      "description": "Unknown decision",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Error"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/decisions/stream": {
+   "get": {
+    "tags": [
+     "Decisions"
+    ],
+    "operationId": "streamDecisions",
+    "summary": "New decisions as server-sent events",
+    "description": "One event per decision, `data:` holds a Decision. For dashboards and for the voice assistant.",
+    "responses": {
+     "200": {
+      "description": "text/event-stream",
+      "content": {
+       "text/event-stream": {
+        "schema": {
+         "type": "string"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/cases": {
+   "get": {
+    "tags": [
+     "Decisions"
+    ],
+    "operationId": "listCases",
+    "summary": "Cases, most urgent first",
+    "parameters": [
+     {
+      "name": "open",
+      "in": "query",
+      "schema": {
+       "type": "boolean"
+      }
+     },
+     {
+      "name": "priority",
+      "in": "query",
+      "schema": {
+       "type": "string",
+       "enum": [
+        "critical",
+        "high",
+        "medium",
+        "low"
+       ]
+      }
+     },
+     {
+      "name": "issue_type",
+      "in": "query",
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "OK",
+      "content": {
+       "application/json": {
+        "schema": {
+         "type": "object",
+         "properties": {
+          "items": {
+           "type": "array",
+           "items": {
+            "$ref": "#/components/schemas/Case"
+           }
+          }
+         }
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/cases/{episode_id}": {
+   "get": {
+    "tags": [
+     "Decisions"
+    ],
+    "operationId": "getCase",
+    "summary": "One case with all its decisions",
+    "parameters": [
+     {
+      "name": "episode_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "OK",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Case"
+        }
+       }
+      }
+     },
+     "404": {
+      "description": "Unknown case",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Error"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/approvals": {
+   "get": {
+    "tags": [
+     "Approvals"
+    ],
+    "operationId": "listApprovals",
+    "summary": "Decisions that wait for a person, most urgent first",
+    "responses": {
+     "200": {
+      "description": "OK",
+      "content": {
+       "application/json": {
+        "schema": {
+         "type": "object",
+         "properties": {
+          "items": {
+           "type": "array",
+           "items": {
+            "$ref": "#/components/schemas/DecisionState"
+           }
+          }
+         }
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/decisions/{event_id}/consent": {
+   "post": {
+    "tags": [
+     "Approvals"
+    ],
+    "operationId": "recordConsent",
+    "summary": "Record the guest's consent",
+    "parameters": [
+     {
+      "name": "event_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/Consent"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "OK",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/DecisionState"
+        }
+       }
+      }
+     },
+     "409": {
+      "description": "This decision does not need consent, or is already decided",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Error"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/decisions/{event_id}/approve": {
+   "post": {
+    "tags": [
+     "Approvals"
+    ],
+    "operationId": "approveDecision",
+    "summary": "Approve; the action is then sent to its connector",
+    "parameters": [
+     {
+      "name": "event_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/ApprovalRequest"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "OK",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/DecisionState"
+        }
+       }
+      }
+     },
+     "409": {
+      "description": "Guest consent is required and not on record, or already decided",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Error"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/decisions/{event_id}/reject": {
+   "post": {
+    "tags": [
+     "Approvals"
+    ],
+    "operationId": "rejectDecision",
+    "summary": "Reject; nothing is executed",
+    "parameters": [
+     {
+      "name": "event_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/ApprovalRequest"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "OK",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/DecisionState"
+        }
+       }
+      }
+     },
+     "409": {
+      "description": "Already decided",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Error"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/actions/{action_id}/result": {
+   "post": {
+    "tags": [
+     "Actions"
+    ],
+    "operationId": "reportActionResult",
+    "summary": "A connector reports what became of an action",
+    "parameters": [
+     {
+      "name": "action_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/ActionResult"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "OK",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ActionResult"
+        }
+       }
+      }
+     },
+     "404": {
+      "description": "Unknown action",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Error"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/emergencies": {
+   "post": {
+    "tags": [
+     "Emergency"
+    ],
+    "operationId": "openEmergency",
+    "summary": "Open an emergency and bridge the caller to the on-call team",
+    "description": "Needs no approval: calling people in is more oversight, not less. Returns the one case the team should see.",
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/EmergencyRequest"
+       }
+      }
+     }
+    },
+    "responses": {
+     "201": {
+      "description": "Emergency opened",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Emergency"
+        }
+       }
+      }
+     },
+     "401": {
+      "description": "Missing or wrong X-Auth key"
+     },
+     "422": {
+      "description": "The request does not match the schema",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Error"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/emergencies/{emergency_id}": {
+   "get": {
+    "tags": [
+     "Emergency"
+    ],
+    "operationId": "getEmergency",
+    "summary": "State of an emergency",
+    "parameters": [
+     {
+      "name": "emergency_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "OK",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Emergency"
+        }
+       }
+      }
+     }
+    }
+   },
+   "delete": {
+    "tags": [
+     "Emergency"
+    ],
+    "operationId": "closeEmergency",
+    "summary": "Close an emergency",
+    "parameters": [
+     {
+      "name": "emergency_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "OK",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/Emergency"
+        }
+       }
+      }
+     }
+    }
+   }
+  }
+ },
+ "webhooks": {
+  "actionRequested": {
+   "post": {
+    "tags": [
+     "Actions"
+    ],
+    "operationId": "onActionRequested",
+    "summary": "The system asks a connector to carry out an action",
+    "description": "Sent to the URL registered for the action. The request carries the same X-Auth key the connector was given and an X-Signature header: HMAC-SHA256 of the raw body with the shared secret. Answer 2xx with an ActionResult; a slow target system answers `accepted` and reports the outcome later to /actions/{action_id}/result.",
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/ActionRequest"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Taken over or done",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ActionResult"
+        }
+       }
+      }
+     }
+    }
+   }
+  }
+ },
+ "components": {
+  "schemas": {
+   "Decision": {
+    "type": "object",
+    "description": "One decision, exactly as written to decisions.jsonl (DECISION_CONTRACT v2).",
+    "required": [
+     "event_id",
+     "timestamp_utc",
+     "affected_assets",
+     "issue_type",
+     "action",
+     "priority",
+     "reason",
+     "requires_human_approval"
+    ],
+    "properties": {
+     "event_id": {
+      "type": "string"
+     },
+     "episode_id": {
+      "type": "string",
+      "description": "Groups the decisions of one case"
+     },
+     "timestamp_utc": {
+      "type": "string",
+      "format": "date-time",
+      "description": "The moment the decision is taken, using only information available at that time"
+     },
+     "affected_assets": {
+      "type": "array",
+      "items": {
+       "type": "string"
+      },
+      "minItems": 1
+     },
+     "issue_type": {
+      "type": "string",
+      "examples": [
+       "room_turnaround",
+       "water_leak",
+       "heating_comfort",
+       "ventilation_maintenance",
+       "occupancy_surge",
+       "energy_optimization",
+       "logistics",
+       "data_quality"
+      ]
+     },
+     "action": {
+      "type": "string",
+      "enum": [
+       "schedule_cleaning",
+       "dispatch_robot",
+       "adjust_room_setpoint",
+       "optimize_energy",
+       "block_room",
+       "release_room",
+       "reassign_room",
+       "request_inspection",
+       "dispatch_technician",
+       "order_service",
+       "notify_guest",
+       "flag_anomaly",
+       "defer_action",
+       "request_human_approval"
+      ]
+     },
+     "priority": {
+      "type": "string",
+      "enum": [
+       "critical",
+       "high",
+       "medium",
+       "low"
+      ]
+     },
+     "reason": {
+      "type": "string"
+     },
+     "requires_human_approval": {
+      "type": "boolean"
+     },
+     "requires_guest_consent": {
+      "type": "boolean"
+     },
+     "autonomy": {
+      "type": "string",
+      "enum": [
+       "autonomous",
+       "human_approval",
+       "approval_and_consent"
+      ]
+     },
+     "stage": {
+      "type": "string"
+     },
+     "evidence": {
+      "type": "array",
+      "items": {
+       "type": "string"
+      }
+     },
+     "resource_id": {
+      "type": "string"
+     },
+     "expected_outcome": {
+      "type": "string"
+     },
+     "verification_plan": {
+      "type": "string"
+     },
+     "dependencies": {
+      "type": "array",
+      "items": {
+       "type": "string"
+      }
+     },
+     "guest_request_ids": {
+      "type": "array",
+      "items": {
+       "type": "string"
+      }
+     },
+     "confidence": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+     }
+    }
+   },
+   "DecisionState": {
+    "type": "object",
+    "description": "A decision with what happened to it since.",
+    "required": [
+     "decision",
+     "state"
+    ],
+    "properties": {
+     "decision": {
+      "$ref": "#/components/schemas/Decision"
+     },
+     "state": {
+      "type": "string",
+      "enum": [
+       "executed",
+       "waiting_for_approval",
+       "waiting_for_consent",
+       "approved",
+       "rejected",
+       "failed",
+       "expired"
+      ]
+     },
+     "consent": {
+      "$ref": "#/components/schemas/Consent"
+     },
+     "decided_by": {
+      "type": "string",
+      "description": "The person who approved or rejected"
+     },
+     "decided_utc": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601, UTC"
+     },
+     "action_results": {
+      "type": "array",
+      "items": {
+       "$ref": "#/components/schemas/ActionResult"
+      }
+     }
+    }
+   },
+   "Case": {
+    "type": "object",
+    "description": "All decisions of one episode, oldest first.",
+    "required": [
+     "episode_id",
+     "issue_type",
+     "priority",
+     "first_decision_utc",
+     "decisions"
+    ],
+    "properties": {
+     "episode_id": {
+      "type": "string"
+     },
+     "title": {
+      "type": "string"
+     },
+     "issue_type": {
+      "type": "string"
+     },
+     "priority": {
+      "type": "string",
+      "enum": [
+       "critical",
+       "high",
+       "medium",
+       "low"
+      ]
+     },
+     "first_decision_utc": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601, UTC"
+     },
+     "affected_assets": {
+      "type": "array",
+      "items": {
+       "type": "string"
+      }
+     },
+     "decisions": {
+      "type": "array",
+      "items": {
+       "$ref": "#/components/schemas/DecisionState"
+      }
+     }
+    }
+   },
+   "Status": {
+    "type": "object",
+    "properties": {
+     "as_of_utc": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601, UTC"
+     },
+     "decisions_total": {
+      "type": "integer"
+     },
+     "cases_open": {
+      "type": "integer"
+     },
+     "critical_open": {
+      "type": "integer"
+     },
+     "waiting_for_approval": {
+      "type": "integer"
+     },
+     "waiting_for_consent": {
+      "type": "integer"
+     },
+     "feeds": {
+      "type": "array",
+      "description": "One entry per ingest feed: a silent feed is a finding, not a quiet building.",
+      "items": {
+       "type": "object",
+       "properties": {
+        "feed": {
+         "type": "string"
+        },
+        "last_row_utc": {
+         "type": "string",
+         "format": "date-time",
+         "description": "ISO 8601, UTC"
+        },
+        "last_received_utc": {
+         "type": "string",
+         "format": "date-time",
+         "description": "ISO 8601, UTC"
+        },
+        "state": {
+         "type": "string",
+         "enum": [
+          "ok",
+          "late",
+          "silent"
+         ]
+        }
+       }
+      }
+     }
+    }
+   },
+   "Consent": {
+    "type": "object",
+    "required": [
+     "given_by",
+     "channel",
+     "recorded_utc"
+    ],
+    "description": "Proof that the guest agreed. A consent requirement is not consent granted.",
+    "properties": {
+     "given_by": {
+      "type": "string",
+      "description": "Booking id of the guest, not a name"
+     },
+     "channel": {
+      "type": "string",
+      "enum": [
+       "phone",
+       "chat",
+       "in_person",
+       "app"
+      ]
+     },
+     "recorded_utc": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601, UTC"
+     },
+     "recorded_by": {
+      "type": "string"
+     },
+     "note": {
+      "type": "string"
+     }
+    }
+   },
+   "ApprovalRequest": {
+    "type": "object",
+    "required": [
+     "decided_by"
+    ],
+    "properties": {
+     "decided_by": {
+      "type": "string",
+      "description": "Identity of the approver from the identity provider"
+     },
+     "note": {
+      "type": "string"
+     }
+    }
+   },
+   "ActionRequest": {
+    "type": "object",
+    "description": "What a connector is asked to do. Sent once per action; repeat deliveries carry the same action_id.",
+    "required": [
+     "action_id",
+     "action",
+     "decision",
+     "dry_run"
+    ],
+    "properties": {
+     "action_id": {
+      "type": "string"
+     },
+     "action": {
+      "type": "string",
+      "enum": [
+       "schedule_cleaning",
+       "dispatch_robot",
+       "adjust_room_setpoint",
+       "optimize_energy",
+       "block_room",
+       "release_room",
+       "reassign_room",
+       "request_inspection",
+       "dispatch_technician",
+       "order_service",
+       "notify_guest",
+       "flag_anomaly",
+       "defer_action",
+       "request_human_approval"
+      ]
+     },
+     "decision": {
+      "$ref": "#/components/schemas/Decision"
+     },
+     "parameters": {
+      "type": "object",
+      "additionalProperties": true,
+      "description": "Action-specific values, for example room_id and setpoint_c, or the message text and language"
+     },
+     "approved_by": {
+      "type": "string"
+     },
+     "consent": {
+      "$ref": "#/components/schemas/Consent"
+     },
+     "dry_run": {
+      "type": "boolean",
+      "description": "true while the deployment runs in shadow mode: log it, do not do it"
+     },
+     "not_after_utc": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Do not carry the action out after this time"
+     }
+    }
+   },
+   "ActionResult": {
+    "type": "object",
+    "required": [
+     "action_id",
+     "status",
+     "reported_utc"
+    ],
+    "properties": {
+     "action_id": {
+      "type": "string"
+     },
+     "status": {
+      "type": "string",
+      "enum": [
+       "accepted",
+       "done",
+       "failed",
+       "refused"
+      ]
+     },
+     "reported_utc": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601, UTC"
+     },
+     "external_reference": {
+      "type": "string",
+      "description": "Id in the target system, for example a work order or message id"
+     },
+     "detail": {
+      "type": "string"
+     }
+    }
+   },
+   "EmergencyRequest": {
+    "type": "object",
+    "required": [
+     "reported_by"
+    ],
+    "properties": {
+     "episode_id": {
+      "type": "string",
+      "description": "The case it is about, if known"
+     },
+     "asset_id": {
+      "type": "string",
+      "description": "Room or asset, if no case is known"
+     },
+     "what": {
+      "type": "string",
+      "description": "The caller's own words"
+     },
+     "reported_by": {
+      "type": "string"
+     },
+     "callback_number": {
+      "type": "string",
+      "description": "Number to bridge to the on-call team"
+     }
+    }
+   },
+   "Emergency": {
+    "type": "object",
+    "required": [
+     "emergency_id",
+     "state",
+     "opened_utc"
+    ],
+    "properties": {
+     "emergency_id": {
+      "type": "string"
+     },
+     "state": {
+      "type": "string",
+      "enum": [
+       "connecting",
+       "connected",
+       "no_answer",
+       "closed"
+      ]
+     },
+     "opened_utc": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601, UTC"
+     },
+     "closed_utc": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601, UTC"
+     },
+     "on_call": {
+      "type": "string",
+      "description": "Role that was reached, not a private number"
+     },
+     "case": {
+      "$ref": "#/components/schemas/Case"
+     }
+    }
+   },
+   "IngestResult": {
+    "type": "object",
+    "required": [
+     "accepted",
+     "rejected"
+    ],
+    "properties": {
+     "accepted": {
+      "type": "integer"
+     },
+     "duplicates": {
+      "type": "integer",
+      "description": "Rows already known and unchanged"
+     },
+     "rejected": {
+      "type": "array",
+      "items": {
+       "type": "object",
+       "properties": {
+        "index": {
+         "type": "integer"
+        },
+        "reason": {
+         "type": "string"
+        }
+       }
+      }
+     }
+    }
+   },
+   "Error": {
+    "type": "object",
+    "required": [
+     "error"
+    ],
+    "properties": {
+     "error": {
+      "type": "string"
+     },
+     "detail": {
+      "type": "string"
+     }
+    }
+   },
+   "BookingsRow": {
+    "type": "object",
+    "description": "A reservation, created or changed. Send the full row again when it changes.",
+    "required": [
+     "booking_id",
+     "room_id",
+     "created_utc",
+     "arrival_utc",
+     "departure_utc",
+     "status"
+    ],
+    "properties": {
+     "booking_id": {
+      "type": "string"
+     },
+     "room_id": {
+      "type": "string"
+     },
+     "created_utc": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601, UTC"
+     },
+     "arrival_utc": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601, UTC"
+     },
+     "departure_utc": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601, UTC"
+     },
+     "guest_count": {
+      "type": "integer"
+     },
+     "channel": {
+      "type": "string"
+     },
+     "status": {
+      "type": "string",
+      "enum": [
+       "confirmed",
+       "cancelled"
+      ]
+     }
+    }
+   },
+   "RoomEventsRow": {
+    "type": "object",
+    "description": "Something that happened: a check-in, a check-out, a cleaning step, a restock, an alarm of the building management system.",
+    "required": [
+     "event_id",
+     "timestamp_utc",
+     "type"
+    ],
+    "properties": {
+     "event_id": {
+      "type": "string"
+     },
+     "timestamp_utc": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601, UTC"
+     },
+     "type": {
+      "type": "string",
+      "enum": [
+       "checkin",
+       "checkin_early",
+       "checkin_after_wait",
+       "arrival_waiting_room",
+       "checkout",
+       "checkout_early",
+       "no_show",
+       "stay_in_progress",
+       "room_reassigned",
+       "cleaning_started",
+       "cleaning_completed",
+       "robot_floor_cleaning_started",
+       "robot_floor_cleaning_completed",
+       "floor_bin_emptied",
+       "waste_pickup",
+       "waste_bin_full",
+       "vending_restocked",
+       "vending_out_of_stock",
+       "bms_alarm"
+      ]
+     },
+     "room_id": {
+      "type": "string"
+     },
+     "booking_id": {
+      "type": "string"
+     },
+     "asset_id": {
+      "type": "string"
+     },
+     "resource_id": {
+      "type": "string"
+     },
+     "guests": {
+      "type": "integer"
+     }
+    }
+   },
+   "GuestRequestsRow": {
+    "type": "object",
+    "description": "A message from a guest, with its language and the time an answer is due.",
+    "required": [
+     "request_id",
+     "timestamp_utc",
+     "request_type"
+    ],
+    "properties": {
+     "request_id": {
+      "type": "string"
+     },
+     "timestamp_utc": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601, UTC"
+     },
+     "room_id": {
+      "type": "string"
+     },
+     "booking_id": {
+      "type": "string"
+     },
+     "channel": {
+      "type": "string"
+     },
+     "language": {
+      "type": "string"
+     },
+     "request_type": {
+      "type": "string",
+      "enum": [
+       "access_issue",
+       "air_quality",
+       "arrival_delay",
+       "cleaning_request",
+       "early_checkin",
+       "extra_towels",
+       "invoice",
+       "late_checkout",
+       "luggage_storage",
+       "maintenance_issue",
+       "noise_complaint",
+       "parking",
+       "temperature_cold",
+       "temperature_hot"
+      ]
+     },
+     "text": {
+      "type": "string"
+     },
+     "priority": {
+      "type": "string",
+      "enum": [
+       "critical",
+       "high",
+       "medium",
+       "low"
+      ]
+     },
+     "response_due_utc": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601, UTC"
+     },
+     "requires_guest_consent": {
+      "type": "boolean"
+     }
+    }
+   },
+   "AccessLogRow": {
+    "type": "object",
+    "description": "One use of a credential at a door. Send a pseudonymous credential reference, never a name.",
+    "required": [
+     "timestamp_utc",
+     "door_id",
+     "result"
+    ],
+    "properties": {
+     "timestamp_utc": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601, UTC"
+     },
+     "door_id": {
+      "type": "string"
+     },
+     "credential": {
+      "type": "string"
+     },
+     "result": {
+      "type": "string"
+     }
+    }
+   },
+   "RoomTelemetryRow": {
+    "type": "object",
+    "description": "One reading per room, every 15 minutes in the dataset. A missing value stays missing: send null, not zero.",
+    "required": [
+     "timestamp_utc",
+     "room_id"
+    ],
+    "properties": {
+     "timestamp_utc": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601, UTC"
+     },
+     "room_id": {
+      "type": "string"
+     },
+     "temperature_c": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "setpoint_c": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "humidity_pct": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "co2_ppm": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "presence": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "window_open": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "housekeeping_state": {
+      "type": "string"
+     }
+    }
+   },
+   "WaterMetersRow": {
+    "type": "object",
+    "description": "A cumulative meter reading in litres. Use the meter id of the room (for example R403) or WM_MAIN for the main supply.",
+    "required": [
+     "timestamp_utc",
+     "meter_id"
+    ],
+    "properties": {
+     "timestamp_utc": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601, UTC"
+     },
+     "meter_id": {
+      "type": "string"
+     },
+     "meter_total_l": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     }
+    }
+   },
+   "EnergyRow": {
+    "type": "object",
+    "description": "Building load, PV output, battery state and grid exchange at one moment.",
+    "required": [
+     "timestamp_utc"
+    ],
+    "properties": {
+     "timestamp_utc": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601, UTC"
+     },
+     "building_load_kw": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "hvac_electric_kw": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "pv_kw": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "battery_discharge_kw_signed": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "battery_soc_kwh": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "grid_import_kw": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "grid_export_kw": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     }
+    }
+   },
+   "EquipmentRow": {
+    "type": "object",
+    "description": "One metric of one plant asset at one moment.",
+    "required": [
+     "timestamp_utc",
+     "asset_id",
+     "metric"
+    ],
+    "properties": {
+     "timestamp_utc": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601, UTC"
+     },
+     "asset_id": {
+      "type": "string"
+     },
+     "metric": {
+      "type": "string",
+      "enum": [
+       "airflow_m3h",
+       "electric_kw",
+       "fan_kw",
+       "filter_dp_pa",
+       "heat_output_kw",
+       "status",
+       "supply_air_c",
+       "supply_temp_c"
+      ]
+     },
+     "value": {
+      "anyOf": [
+       {
+        "type": [
+         "number",
+         "string"
+        ]
+       },
+       {
+        "type": "null"
+       }
+      ]
+     }
+    }
+   },
+   "LogisticsRow": {
+    "type": "object",
+    "description": "A stock count or a fill level.",
+    "required": [
+     "timestamp_utc",
+     "asset_id",
+     "metric"
+    ],
+    "properties": {
+     "timestamp_utc": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601, UTC"
+     },
+     "asset_id": {
+      "type": "string"
+     },
+     "metric": {
+      "type": "string",
+      "enum": [
+       "fill_pct",
+       "stock_drinks",
+       "stock_snacks"
+      ]
+     },
+     "value": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     }
+    }
+   },
+   "WeatherRow": {
+    "type": "object",
+    "description": "Observed outdoor conditions.",
+    "required": [
+     "timestamp_utc"
+    ],
+    "properties": {
+     "timestamp_utc": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601, UTC"
+     },
+     "outdoor_c": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "cloud_cover_pct": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     }
+    }
+   },
+   "WeatherForecastRow": {
+    "type": "object",
+    "description": "A forecast value with the time it was issued. A decision may only use forecasts issued before it.",
+    "required": [
+     "issued_utc",
+     "target_utc",
+     "outdoor_c_forecast"
+    ],
+    "properties": {
+     "issued_utc": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601, UTC"
+     },
+     "target_utc": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601, UTC"
+     },
+     "outdoor_c_forecast": {
+      "type": "number"
+     }
+    }
+   },
+   "TariffRow": {
+    "type": "object",
+    "description": "An hourly price with the time it was published. A decision may only use prices published before it.",
+    "required": [
+     "timestamp_utc",
+     "price_eur_kwh",
+     "published_utc"
+    ],
+    "properties": {
+     "timestamp_utc": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601, UTC"
+     },
+     "price_eur_kwh": {
+      "type": "number"
+     },
+     "published_utc": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601, UTC"
+     }
+    }
+   },
+   "StaffRosterRow": {
+    "type": "object",
+    "description": "A shift and its status, with the time that status became known. Send the row again when someone calls in sick.",
+    "required": [
+     "shift_id",
+     "resource_id",
+     "role",
+     "start_utc",
+     "end_utc",
+     "status",
+     "status_known_utc"
+    ],
+    "properties": {
+     "shift_id": {
+      "type": "string"
+     },
+     "resource_id": {
+      "type": "string"
+     },
+     "role": {
+      "type": "string",
+      "enum": [
+       "cleaner",
+       "technician",
+       "robot"
+      ]
+     },
+     "start_utc": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601, UTC"
+     },
+     "end_utc": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601, UTC"
+     },
+     "status": {
+      "type": "string",
+      "enum": [
+       "scheduled",
+       "sick",
+       "vacation",
+       "out_of_service"
+      ]
+     },
+     "status_known_utc": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601, UTC"
+     }
+    }
+   },
+   "WorkOrdersRow": {
+    "type": "object",
+    "description": "A work order and its state. The detectors do not read work orders; they close the loop: they show whether an action was carried out.",
+    "required": [
+     "work_order_id",
+     "created_utc",
+     "asset_id",
+     "type",
+     "status"
+    ],
+    "properties": {
+     "work_order_id": {
+      "type": "string"
+     },
+     "created_utc": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601, UTC"
+     },
+     "asset_id": {
+      "type": "string"
+     },
+     "type": {
+      "type": "string",
+      "enum": [
+       "corrective",
+       "preventive",
+       "metering"
+      ]
+     },
+     "status": {
+      "type": "string"
+     },
+     "scheduled_utc": {
+      "anyOf": [
+       {
+        "type": "string",
+        "format": "date-time",
+        "description": "ISO 8601, UTC"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "completed_utc": {
+      "anyOf": [
+       {
+        "type": "string",
+        "format": "date-time",
+        "description": "ISO 8601, UTC"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "assigned_to": {
+      "type": "string"
+     },
+     "summary": {
+      "type": "string"
+     }
+    }
+   }
+  },
+  "securitySchemes": {
+   "XAuth": {
+    "type": "apiKey",
+    "in": "header",
+    "name": "X-Auth",
+    "description": "One key per connector, limited to its own feeds and actions"
+   }
+  }
+ }
+}

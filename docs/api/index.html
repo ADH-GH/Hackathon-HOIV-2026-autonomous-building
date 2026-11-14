@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PLATO-40 Building Operations API</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5.17.14/swagger-ui.css">
+<style>
+body{margin:0;background:#fafafa}
+.note{font:14px/1.5 system-ui,sans-serif;background:#10141c;color:#eef1f6;padding:12px 20px}
+.note a{color:#8fb8ee}
+</style>
+</head>
+<body>
+<div class="note">A design for connecting the pipeline to real systems. No server implements it yet, so there is nothing to call from here.
+<a href="../">Back to the dashboard</a> · <a href="openapi.json">openapi.json</a></div>
+<div id="ui"></div>
+<script src="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5.17.14/swagger-ui-bundle.js"></script>
+<script>
+SwaggerUIBundle({url: 'openapi.json', dom_id: '#ui', deepLinking: true, supportedSubmitMethods: [], defaultModelsExpandDepth: 0, docExpansion: 'list'});
+</script>
+</body>
+</html>
