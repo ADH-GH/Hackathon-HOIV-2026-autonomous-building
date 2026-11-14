@@ -264,8 +264,8 @@ on-call window are computed from local wall-clock times, so they move with dayli
 
 The tag `pre-holdout` was set on 2026-11-14, before the holdout release.
 
-Changes after `pre-holdout`: presentation only. The dashboard page got a background pattern and a
-favicon. No detector, threshold or rule was changed, so the decisions are the same.
+Changes after `pre-holdout`: presentation only. The dashboard page got a background pattern, a
+favicon and a reworked phone layout (header, navigation boxes, tables as cards). No detector, threshold or rule was changed, so the decisions are the same.
 
 ## Real data
 
