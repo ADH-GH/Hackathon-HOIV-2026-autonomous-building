@@ -26,7 +26,7 @@ html{color-scheme:dark}:root[data-theme="light"]{color-scheme:light}
 body{margin:0;background:var(--bg);color:var(--ink);font:14.5px/1.55 var(--sans);-webkit-font-smoothing:antialiased}
 h1,h2,h3,h4{font-family:var(--display);letter-spacing:-.01em}
 :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
-header{padding:44px 48px 0;max-width:1536px;margin:0 auto}
+header{padding:12px 48px 0;max-width:1536px;margin:32px auto 0}
 .top{display:flex;justify-content:space-between;align-items:flex-start;gap:16px}
 .kicker{font:500 12.5px/1.2 var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--accent)}
 .kicker::before{content:"";display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 4px var(--glow);margin-right:10px;vertical-align:1px}
@@ -46,10 +46,10 @@ nav button:hover{background:var(--raise);border-color:var(--mute)}
 nav button.on{background:var(--raise);border-color:var(--accent);box-shadow:inset 0 -3px 0 var(--accent)}
 nav button b{display:block;font:500 26px/1.1 var(--mono);letter-spacing:-.02em;color:var(--series);white-space:nowrap}
 nav button i{display:block;font:500 10.5px/1.3 var(--mono);font-style:normal;letter-spacing:.14em;text-transform:uppercase;color:var(--mute);margin-top:6px}
-nav button span{display:block;font:500 12.5px/1.3 var(--sans);color:var(--ink2);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+nav button span{display:block;font:500 12px/1.3 var(--sans);letter-spacing:-.01em;color:var(--ink2);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 nav button.on span{color:var(--ink)}
 nav button small{display:block;font-size:11px;line-height:1.35;color:var(--mute);margin-top:3px}
-@media (max-width:1320px){nav{gap:6px}nav button{padding:8px 7px 9px}nav button span{font-size:11.5px;letter-spacing:-.01em}nav button b,.tiles .tile b{font-size:23px}}
+@media (max-width:1320px){nav{gap:6px}nav button{padding:8px 7px 9px}nav button span{font-size:11px;letter-spacing:-.02em}nav button b,.tiles .tile b{font-size:23px}}
 @media (max-width:1100px){nav{grid-auto-columns:112px;overflow-x:auto;scrollbar-width:thin;padding-bottom:4px}}
 #brief{height:36px;font:600 14px/1 var(--sans);color:var(--onaccent);background:var(--accent);border:1px solid var(--accent);border-radius:8px;padding:0 14px;cursor:pointer;margin-right:8px}
 #brief.live{background:transparent;color:var(--ink);border-color:var(--line)}
@@ -176,7 +176,7 @@ input[type=search]{height:36px;font:inherit;color:var(--ink);background:var(--bg
 }
 /* phone: title above the buttons, all ten navigation boxes visible, tables as cards */
 @media (max-width:700px){
-  header{padding-top:calc(44px + env(safe-area-inset-top, 0px))}.hbox{padding-top:20px}
+  header{margin-top:0;padding-top:calc(44px + env(safe-area-inset-top, 0px))}.hbox{padding-top:20px}
   .top{flex-direction:column;align-items:stretch;gap:12px}
   .top>div:last-child{display:flex;gap:8px}.top>div:last-child button{flex:1;margin:0}
   nav{grid-auto-flow:row;grid-template-columns:repeat(4,minmax(0,1fr));grid-auto-columns:auto;overflow:visible;gap:6px;padding-bottom:0}
@@ -197,6 +197,9 @@ input[type=search]{height:36px;font:inherit;color:var(--ink);background:var(--bg
 .bld .bl{font:500 10px/1 var(--mono);letter-spacing:.08em;fill:var(--ink2);pointer-events:none}
 .bld .bf{font:500 10.5px/1 var(--mono);letter-spacing:.12em;text-transform:uppercase;fill:var(--mute)}
 .legend i.sw{width:12px;height:12px;border:0;border-radius:3px;vertical-align:-1px}
+:root{--c2:oklch(76% .09 195);--c3:oklch(58% .03 255)}
+svg text.ax{font:400 11px/1 var(--mono);fill:var(--mute)}
+.card h3{font:600 14px/1.3 var(--display);margin:16px 0 4px}
 .legend.big{font-size:14px;gap:22px;margin-top:10px;margin-bottom:0}.legend.big .wide{color:var(--mute);margin-left:auto;cursor:help}.legend.big i.sw{width:15px;height:15px;border-radius:4px;vertical-align:-2px;margin-right:8px}
 .bldwrap{position:relative}.bldzoom{position:absolute;top:8px;right:0;display:flex;flex-direction:column;gap:6px}
 .bldzoom button{width:36px;height:36px;font:500 20px/1 var(--sans);color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:8px;cursor:pointer}
@@ -209,7 +212,7 @@ input[type=search]{height:36px;font:inherit;color:var(--ink);background:var(--bg
 @media (max-width:1100px){.duo{grid-template-columns:1fr}.duo .tiles{flex:none;grid-auto-rows:auto}.duo .tiles .tile{justify-content:flex-start}.duo .tiles .tile b{font-size:23px}}
 @media (max-width:700px){.duo .tiles .tile b{font-size:21px}.duo .tiles .tile{padding:9px 10px 10px}}
 /* comfort: motion, hover, focus */
-header{position:sticky;top:0;z-index:5;background:color-mix(in srgb,var(--bg) 96%,transparent);backdrop-filter:blur(10px)}
+header{position:sticky;top:0;z-index:5;background:var(--bg)}
 .tile{transition:transform .15s ease,border-color .15s ease,box-shadow .15s ease}
 .tile.go{cursor:pointer}.tile.go:hover{background:var(--raise);border-color:var(--accent)}
 .card,.step,.list{animation:rise .28s ease both}
@@ -303,7 +306,7 @@ const dhm = ms => F_DHM.format(new Date(ms));
 const level = d => d.autonomy || (d.requires_guest_consent ? 'approval_and_consent' : d.requires_human_approval ? 'human_approval' : 'autonomous');
 const LEVEL = {autonomous: 'autonomous', human_approval: 'human approval', approval_and_consent: 'approval + guest consent'};
 const SC = {S01: 'S01 Turnaround', S02: 'S02 Water', S03: 'S03 Heating', S04: 'S04 Maintenance', S05: 'S05 Event weekend', ENG: 'L2 Energy', LOG: 'L2 Logistics'};
-const TABHINT = {S01: 'Scenario 1 of the brief: the perfect checkout', S02: 'Scenario 2: the hidden water leak', S03: 'Scenario 3: energy vs comfort', S04: 'Scenario 4: the maintenance cascade', S05: 'Scenario 5: the unexpected weekend',
+const TABHINT = {budget: 'Planning: what each metered part of the building costs in electricity, and where the potential is', staff: 'Planning: who works in and for the building, internal and external, with service quality', S01: 'Scenario 1 of the brief: the perfect checkout', S02: 'Scenario 2: the hidden water leak', S03: 'Scenario 3: energy vs comfort', S04: 'Scenario 4: the maintenance cascade', S05: 'Scenario 5: the unexpected weekend',
   ENG: 'Level 2 of the brief, building and energy optimisation (no scenario number there)', LOG: 'Level 2 of the brief, cleaning and logistics (no scenario number there)', queue: 'Decisions that still wait for a person to approve or reject', trail: 'Every decision in order', overview: 'All cases at a glance. The figure counts incidents and plans; the routine guest answers are counted separately, see the header line', };
 const KIND = {room_flow: 'Water leak in a room', main_gap: 'Water loss outside the rooms', room_meter: 'Unreliable water meter',
   cop: 'Heat pump degradation', forecast: 'Cold snap ahead', room_temp: 'Guest reports a cold room',
@@ -575,6 +578,71 @@ function buildingView(inc) {
     s.style.height = Math.round(Math.max(190, Math.min(640, innerHeight - (r.top + scrollY) - below - 16))) + 'px'; draw(); };
   requestAnimationFrame(bldFit); if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => bldFit && bldFit());
   return card; }
+/* ---------- planning views: budget and staff. Summaries of the year, no decisions. ---------- */
+const eur = v => Math.round(v).toLocaleString('en-US') + ' EUR', kwh = v => Math.round(v).toLocaleString('en-US') + ' kWh';
+const PART = {heat_pump: ['Heat pump (heating and hot water)', 'var(--series)'], fans: ['Ventilation fans', 'var(--c2)'], rest: ['Rest of the building (rooms, lighting, lobby, robots)', 'var(--c3)']};
+function simpleTable(head, rows) { const sc = el('div', 'scroll'), t = el('table'), hr = el('tr'); head.forEach(h => hr.append(el('th', null, h))); t.append(hr);
+  for (const r of rows) { const tr = el('tr'); r.forEach((c, i) => { const td = el('td', typeof c === 'string' && /^[\d.,–-]+ ?(EUR|kWh|%|m³|h|min)?$/.test(c) && i ? 'n' : null); if (c instanceof Node) td.append(c); else td.textContent = c == null ? '' : c; tr.append(td); }); t.append(tr); }
+  labelCells(t); sc.append(t); return sc; }
+function budgetView(root) { const B = D.budget, tl = el('div', 'tiles'), hp = B.parts.find(p => p.key === 'heat_pump');
+  tl.append(tile(eur(B.bill.eur), 'electricity bought from the grid', 'the year at the hourly tariff; the only cost the dataset prices', true),
+    tile(eur(B.load.eur), 'what the consumption is worth', kwh(B.load.kwh) + ' at the hourly tariff'),
+    tile(eur(B.pv.eur), 'covered by the solar panels', kwh(B.pv.kwh) + ' produced, valued at the tariff of the hour'),
+    tile(Math.round(hp.eur / B.load.eur * 100) + ' %', 'of the cost is the heat pump', 'the largest single part')); root.append(tl);
+  const c1 = el('div', 'card'); c1.append(el('h2', null, 'Where the electricity money goes'), el('p', 'note', 'Each quarter hour of consumption is priced with the tariff of its hour. The dataset meters the heat pump and the ventilation fans separately; the rest is what remains of the building load. Rooms have no electricity meter of their own, so no cost per room is shown.'));
+  const bar = el('div', 'split-bar'); for (const p of B.parts) { const seg = el('div'); seg.style.background = PART[p.key][1]; seg.style.width = p.eur / B.load.eur * 100 + '%';
+    seg.addEventListener('mousemove', ev => showTip(ev, '<b>' + PART[p.key][0] + '</b><br>' + eur(p.eur) + ' · ' + kwh(p.kwh))); seg.addEventListener('mouseleave', hideTip); bar.append(seg); } c1.append(bar);
+  c1.append(simpleTable(['Part of the building', 'Electricity', 'Cost at tariff', 'Share'], B.parts.map(p => { const n = el('span'); const sw = el('i', 'sw'); sw.style.background = PART[p.key][1]; n.className = 'legend'; n.style.margin = '0'; n.append(sw, PART[p.key][0]); return [n, kwh(p.kwh), eur(p.eur), Math.round(p.eur / B.load.eur * 100) + ' %']; })));
+  c1.append(el('p', 'note', 'Assumption: the fan power is part of the metered building load. The dataset does not state this.')); root.append(c1);
+  const c2 = el('div', 'card'); c2.append(el('h2', null, 'Cost by month'), el('p', 'note', 'Consumption valued at the tariff, by part. Winter is the heat pump; the fans and the rest hardly change over the year.'));
+  const M = B.months.filter(x => (x.heat_pump || 0) + (x.fans || 0) + (x.rest || 0) > 50), W = 1000, H = 250, m = {l: 54, r: 8, t: 10, b: 26}, mx = Math.max(...M.map(x => (x.heat_pump || 0) + (x.fans || 0) + (x.rest || 0))), s = svg('svg', {viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': 'Electricity cost per month by part of the building'});
+  const y = v => m.t + (H - m.t - m.b) * (1 - v / mx), bw = (W - m.l - m.r) / M.length;
+  for (const g of [0, 0.25, 0.5, 0.75, 1]) { const v = mx * g; s.append(svg('line', {x1: m.l, x2: W - m.r, y1: y(v), y2: y(v), stroke: 'var(--grid)'}), svg('text', {x: m.l - 6, y: y(v) + 4, 'text-anchor': 'end', class: 'ax'}, Math.round(v / 100) * 100)); }
+  M.forEach((x, i) => { let acc = 0; const g = svg('g'); for (const k of ['rest', 'fans', 'heat_pump']) { const v = x[k] || 0, x0 = m.l + i * bw + bw * 0.16;
+      g.append(svg('rect', {x: x0, width: bw * 0.68, y: y(acc + v), height: Math.max(0, y(acc) - y(acc + v) - 2), rx: 3, fill: PART[k][1]})); acc += v; }
+    g.addEventListener('mousemove', ev => showTip(ev, '<b>' + x.month + '</b><br>' + ['heat_pump', 'fans', 'rest'].map(k => PART[k][0].split(' (')[0] + ': ' + eur(x[k] || 0)).join('<br>') + '<br>bought from the grid: ' + eur(x.bill || 0))); g.addEventListener('mouseleave', hideTip);
+    s.append(g, svg('text', {x: m.l + i * bw + bw / 2, y: H - 8, 'text-anchor': 'middle', class: 'ax'}, x.month.slice(5))); });
+  s.append(svg('text', {x: m.l, y: m.t + 2, class: 'ax'}, 'EUR')); c2.append(s);
+  const lg = el('div', 'legend'); for (const k of ['heat_pump', 'fans', 'rest']) { const sp = el('span'), sw = el('i', 'sw'); sw.style.background = PART[k][1]; sp.append(sw, PART[k][0]); lg.append(sp); } c2.append(lg); root.append(c2);
+  const c3 = el('div', 'card'); c3.append(el('h2', null, 'Where the potential is'), el('p', 'note', 'Sizes from the replayed year. They are estimates of what a lever is worth, not measured savings: the replay does not react to our decisions.'));
+  const days = E.filter(e => e.costs), sum = k => days.reduce((a, e) => a + e.costs[k], 0), fans = B.parts.find(p => p.key === 'fans'), rows = [];
+  if (days.length) rows.push(['Battery schedule', eur(sum('replay') - sum('plan')), 'Our day-ahead plan against what the battery did in the replay, summed over the ' + days.length + ' days for which a plan was issued. Without a battery those days would have cost ' + eur(sum('no_battery')) + '.', 'simulated']);
+  rows.push(['Solar power given away', eur(B.export.eur), kwh(B.export.kwh) + ' were exported without payment. Used on site at that hour, they would have been worth this much: an upper bound.', 'estimate']);
+  rows.push(['Heat pump efficiency', eur(hp.eur / 100) + ' per 1 %', 'The heat pump costs ' + eur(hp.eur) + ' a year. The two faults found in S03 each cost about 15 % efficiency while they lasted.', 'arithmetic']);
+  rows.push(['Ventilation run time', eur(fans.eur / 100) + ' per 1 %', 'The fans cost ' + eur(fans.eur) + ' a year and run almost evenly through all months; a loaded filter (S04) raises fan power.', 'arithmetic']);
+  c3.append(simpleTable(['Lever', 'Size per year', 'Basis', 'Kind of figure'], rows)); root.append(c3);
+  const c4 = el('div', 'card'); c4.append(el('h2', null, 'What the dataset does not price'), el('p', 'note', 'There is no water price, no wage and no cost on a work order in the dataset. These parts of a budget are shown as volumes and counts. A live system would take the prices from the accounts.'));
+  if (B.water) c4.append(el('h3', null, 'Water, ' + B.water.total_m3.toLocaleString('en-US') + ' m³ in the year'), simpleTable(['Where', 'Volume'], [...B.water.floors.map(f => ['Rooms on floor ' + f.floor, f.m3.toLocaleString('en-US') + ' m³']), ['Outside the rooms (common areas, plant, losses)', B.water.outside_rooms_m3.toLocaleString('en-US') + ' m³']]));
+  if (B.work_orders) { const by = {}; for (const w of B.work_orders) { (by[w.where] = by[w.where] || {})[w.type] = w.n; }
+    c4.append(el('h3', null, 'Maintenance work orders'), simpleTable(['Where', 'Corrective', 'Preventive', 'Metering'], Object.entries(by).map(([k, v]) => [k === 'BUILDING' ? 'Building in general' : k, String(v.corrective || 0), String(v.preventive || 0), String(v.metering || 0)]))); }
+  root.append(c4); }
+const SERVICE = {EXTERNAL_PLUMBER: 'Plumbing contractor', EXTERNAL_HVAC: 'Heating and ventilation contractor', EXTERNAL_METERING: 'Metering service', VENDOR_EXT: 'Vending supplier', MUNICIPAL_SERVICE: 'Municipal waste service',
+  housekeeping: 'Housekeeping team as a whole', cleaner: 'Cleaner', robot: 'Floor-cleaning robot', technician: 'In-house technician', on_call_housekeeping: 'On-call housekeeper, evenings'};
+function staffView(root) { const S = D.staff, R = S.resources, inn = R.filter(r => r.internal), ext = R.filter(r => !r.internal), tech = R.find(r => r.role === 'technician');
+  const absent = r => Object.values(r.absent).reduce((a, b) => a + b, 0), cl = inn.filter(r => r.role === 'cleaner');
+  const oncall = all.filter(d => (d.affected_assets || []).includes('ONCALL_1')).length, tl = el('div', 'tiles');
+  tl.append(tile(inn.length, 'internal people, robots and teams', 'cleaners, robots, technician, on-call', true), tile(ext.length, 'external partners', 'contractors, supplier, municipal service'),
+    tile(cl.reduce((a, r) => a + absent(r), 0), 'cleaner shifts lost to sickness', 'all known less than a day ahead'),
+    tile(tech && tech.timed ? tech.on_time + ' of ' + tech.timed : 'n/a', 'technician jobs on schedule', 'finished within ' + S.on_time_h + ' h of the planned slot')); root.append(tl);
+  const none = () => { const s = el('span', null, 'not in the dataset'); s.style.color = 'var(--mute)'; s.title = 'The dataset has resource ids only, no names and no contact details. A live system takes them from the roster and the contractor list.'; return s; };
+  const abs = r => Object.entries(r.absent).map(([k, v]) => v + ' ' + k.replace(/_/g, ' ')).join(', ') || 'none';
+  const work = r => Object.entries(r.work).map(([k, v]) => v.toLocaleString('en-US') + ' ' + k).join(', ') || (r.orders ? r.orders + ' work orders' : r.id === 'ONCALL_1' ? oncall + ' call-outs proposed by the system' : 'none recorded');
+  const quality = r => r.timed ? r.on_time + ' of ' + r.timed + ' on schedule · ' + r.median_h + ' h median from order to done' + (r.postponed ? ' · ' + r.postponed + ' postponed' : '')
+    : r.id === 'VENDOR_EXT' ? r.misses + ' times out of stock between ' + (r.work.restocks || 0) + ' restocks' : r.id === 'MUNICIPAL_SERVICE' ? r.misses + ' full-container events between ' + (r.work.pickups || 0) + ' pickups'
+    : r.median_min != null ? r.median_min + ' min median per ' + (r.role === 'robot' ? 'floor run' : 'room') : 'no measure in the dataset';
+  const c1 = el('div', 'card'); c1.append(el('h2', null, 'Internal'), el('p', 'note', 'From the roster and the event log of the year. Shifts are those that took place; an absence counts per shift.'));
+  c1.append(simpleTable(['Resource', 'Role', 'Contact', 'Shifts worked', 'Absent', 'Work done', 'Service quality'], inn.map(r => [r.id, SERVICE[r.role] || SERVICE[r.id] || r.role, none(), r.shifts ? String(r.shifts) : '', abs(r), work(r), quality(r)]))); root.append(c1);
+  const c2 = el('div', 'card'); c2.append(el('h2', null, 'External partners'), el('p', 'note', 'From the work orders and the event log. On schedule means finished within ' + S.on_time_h + ' hours of the planned slot.'));
+  c2.append(simpleTable(['Partner', 'Service', 'Contact', 'Jobs', 'Service quality'], ext.map(r => [r.id, SERVICE[r.id] || 'External service', none(), work(r), quality(r)]))); root.append(c2);
+  const c3 = el('div', 'card'); c3.append(el('h2', null, 'Absences by month'), el('p', 'note', 'Shifts that did not take place, by role. An event weekend with a sick cleaner is scenario S05.'));
+  const M = S.absent_months, keys = ['cleaner', 'robot', 'technician'], col = {cleaner: 'var(--series)', robot: 'var(--c2)', technician: 'var(--c3)'}, W = 1000, H = 190, m = {l: 34, r: 8, t: 10, b: 26};
+  const mx = Math.max(1, ...M.map(x => keys.reduce((a, k) => a + (x[k] || 0), 0))), s = svg('svg', {viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': 'Absent shifts per month by role'}), y = v => m.t + (H - m.t - m.b) * (1 - v / mx), bw = (W - m.l - m.r) / Math.max(1, M.length);
+  for (let v = 0; v <= mx; v += Math.max(1, Math.ceil(mx / 4))) s.append(svg('line', {x1: m.l, x2: W - m.r, y1: y(v), y2: y(v), stroke: 'var(--grid)'}), svg('text', {x: m.l - 6, y: y(v) + 4, 'text-anchor': 'end', class: 'ax'}, v));
+  M.forEach((x, i) => { let acc = 0; const g = svg('g'); for (const k of keys) { const v = x[k] || 0; if (!v) continue; g.append(svg('rect', {x: m.l + i * bw + bw * 0.2, width: bw * 0.6, y: y(acc + v), height: Math.max(0, y(acc) - y(acc + v) - 2), rx: 3, fill: col[k]})); acc += v; }
+    g.addEventListener('mousemove', ev => showTip(ev, '<b>' + x.month + '</b><br>' + keys.map(k => k + ': ' + (x[k] || 0) + ' shifts').join('<br>'))); g.addEventListener('mouseleave', hideTip);
+    s.append(g, svg('text', {x: m.l + i * bw + bw / 2, y: H - 8, 'text-anchor': 'middle', class: 'ax'}, x.month.slice(5))); });
+  c3.append(s); const lg = el('div', 'legend'); for (const k of keys) { const sp = el('span'), sw = el('i', 'sw'); sw.style.background = col[k]; sp.append(sw, k); lg.append(sp); } c3.append(lg); root.append(c3);
+  root.append(el('p', 'note', 'Names and contact details are not part of the dataset, and none are invented here. Service quality uses only what the dataset records: planned and actual times of work orders, durations of cleanings, and stock-outs between deliveries.')); }
 let whoDraw = null; window.addEventListener('resize', () => whoDraw && whoDraw());
 function overview(root) {
   const inc = E.filter(e => !e.routine), by = s => inc.filter(e => e.scenario === s).length;
@@ -705,18 +773,20 @@ function render() {
   // Every box has the same three lines: figure, short code, name. SC labels are "S01 Turnaround": code, then name.
   const split = k => { const i = SC[k].indexOf(' '); return [SC[k].slice(0, i), SC[k].slice(i + 1)]; };
   const tabs = [['overview', inc.length, 'All', 'Overview'], ...Object.keys(SC).map(k => [k, by(k), ...split(k)]), ['queue', pending().length, 'Open', 'Approvals'], ['trail', all.length, 'Log', 'All decisions']];
+  if (D.budget) tabs.splice(tabs.length - 2, 0, ['budget', (D.budget.bill.eur / 1000).toFixed(1) + 'k', 'Plan · EUR', 'Budget']);
+  if (D.staff) tabs.splice(tabs.length - 2, 0, ['staff', D.staff.resources.length, 'Plan', 'Staff']);
   for (const [k, n, code, name] of tabs) { const b = el('button', k === tab ? 'on' : ''); b.title = TABHINT[k] || ''; b.dataset.tab = k; b.setAttribute('aria-current', k === tab ? 'page' : 'false');
     b.setAttribute('aria-label', code + ' ' + name + ', ' + n);
     b.append(el('b', null, n), el('i', null, code), el('span', null, name));
     b.onclick = () => { tab = k; history.replaceState(null, '', '#' + k); render(); }; nav.append(b); }
   const root = $('view'); root.replaceChildren();
-  if (tab === 'overview') overview(root); else if (tab === 'trail') trail(root); else if (tab === 'queue') queue(root); else scenario(root, tab);
+  if (tab === 'overview') overview(root); else if (tab === 'budget') budgetView(root); else if (tab === 'staff') staffView(root); else if (tab === 'trail') trail(root); else if (tab === 'queue') queue(root); else scenario(root, tab);
 }
 
 /* ---------- voice control (opt-in): the agent's tools run here, in the page ---------- */
 let VQ = [];
 const short = (t, n) => t.length > n ? t.slice(0, n) + '…' : t;
-const VIEW = {overview: 'overview', turnaround: 'S01', water: 'S02', heating: 'S03', maintenance: 'S04', weekend: 'S05', energy: 'ENG', logistics: 'LOG', approvals: 'queue', decisions: 'trail'};
+const VIEW = {overview: 'overview', turnaround: 'S01', water: 'S02', heating: 'S03', maintenance: 'S04', weekend: 'S05', energy: 'ENG', logistics: 'LOG', budget: 'budget', staff: 'staff', approvals: 'queue', decisions: 'trail'};
 function summary(e) { const main = e.decisions.find(d => d.action === 'flag_anomaly') || e.decisions[0];
   return {title: episodeTitle(e), when: lt(e.start), risk: e.priority, decisions: e.decisions.length, actions: [...new Set(e.decisions.map(d => d.action.replace(/_/g, ' ')))],
     oversight: [...new Set(e.decisions.map(d => LEVEL[level(d)]))], finding: short(main.reason, 320),
@@ -838,7 +908,7 @@ function voiceTest() { const KEYBAK = approvals; approvals = {}; const log = [],
   const c = el('div', 'card'); c.append(el('h2', null, 'Voice tool self-test'), el('pre', null, log.join('\n\n'))); c.querySelector('pre').style.cssText = 'white-space:pre-wrap;font:11.5px/1.45 var(--mono);color:var(--ink2)'; $('view').prepend(c); }
 // deep links: #S02 opens a tab, #S02:<episode id> opens a case
 (function () { const h = decodeURIComponent(location.hash.slice(1)); if (!h) return; const i = h.indexOf(':'), k = i < 0 ? h : h.slice(0, i);
-  if (k === 'overview' || k === 'trail' || k === 'queue' || k in SC) tab = k;
+  if (k === 'overview' || k === 'trail' || k === 'queue' || k in SC || (k === 'budget' && D.budget) || (k === 'staff' && D.staff)) tab = k;
   if (i > 0) { const e = E.find(q => q.id === h.slice(i + 1)); if (e) { if (e.routine) showRoutine[e.scenario] = true; selected[e.scenario] = e; } } })();
 const themeBtn = $('theme');
 function setTheme(t) { if (t === 'light') document.documentElement.setAttribute('data-theme', 'light'); else document.documentElement.removeAttribute('data-theme');
@@ -847,7 +917,7 @@ themeBtn.onclick = () => setTheme(document.documentElement.getAttribute('data-th
 try { setTheme(localStorage.getItem('theme') || 'dark'); } catch (err) { setTheme('dark'); }
 // keyboard: arrows move through cases and tabs (not while typing)
 document.addEventListener('keydown', ev => { if (/^(INPUT|TEXTAREA|SELECT)$/.test((ev.target.tagName || ''))) return;
-  const order = ['overview', ...Object.keys(SC), 'queue', 'trail'];
+  const order = ['overview', ...Object.keys(SC), ...(D.budget ? ['budget'] : []), ...(D.staff ? ['staff'] : []), 'queue', 'trail'];
   if (ev.key === 'ArrowRight' || ev.key === 'ArrowLeft') { const i = order.indexOf(tab), j = (i + (ev.key === 'ArrowRight' ? 1 : order.length - 1)) % order.length; tab = order[j]; history.replaceState(null, '', '#' + tab); render(); ev.preventDefault(); }
   else if ((ev.key === 'ArrowDown' || ev.key === 'ArrowUp') && tab in SC) { const list = E.filter(e => e.scenario === tab && (showRoutine[tab] || !e.routine) && (!query || JSON.stringify(e.decisions).toLowerCase().includes(query)));
     const i = list.indexOf(selected[tab]), j = Math.max(0, Math.min(list.length - 1, i + (ev.key === 'ArrowDown' ? 1 : -1))); if (list[j] && j !== i) { selected[tab] = list[j]; history.replaceState(null, '', '#' + tab + ':' + encodeURIComponent(list[j].id)); render(); } ev.preventDefault(); } });

@@ -267,7 +267,21 @@ The tag `pre-holdout` was set on 2026-11-14, before the holdout release.
 Changes after `pre-holdout`: presentation only. The dashboard page got a background pattern, a
 favicon and a reworked phone layout (header, navigation boxes, tables as cards). The overview got
 a schematic 3D view of the building that locates the cases (drawn from `building.json`), and the
-title and spacing were adjusted. No detector, threshold or rule was changed, so the decisions are the same.
+title and spacing were adjusted. Two planning views, Budget and Staff, were added; they summarise the
+year from the dataset and feed no decision. No detector, threshold or rule was changed, so the decisions are the same.
+
+## Planning views
+
+Two views of the dashboard summarise the year for planning. They feed no decision.
+
+- **Budget:** electricity priced with the hourly tariff and split by what the dataset meters separately
+  (heat pump, ventilation fans, the rest), by month, with the size of four levers. Electricity is the
+  only thing the dataset prices; water and maintenance appear as volumes and counts, not as euros.
+- **Staff:** internal resources and external partners with shifts, absences, work done and a service
+  quality measure taken from the dataset (work orders on schedule, cleaning durations, stock-outs
+  between deliveries). The dataset has no names or contact details, and none are invented.
+
+The figures come from `building_ops/planning.py`.
 
 ## Real data
 
