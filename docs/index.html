@@ -255,7 +255,7 @@ footer{max-width:1536px;margin:0 auto;padding:4px 48px 32px;color:var(--mute);fo
       <h1 id="title"></h1>
       <div class="sub" id="source"></div>
     </div>
-    <div><button id="brief" type="button" hidden>Voice briefing</button><button id="theme" type="button">Light</button></div>
+    <div><button id="brief" type="button" hidden>Voice briefing</button><button id="theme" type="button">Light theme</button></div>
   </div>
   <nav id="nav"></nav>
   </div>
@@ -745,7 +745,7 @@ function voiceTest() { const KEYBAK = approvals; approvals = {}; const log = [],
   if (i > 0) { const e = E.find(q => q.id === h.slice(i + 1)); if (e) { if (e.routine) showRoutine[e.scenario] = true; selected[e.scenario] = e; } } })();
 const themeBtn = $('theme');
 function setTheme(t) { if (t === 'light') document.documentElement.setAttribute('data-theme', 'light'); else document.documentElement.removeAttribute('data-theme');
-  themeBtn.textContent = t === 'light' ? 'Dark' : 'Light'; try { localStorage.setItem('theme', t); } catch (err) {} }
+  themeBtn.textContent = t === 'light' ? 'Dark theme' : 'Light theme'; try { localStorage.setItem('theme', t); } catch (err) {} }
 themeBtn.onclick = () => setTheme(document.documentElement.getAttribute('data-theme') === 'light' ? 'dark' : 'light');
 try { setTheme(localStorage.getItem('theme') || 'dark'); } catch (err) { setTheme('dark'); }
 // keyboard: arrows move through cases and tabs (not while typing)
