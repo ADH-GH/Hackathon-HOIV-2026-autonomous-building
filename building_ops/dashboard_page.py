@@ -530,10 +530,10 @@ function tile(v, k, small, key, go) { const t = el('div', 'tile' + (key ? ' key'
 let yaw = 0.62, zoom = 1.2, panY = 0, bldLayer = 'cases', bldFit = null, tlFit = null; window.addEventListener('resize', () => { if (bldFit) bldFit(); else if (tlFit) tlFit(); });
 // Building and timeline are linked: a room lights up its cases in the timeline, a case lights up its rooms and plant.
 let linkAt = {}, linkEp = {};
-function lightDots(asset) { const d = document.querySelector('.duo'); if (!d) return; const ids = new Set(((asset && linkAt[asset]) || []).map(e => e.id));
-  d.querySelectorAll('circle.dot.lit').forEach(c => c.classList.remove('lit')); d.classList.toggle('linkdots', ids.size > 0);
-  if (ids.size) d.querySelectorAll('circle.dot').forEach(c => { if (ids.has(c.dataset.ep)) { c.classList.add('lit'); c.parentNode.append(c); } }); }
-function lightRooms(ep) { const d = document.querySelector('.duo'); if (!d) return; const as = new Set((ep && linkEp[ep]) || []);
+function lightDots(asset) { const d = document.querySelector('.duo'); if (!d) return; d.querySelectorAll('circle.dot.lit').forEach(c => c.classList.remove('lit'));
+  const hit = asset ? [...d.querySelectorAll('circle.dot')].filter(c => (c.dataset.as || '').split(' ').includes(asset)) : [];
+  d.classList.toggle('linkdots', hit.length > 0); for (const c of hit) { c.classList.add('lit'); c.parentNode.append(c); } }
+function lightRooms(assets) { const d = document.querySelector('.duo'); if (!d) return; const as = new Set(assets || []);
   d.querySelectorAll('g.bx.lit').forEach(g => g.classList.remove('lit')); d.classList.toggle('linkrooms', as.size > 0);
   if (as.size) d.querySelectorAll('g.bx').forEach(g => { if (as.has(g.dataset.a)) g.classList.add('lit'); }); }
 function buildingView(inc) {
@@ -615,7 +615,7 @@ function buildingView(inc) {
       lg.innerHTML = '<span><i class="sw" style="background:var(--hot)"></i>many</span><span><i class="sw" style="background:color-mix(in oklab, var(--hot) 22%, var(--cool))"></i>few</span><span><i class="sw" style="background:var(--raise);border:1px solid var(--line)"></i>none</span>';
       const w = el('span', 'wide', tot); w.title = bldLayer === 'noise' ? 'Guest requests of the type noise complaint, counted per room' : 'Quarter hours in which a room sent no temperature, summed per room; the building system raised its own communication-loss alarms, shown on the gateway'; lg.append(w); } };
   const seg = el('div', 'seg'); for (const k of Object.keys(LAYER)) { if (k !== 'cases' && !Object.keys(LAYER[k].data).length) continue; const b = el('button', k === bldLayer ? 'on' : '', LAYER[k].name); b.type = 'button';
-    b.onclick = () => { bldLayer = k; for (const x of seg.children) x.className = x === b ? 'on' : ''; setNote(); legend(); bldFit ? bldFit() : draw(); }; seg.append(b); }
+    b.onclick = () => { bldLayer = k; for (const x of seg.children) x.className = x === b ? 'on' : ''; setNote(); legend(); lightDots(null); lightRooms(null); bldFit ? bldFit() : draw(); if (tlFit) tlFit(); }; seg.append(b); }
   const ctlRow = el('div', 'bldctl'); if (seg.children.length > 1) ctlRow.append(seg); ctlRow.append(ctl); head.append(ctlRow);
   legend(); card.append(lg);
   // On a wide screen the view takes exactly the height that is left, so building and key figures are visible without scrolling.
@@ -724,43 +724,59 @@ function overview(root) {
       link.append(svg('path', {d: `M${sx.toFixed(1)} 0V${mid}H${tx.toFixed(1)}V22`, fill: 'none', stroke: segs[i].style.background, 'stroke-width': 1.5, 'stroke-opacity': 0.8, 'stroke-linejoin': 'round'})); }); };
   requestAnimationFrame(whoDraw); if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => whoDraw && whoDraw());
   // time strip
-  const c = el('div', 'card'); c.append(el('h2', null, 'When the cases happened'), el('p', 'note', 'One dot per case, one lane per scenario; red is critical. Curves: how many cases fall around that time.'));
+  const c = el('div', 'card'), tlTitle = el('h2'), tlNote = el('p', 'note'); c.append(tlTitle, tlNote);
+  // The timeline follows the layer of the building view: cases by scenario, noise complaints by floor, data gaps by gateway.
+  // Every dot knows the rooms and plant it belongs to; that is what links the two boxes.
+  const roomFloor = {}; for (const r of ((D.building || {}).rooms || [])) roomFloor[r.id] = r.floor;
+  const model = () => { const B = D.building || {};
+    if (bldLayer === 'noise' && B.noise_events) { const fl = [...new Set(Object.values(roomFloor))].sort((a, b) => b - a);
+      return {title: 'When guests complained about noise', note: 'One dot per noise complaint, one lane per floor. Curves: how many fall around that time.', colour: 'var(--hot)', unit: n => n + ' noise complaint' + (n === 1 ? '' : 's'),
+        lanes: fl.map(f => ({name: 'Floor ' + f, items: B.noise_events.filter(x => roomFloor[x[1]] === f).map((x, k) => ({t: x[0], key: 'n' + f + '-' + k, assets: [x[1]], tip: '<b>Noise complaint · ' + x[1] + '</b><br>' + esc(lt(x[0]))}))}))}; }
+    if (bldLayer === 'gaps' && B.gateways) { const gws = B.gateways.slice().sort((a, b) => b.floor - a.floor);
+      return {title: 'When data went missing', note: 'One lane per gateway. Curve: room-hours without a reading. Dots: communication-loss alarms of the building system.', colour: 'var(--hot)', unit: n => n + ' communication-loss alarm' + (n === 1 ? '' : 's'),
+        lanes: gws.map(g => ({name: 'Floor ' + g.floor + ' · ' + g.id, series: (B.gap_days || []).filter(x => x[1] === g.id).map(x => [x[0], x[2]]),
+          items: (B.gap_alarms || []).filter(x => x[2] === g.id).map((x, k) => ({t: x[0], key: 'g' + g.id + '-' + k, assets: [x[1], g.id], tip: '<b>Communication loss · ' + x[1] + '</b><br>' + esc(lt(x[0])) + '<br>gateway ' + g.id}))}))}; }
+    return {title: 'When the cases happened', note: 'One dot per case, one lane per scenario; red is critical. Curves: how many cases fall around that time.', colour: 'var(--series)', unit: n => n + ' case' + (n === 1 ? '' : 's'),
+      lanes: ['S01', 'S02', 'S03', 'S04', 'S05', 'ENG', 'LOG'].map(ln => ({name: SC[ln].replace(/^S(\d\d)/, 'S-$1'), items: inc.filter(q => q.scenario === ln).map(e => ({t: e.start, key: e.id, crit: e.priority === 'critical', assets: linkEp[e.id] || [], go: () => open(e),
+        tip: '<b>' + esc(episodeTitle(e)) + '</b><br>' + esc(lt(e.start)) + '<br>risk: ' + e.priority + (linkEp[e.id] ? '' : '<br>building-wide, no single room')}))}))}; };
   const strip = fill => {
-  const narrow = window.innerWidth < 700, half = !!duo && window.innerWidth > 1100, W = narrow ? Math.max(300, window.innerWidth - 74) : half ? 660 : 1000, lanes = ['S01', 'S02', 'S03', 'S04', 'S05', 'ENG', 'LOG'];
+  const M = model(), lanes = M.lanes; tlTitle.textContent = M.title; tlNote.textContent = M.note;
+  const narrow = window.innerWidth < 700, half = !!duo && window.innerWidth > 1100, W = narrow ? Math.max(300, window.innerWidth - 74) : half ? 660 : 1000;
   const m0 = {b: 26}, gap = fill ? Math.max(30, Math.min(84, (fill - 20 - m0.b) / (lanes.length - 1 + 0.72))) : narrow ? 68 : half ? 34 : 64, rise = fill || half ? gap * 0.72 : narrow ? 36 : 44, m = {l: 6, r: narrow ? 8 : 10, t: rise + 6, b: m0.b}, H = m.t + (lanes.length - 1) * gap + 14 + m.b;
   const t0 = Math.min(...E.map(e => e.start)), t1 = Math.max(...E.map(e => e.start), t0 + 1);
-  const x = v => m.l + (v - t0) / (t1 - t0) * (W - m.l - m.r), s = svg('svg', {viewBox: `0 0 ${W} ${H}`, role: 'img', class: 'tlstrip', 'aria-label': 'Cases over time'});
-  // Density curve behind each lane: how many cases happen around that time. A Gaussian window of about
-  // ten days, the same height scale for all lanes, so a taller curve means more cases.
+  const x = v => m.l + (v - t0) / (t1 - t0) * (W - m.l - m.r), s = svg('svg', {viewBox: `0 0 ${W} ${H}`, role: 'img', class: 'tlstrip', 'aria-label': M.title});
+  // Curve behind each lane: a Gaussian window of about ten days over the dots, or over the lane's own series if it has
+  // one. The same height scale for all lanes, so a taller curve means more.
   const DAY = 864e5, BW = 10 * DAY, N = 140, grid = Array.from({length: N}, (_, i) => t0 + (t1 - t0) * i / (N - 1));
-  const dens = lanes.map(ln => { const ts = inc.filter(q => q.scenario === ln).map(q => q.start); return grid.map(g => ts.reduce((a, t) => a + Math.exp(-0.5 * Math.pow((g - t) / BW, 2)), 0)); });
-  const densCrit = lanes.map(ln => { const ts = inc.filter(q => q.scenario === ln && q.priority === 'critical').map(q => q.start); return grid.map(g => ts.reduce((a, t) => a + Math.exp(-0.5 * Math.pow((g - t) / BW, 2)), 0)); });
+  const smooth = pts => grid.map(g => pts.reduce((a, p) => a + p[1] * Math.exp(-0.5 * Math.pow((g - p[0]) / BW, 2)), 0));
+  const dens = lanes.map(L => smooth(L.series || L.items.map(q => [q.t, 1]))), densCrit = lanes.map(L => smooth(L.items.filter(q => q.crit).map(q => [q.t, 1])));
   const peak = Math.max(1e-9, ...dens.flat());
-  const lanesLabels = [], laneName = ln => SC[ln].replace(/^S(\d\d)/, 'S-$1');
-  lanes.forEach((ln, i) => { const y = m.t + i * gap, d = dens[i], cases = inc.filter(q => q.scenario === ln);
+  const lanesLabels = [];
+  lanes.forEach((L, i) => { const y = m.t + i * gap, d = dens[i], cases = L.items;
     let area = `M${x(grid[0]).toFixed(1)} ${y}`; d.forEach((v, k) => { area += `L${x(grid[k]).toFixed(1)} ${(y - v / peak * rise).toFixed(1)}`; }); area += `L${x(grid[N - 1]).toFixed(1)} ${y}Z`;
     let line = ''; d.forEach((v, k) => { line += (k ? 'L' : 'M') + x(grid[k]).toFixed(1) + ' ' + (y - v / peak * rise).toFixed(1); });
-    s.append(svg('path', {d: area, fill: 'var(--series)', 'fill-opacity': 0.14}), svg('path', {d: line, fill: 'none', stroke: 'var(--series)', 'stroke-opacity': 0.45, 'stroke-width': 1.2}));
-    const dc = densCrit[i]; if (dc.some(v => v > 0.01)) { let ca = `M${x(grid[0]).toFixed(1)} ${y}`, cl = ''; dc.forEach((v, k) => { const yy = (y - v / peak * rise).toFixed(1); ca += `L${x(grid[k]).toFixed(1)} ${yy}`; cl += (k ? 'L' : 'M') + x(grid[k]).toFixed(1) + ' ' + yy; }); ca += `L${x(grid[N - 1]).toFixed(1)} ${y}Z`;
+    s.append(svg('path', {d: area, fill: M.colour, 'fill-opacity': 0.14}), svg('path', {d: line, fill: 'none', stroke: M.colour, 'stroke-opacity': 0.45, 'stroke-width': 1.2}));
+    const dc = densCrit[i]; if (dc.some(v => v > 0.01)) { let ca = `M${x(grid[0]).toFixed(1)} ${y}`; dc.forEach((v, k) => { ca += `L${x(grid[k]).toFixed(1)} ${(y - v / peak * rise).toFixed(1)}`; }); ca += `L${x(grid[N - 1]).toFixed(1)} ${y}Z`;
       let seg = '', pen = false; dc.forEach((v, k) => { if (v / peak * rise < 0.6) { pen = false; return; } seg += (pen ? 'L' : 'M') + x(grid[k]).toFixed(1) + ' ' + (y - v / peak * rise).toFixed(1); pen = true; });
       s.append(svg('path', {d: ca, fill: 'var(--crit)', 'fill-opacity': 0.22}), svg('path', {d: seg, fill: 'none', stroke: 'var(--crit)', 'stroke-opacity': 0.75, 'stroke-width': 1.2})); }
-    s.append(svg('line', {x1: m.l, x2: W - m.r, y1: y, y2: y, stroke: 'var(--line)'})); lanesLabels.push(svg('text', {x: m.l + 2, y: y - 21, class: 'lbl in'}, laneName(ln)));        // the lane's name sits inside the lane, just above its zero line
+    s.append(svg('line', {x1: m.l, x2: W - m.r, y1: y, y2: y, stroke: 'var(--line)'})); lanesLabels.push(svg('text', {x: m.l + 2, y: y - 21, class: 'lbl in'}, L.name));        // the lane's name sits inside the lane, above its zero line
     const band = svg('rect', {x: m.l, y: y - rise, width: W - m.l - m.r, height: rise + 8, fill: 'transparent'});
-    band.addEventListener('mousemove', ev => { const r = s.getBoundingClientRect(), tv = t0 + ((ev.clientX - r.left) / r.width * W - m.l) / (W - m.l - m.r) * (t1 - t0), near = cases.filter(q => Math.abs(q.start - tv) <= 15 * DAY), n = near.length, nc = near.filter(q => q.priority === 'critical').length;
-      showTip(ev, '<b>' + esc(laneName(ln)) + '</b><br>' + n + ' case' + (n === 1 ? '' : 's') + ' in the 30 days around ' + esc(F_DAY.format(new Date(tv))) + (nc ? '<br>' + nc + ' of them critical' : '')); });
+    band.addEventListener('mousemove', ev => { const r = s.getBoundingClientRect(), tv = t0 + ((ev.clientX - r.left) / r.width * W - m.l) / (W - m.l - m.r) * (t1 - t0), near = cases.filter(q => Math.abs(q.t - tv) <= 15 * DAY), nc = near.filter(q => q.crit).length;
+      const hrs = L.series ? Math.round(L.series.filter(p => Math.abs(p[0] - tv) <= 15 * DAY).reduce((a, p) => a + p[1], 0)) : null;
+      showTip(ev, '<b>' + esc(L.name) + '</b><br>' + (hrs != null ? hrs + ' room-hours without a reading, ' : '') + M.unit(near.length) + ' in the 30 days around ' + esc(F_DAY.format(new Date(tv))) + (nc ? '<br>' + nc + ' of them critical' : '')); });
     band.addEventListener('mouseleave', hideTip); s.append(band);
-    for (const e of cases) { const cc = svg('circle', {cx: x(e.start), cy: y, r: (e.priority === 'critical' ? 6 : 4.5) + (narrow ? 1 : 0), fill: e.priority === 'critical' ? 'var(--crit)' : 'var(--series)', stroke: 'var(--panel)', 'stroke-width': 2, style: 'cursor:pointer', class: 'dot'});
-      cc.dataset.ep = e.id; cc.addEventListener('mouseenter', () => lightRooms(e.id)); cc.addEventListener('mouseleave', () => lightRooms(null));
-      cc.addEventListener('mousemove', ev => showTip(ev, '<b>' + esc(episodeTitle(e)) + '</b><br>' + esc(lt(e.start)) + '<br>risk: ' + e.priority + (linkEp[e.id] ? '' : '<br>building-wide, no single room'))); cc.addEventListener('mouseleave', hideTip);
-      cc.addEventListener('click', () => open(e)); s.append(cc); } });
+    for (const e of cases) { const cc = svg('circle', {cx: x(e.t), cy: y, r: (e.crit ? 6 : 4.5) + (narrow ? 1 : 0), fill: e.crit ? 'var(--crit)' : M.colour, stroke: 'var(--panel)', 'stroke-width': 2, class: 'dot'}); if (e.go) cc.style.cursor = 'pointer';
+      cc.dataset.ep = e.key; cc.dataset.as = e.assets.join(' '); cc.addEventListener('mouseenter', () => lightRooms(e.assets)); cc.addEventListener('mouseleave', () => lightRooms(null));
+      cc.addEventListener('mousemove', ev => showTip(ev, e.tip)); cc.addEventListener('mouseleave', hideTip);
+      if (e.go) cc.addEventListener('click', e.go); s.append(cc); } });
   for (const t of lanesLabels) s.append(t);          // above curves and bands, so the names stay readable; they take no pointer events
   const ticks = narrow ? 3 : half ? 4 : 6; for (let i = 0; i <= ticks; i++) { const tv = t0 + (t1 - t0) * i / ticks; s.append(svg('text', {x: x(tv), y: H - 6, 'text-anchor': i === 0 ? 'start' : i === ticks ? 'end' : 'middle'}, F_DAY.format(new Date(tv)))); }
   return s; };
   let stripEl = strip(); c.append(stripEl); if (duo) { c.style.marginTop = '0'; duo.append(c); } else root.append(c);
   // Beside the building the timeline takes the height that is left in its box, so no band stays empty under it.
-  tlFit = () => { if (!duo || !c.isConnected || window.innerWidth <= 1100) return; const width = stripEl.getBoundingClientRect().width || c.clientWidth - 40; stripEl.style.display = 'none';
+  tlFit = () => { if (!c.isConnected) return; if (!duo || window.innerWidth <= 1100) { const plain = strip(); stripEl.replaceWith(plain); stripEl = plain; return; } const width = stripEl.getBoundingClientRect().width || c.clientWidth - 40; stripEl.style.display = 'none';
     const free = c.getBoundingClientRect().bottom - 20 - stripEl.previousElementSibling.getBoundingClientRect().bottom - 6; stripEl.style.display = '';
-    if (width < 50 || free < 120) return; const next = strip(free * 660 / width); stripEl.replaceWith(next); stripEl = next; };
+    const next = width < 50 || free < 120 ? strip() : strip(free * 660 / width); stripEl.replaceWith(next); stripEl = next; };
   requestAnimationFrame(() => bldFit ? bldFit() : tlFit());
   // table
   const tb = el('div', 'card'); tb.append(el('h2', null, 'Technical incidents and how early they were seen'), el('p', 'note', 'How much earlier the system saw each fault than the building did. "Seen earlier by" is the time between our first decision and the moment the repair was logged in the dataset: 187 h means we flagged it 187 hours before anyone wrote the repair order. Longer is better. The repair orders are used for this comparison only; no detector reads them.'));

@@ -82,19 +82,28 @@ def _building(ds) -> dict | None:
         for r in ds.rows("guest_requests"):
             if r.get("request_type") == "noise_complaint" and r.get("room_id") in ids:
                 noise[r["room_id"]] += 1
+                t = parse_ts(r.get("timestamp_utc"))
+                if t:
+                    out.setdefault("noise_events", []).append([_ms(t), r["room_id"]])
         out["noise"] = dict(noise)
     if ds.has("room_telemetry"):
         gaps: dict[str, int] = defaultdict(int)
+        gateway = {x["asset_id"]: x.get("gateway") for x in b.get("sensors", []) if x.get("metric") == "temperature_c"}
+        per_day: dict[tuple[str, str], int] = defaultdict(int)          # (gateway, day) -> quarter hours without a reading
         for r in ds.rows("room_telemetry"):
             if r.get("room_id") in ids and r.get("temperature_c") in ("", None):
                 gaps[r["room_id"]] += 1
+                per_day[(gateway.get(r["room_id"]) or "", (r.get("timestamp_utc") or "")[:10])] += 1
+        out["gap_days"] = [[_ms(parse_ts(day + "T12:00:00Z")), gw, round(n * 0.25, 2)] for (gw, day), n in sorted(per_day.items()) if gw and len(day) == 10]
         out["gaps_h"] = {k: round(v * 0.25, 1) for k, v in gaps.items()}
-        gateway = {x["asset_id"]: x.get("gateway") for x in b.get("sensors", []) if x.get("metric") == "temperature_c"}
         alarms: dict[str, int] = defaultdict(int)
         if ds.has("events"):
             for e in ds.events():
                 if e.get("type") == "bms_alarm" and e.get("alarm_code") == "SENSOR_COMM_LOSS" and e.get("state") == "raised" and e.get("asset_id") in ids:
                     alarms[gateway.get(e["asset_id"]) or ""] += 1
+                    t = parse_ts(e.get("timestamp_utc"))
+                    if t:
+                        out.setdefault("gap_alarms", []).append([_ms(t), e["asset_id"], gateway.get(e["asset_id"]) or ""])
         out["gateways"] = [{"id": g["id"], "floor": g.get("floor"), "alarms": alarms.get(g["id"], 0),
                             "hours": round(sum(h for room, h in out["gaps_h"].items() if gateway.get(room) == g["id"]), 1)}
                            for g in b.get("gateways", []) if g.get("id")]
