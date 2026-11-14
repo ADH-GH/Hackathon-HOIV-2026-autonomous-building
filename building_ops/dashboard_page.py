@@ -30,7 +30,7 @@ header{padding:44px 48px 0;max-width:1536px;margin:0 auto}
 .top{display:flex;justify-content:space-between;align-items:flex-start;gap:16px}
 .kicker{font:500 12.5px/1.2 var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--accent)}
 .kicker::before{content:"";display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 4px var(--glow);margin-right:10px;vertical-align:1px}
-h1{margin:15px 0 7px;font:600 38px/1.1 var(--display);letter-spacing:-.02em}
+h1{margin:22px 0 13px;font:600 38px/1.1 var(--display);letter-spacing:-.02em}
 .sub{color:var(--mute);font-size:12.5px;margin-top:5px;overflow-wrap:anywhere}
 .hlink{display:inline-flex;align-items:center;height:36px;font:600 14px/1 var(--sans);color:var(--ink);text-decoration:none;border:1px solid var(--line);border-radius:8px;padding:0 14px;margin-right:6px;vertical-align:top}
 .hlink[hidden]{display:none}
@@ -208,7 +208,8 @@ circle.dot:hover{r:8}
 .split-bar{display:flex;height:12px;border-radius:6px;overflow:hidden;gap:2px;margin:8px 0 6px}
 .split-bar div{height:100%;transition:width .6s ease}
 .who-link{display:block;margin:-6px 0 0;overflow:visible}
-.legend.who{display:flex;flex-wrap:wrap;gap:8px;margin-top:0}.legend.who .tag{margin:0}.legend.who .tag:nth-child(2){margin-left:auto}
+.legend.who{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:0}.legend.who .tag{margin:0;text-align:center;padding-top:5px;padding-bottom:5px}
+@media (max-width:700px){.legend.who{grid-template-columns:1fr;margin-top:8px}}
 .keys{font:400 11px/1.5 var(--mono);color:var(--mute);margin-top:6px}
 kbd{font:600 10.5px/1 var(--mono);border:1px solid var(--line);border-bottom-width:2px;border-radius:4px;padding:2px 5px;color:var(--ink2);background:var(--panel)}
 #toast{position:fixed;left:50%;bottom:22px;transform:translate(-50%,20px);background:var(--ink);color:var(--bg);font:600 12.5px/1.3 var(--sans);padding:10px 14px;border-radius:8px;opacity:0;transition:opacity .2s ease,transform .2s ease;pointer-events:none;z-index:10}
