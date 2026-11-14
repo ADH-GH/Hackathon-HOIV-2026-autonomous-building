@@ -217,6 +217,9 @@ svg text.ax{font:400 11px/1 var(--mono);fill:var(--mute)}
 /* one size for the blue figures in the header boxes and in the key figures, at every width; placed last so it wins */
 @media (max-width:1320px){nav button b,.tiles .tile b,.duo .tiles .tile b{font-size:24px}}
 @media (max-width:700px){nav button b,.tiles .tile b,.duo .tiles .tile b{font-size:21px}}
+circle.dot,.bld g.bx{transition:opacity .12s ease}
+.duo.linkdots circle.dot{opacity:.16}.duo.linkdots circle.dot.lit{opacity:1;stroke:var(--ink);stroke-width:2.5}
+.duo.linkrooms .bld g.bx{opacity:.22}.duo.linkrooms .bld g.bx.lit{opacity:1}.duo.linkrooms .bld g.bx.lit polygon{stroke:var(--ink);stroke-width:1.8}
 /* comfort: motion, hover, focus */
 header{position:sticky;top:0;z-index:5;background:var(--bg)}
 .tile{transition:transform .15s ease,border-color .15s ease,box-shadow .15s ease}
@@ -518,6 +521,14 @@ function tile(v, k, small, key, go) { const t = el('div', 'tile' + (key ? ' key'
 // floors pulled apart so every room stays visible. Drag turns it. A case that touches many rooms at once (a cold snap,
 // an event weekend) is a building-wide case and is not painted onto single rooms.
 let yaw = 0.62, zoom = 1.2, panY = 0, bldLayer = 'cases', bldFit = null, tlFit = null; window.addEventListener('resize', () => { if (bldFit) bldFit(); else if (tlFit) tlFit(); });
+// Building and timeline are linked: a room lights up its cases in the timeline, a case lights up its rooms and plant.
+let linkAt = {}, linkEp = {};
+function lightDots(asset) { const d = document.querySelector('.duo'); if (!d) return; const ids = new Set(((asset && linkAt[asset]) || []).map(e => e.id));
+  d.querySelectorAll('circle.dot.lit').forEach(c => c.classList.remove('lit')); d.classList.toggle('linkdots', ids.size > 0);
+  if (ids.size) d.querySelectorAll('circle.dot').forEach(c => { if (ids.has(c.dataset.ep)) { c.classList.add('lit'); c.parentNode.append(c); } }); }
+function lightRooms(ep) { const d = document.querySelector('.duo'); if (!d) return; const as = new Set((ep && linkEp[ep]) || []);
+  d.querySelectorAll('g.bx.lit').forEach(g => g.classList.remove('lit')); d.classList.toggle('linkrooms', as.size > 0);
+  if (as.size) d.querySelectorAll('g.bx').forEach(g => { if (as.has(g.dataset.a)) g.classList.add('lit'); }); }
 function buildingView(inc) {
   const B = D.building; if (!B || !B.rooms || !B.rooms.length) return null;
   const NOTE = {cases: 'Most serious case per room, with the number of cases.', noise: 'Noise complaints of guests per room over the year.', gaps: 'Hours without a temperature reading per room, and each floor\'s gateway.'};
@@ -528,6 +539,7 @@ function buildingView(inc) {
     if (rooms.length > 6) wide.push(e);
     for (const a of as) { if (/^R\d{3}$/.test(a) && rooms.length > 6) continue; (at[a] = at[a] || []).push(e); } }
   for (const k in at) at[k].sort((a, b) => rank[b.priority] - rank[a.priority] || b.start - a.start);
+  linkAt = at; linkEp = {}; for (const k in at) for (const e of at[k]) (linkEp[e.id] = linkEp[e.id] || []).push(k);
   const FH = 0.5, GAP = 1.2, boxes = [], nF = B.floors || Math.max(...B.rooms.map(r => r.floor));
   const perFloor = {}; for (const r of B.rooms) (perFloor[r.floor + r.o] = perFloor[r.floor + r.o] || []).push(r);
   for (const key in perFloor) perFloor[key].sort((a, b) => a.id.localeCompare(b.id)).forEach((r, i) => { const north = r.o === 'N', z = (r.floor - 1) * GAP;
@@ -573,13 +585,14 @@ function buildingView(inc) {
       const mx = (tp[0][0] + tp[2][0]) / 2, my = (tp[0][1] + tp[2][1]) / 2, n = b.room || b.gw || bldLayer === 'cases' ? Math.round(val(b)) : 0;
       if (n) g.append(svg('text', {x: mx, y: my + 4, 'text-anchor': 'middle', class: 'bn' + (heat != null && heat < 0.45 ? ' lo' : '')}, n));
       if (b.name) g.append(svg('text', {x: mx, y: my - (n ? 12 : -4), 'text-anchor': 'middle', class: 'bl'}, b.name));
+      g.dataset.a = b.id; g.addEventListener('mouseenter', () => lightDots(b.id)); g.addEventListener('mouseleave', () => lightDots(null));
       g.addEventListener('mousemove', ev => showTip(ev, tipFor(b))); g.addEventListener('mouseleave', hideTip);
       if (n && bldLayer === 'cases') g.addEventListener('click', () => { if (!moved) { hideTip(); open(at[b.id][0]); } });
       s.append(g); }
     flush(1e9);
     for (let f = 0; f <= nF; f++) { const p = P(cx0, 0, f * GAP + FH / 2); s.append(svg('text', {x: 14, y: p[1] + fs * 0.35, class: 'bf', style: 'font-size:' + fs.toFixed(1) + 'px'}, f < nF ? 'Floor ' + (f + 1) : 'Roof')); } }
   let dragX = null, dragY = null, moved = false;
-  s.addEventListener('pointerdown', ev => { dragX = ev.clientX; dragY = ev.clientY; moved = false; });
+  s.addEventListener('pointerdown', ev => { dragX = ev.clientX; dragY = ev.clientY; moved = false; lightDots(null); });
   window.addEventListener('pointerup', () => { dragX = null; setTimeout(() => { moved = false; }, 0); });
   s.addEventListener('pointermove', ev => { if (dragX == null || !s.isConnected) return; const dx = ev.clientX - dragX, dy = ev.clientY - dragY; if (Math.abs(dx) < 3 && Math.abs(dy) < 3 && !moved) return; moved = true; hideTip(); yaw += dx * 0.008;
     if (ev.pointerType === 'mouse') { const k = VH / s.getBoundingClientRect().height, lim = VH * 0.5 * zoom; panY = Math.max(-lim, Math.min(lim, panY + dy * k)); }   // touch keeps scrolling the page
@@ -730,7 +743,8 @@ function overview(root) {
       showTip(ev, '<b>' + esc(laneName(ln)) + '</b><br>' + n + ' case' + (n === 1 ? '' : 's') + ' in the 30 days around ' + esc(F_DAY.format(new Date(tv))) + (nc ? '<br>' + nc + ' of them critical' : '')); });
     band.addEventListener('mouseleave', hideTip); s.append(band);
     for (const e of cases) { const cc = svg('circle', {cx: x(e.start), cy: y, r: (e.priority === 'critical' ? 6 : 4.5) + (narrow ? 1 : 0), fill: e.priority === 'critical' ? 'var(--crit)' : 'var(--series)', stroke: 'var(--panel)', 'stroke-width': 2, style: 'cursor:pointer', class: 'dot'});
-      cc.addEventListener('mousemove', ev => showTip(ev, '<b>' + esc(episodeTitle(e)) + '</b><br>' + esc(lt(e.start)) + '<br>risk: ' + e.priority)); cc.addEventListener('mouseleave', hideTip);
+      cc.dataset.ep = e.id; cc.addEventListener('mouseenter', () => lightRooms(e.id)); cc.addEventListener('mouseleave', () => lightRooms(null));
+      cc.addEventListener('mousemove', ev => showTip(ev, '<b>' + esc(episodeTitle(e)) + '</b><br>' + esc(lt(e.start)) + '<br>risk: ' + e.priority + (linkEp[e.id] ? '' : '<br>building-wide, no single room'))); cc.addEventListener('mouseleave', hideTip);
       cc.addEventListener('click', () => open(e)); s.append(cc); } });
   for (const t of lanesLabels) s.append(t);          // above curves and bands, so the names stay readable; they take no pointer events
   const ticks = narrow ? 3 : half ? 4 : 6; for (let i = 0; i <= ticks; i++) { const tv = t0 + (t1 - t0) * i / ticks; s.append(svg('text', {x: x(tv), y: H - 6, 'text-anchor': i === 0 ? 'start' : i === ticks ? 'end' : 'middle'}, F_DAY.format(new Date(tv)))); }
