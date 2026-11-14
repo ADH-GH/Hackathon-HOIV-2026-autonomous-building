@@ -71,7 +71,6 @@ nav button small{display:block;font-size:11px;line-height:1.35;color:var(--mute)
 .tile b{display:block;font:500 27px/1.1 var(--mono);letter-spacing:-.02em;color:var(--series);white-space:nowrap}
 .tile span{display:block;font:500 10.5px/1.35 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--mute);margin-top:6px;overflow-wrap:anywhere}
 .tile small{display:block;font-size:11px;line-height:1.35;color:var(--mute);margin-top:3px}
-.tile.key{border-color:var(--accent)}
 .card .tiles .tile{background:var(--bg)}
 .card{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:20px;margin-top:12px;min-width:0}
 .card h2{margin:0 0 4px;font:600 18px/1.3 var(--display);letter-spacing:-.01em;color:var(--ink)}
