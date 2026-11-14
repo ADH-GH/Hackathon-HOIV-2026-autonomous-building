@@ -533,6 +533,7 @@ function buildingView(inc) {
   const colour = b => { const l = at[b.id]; if (!l) return ['var(--raise)', 0.9]; const p = l[0].priority; return [p === 'critical' ? 'var(--crit)' : p === 'high' ? 'var(--appr)' : 'var(--series)', Math.min(0.95, 0.55 + 0.1 * l.length)]; };
   const tipFor = b => { const l = at[b.id] || []; return '<b>' + b.label + '</b><br>' + (l.length ? l.length + ' case' + (l.length > 1 ? 's' : '') + '<br>' + l.slice(0, 4).map(e => lt(e.start).slice(0, 10) + ' · ' + episodeTitle(e) + ' · ' + e.priority).join('<br>') + (l.length > 4 ? '<br>and ' + (l.length - 4) + ' more' : '') : 'no case of its own'); };
   function draw() { s.replaceChildren(); const c = Math.cos(yaw), sn = Math.sin(yaw);
+    const shown = s.getBoundingClientRect(), k = shown.height ? Math.min(shown.height / VH, shown.width / VW) : 1, fs = 13 / k;   // floor names keep 13 px on screen, whatever the view's size
     const P = (x, y, z) => { const xr = (x - cx0) * c - y * sn, yr = (x - cx0) * sn + y * c; return [VW / 2 + 30 + xr * S * zoom, VH * 0.5 + panY + (yr * S * 0.4 - (z - top / 2) * S * 0.86) * zoom, yr]; };
     const pts = a => a.map(p => p[0].toFixed(1) + ',' + p[1].toFixed(1)).join(' ');
     for (let f = 0; f <= nF; f++) { const z = f * GAP - 0.03, q = [P(-0.1, -1.55, z), P(W + 0.04, -1.55, z), P(W + 0.04, 1.55, z), P(-0.1, 1.55, z)];           // floor slab
@@ -553,7 +554,7 @@ function buildingView(inc) {
       if (n) g.addEventListener('click', () => { if (!moved) { hideTip(); open(at[b.id][0]); } });
       s.append(g); }
     flush(1e9);
-    for (let f = 0; f <= nF; f++) { const p = P(cx0, 0, f * GAP + FH / 2); s.append(svg('text', {x: 14, y: p[1] + 4, class: 'bf'}, f < nF ? 'Floor ' + (f + 1) : 'Roof')); } }
+    for (let f = 0; f <= nF; f++) { const p = P(cx0, 0, f * GAP + FH / 2); s.append(svg('text', {x: 14, y: p[1] + fs * 0.35, class: 'bf', style: 'font-size:' + fs.toFixed(1) + 'px'}, f < nF ? 'Floor ' + (f + 1) : 'Roof')); } }
   let dragX = null, dragY = null, moved = false;
   s.addEventListener('pointerdown', ev => { dragX = ev.clientX; dragY = ev.clientY; moved = false; });
   window.addEventListener('pointerup', () => { dragX = null; setTimeout(() => { moved = false; }, 0); });
@@ -567,9 +568,9 @@ function buildingView(inc) {
   const lg = el('div', 'legend big'); lg.innerHTML = '<span><i class="sw" style="background:var(--crit)"></i>critical case</span><span><i class="sw" style="background:var(--appr)"></i>high</span><span><i class="sw" style="background:var(--series)"></i>medium or low</span><span><i class="sw" style="background:var(--raise);border:1px solid var(--line)"></i>no case of its own</span>'; card.append(lg);
   if (wide.length) { const w = el('span', 'wide', wide.length + ' building-wide cases not shown per room'); w.title = 'Cold snaps, event weekends and building-wide energy plans concern many rooms at once. They are counted for the building as a whole.'; lg.append(w); }
   // On a wide screen the view takes exactly the height that is left, so building and key figures are visible without scrolling.
-  bldFit = () => { if (!s.isConnected) return; if (innerWidth <= 1100) { s.style.height = ''; return; }
+  bldFit = () => { if (!s.isConnected) return; if (innerWidth <= 1100) { s.style.height = ''; draw(); return; }
     s.style.height = '300px'; const r = s.getBoundingClientRect(), below = card.getBoundingClientRect().bottom - r.bottom;
-    s.style.height = Math.round(Math.max(190, Math.min(640, innerHeight - (r.top + scrollY) - below - 16))) + 'px'; };
+    s.style.height = Math.round(Math.max(190, Math.min(640, innerHeight - (r.top + scrollY) - below - 16))) + 'px'; draw(); };
   requestAnimationFrame(bldFit); if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => bldFit && bldFit());
   return card; }
 let whoDraw = null; window.addEventListener('resize', () => whoDraw && whoDraw());
