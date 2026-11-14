@@ -796,6 +796,10 @@ function overview(root) {
   labelCells(table); sc.append(table); tb.append(sc); root.append(tb);
   if (D.calendar) root.append(calendarCard());
 }
+// A tap anywhere outside the calendar grid closes the open day again (phones have no hover to leave).
+let calClose = null;
+// pointerdown as well as click: Safari on the iPhone sends no click for a tap on plain text or background.
+for (const evn of ['click', 'pointerdown']) document.addEventListener(evn, ev => { if (calClose && !(ev.target.closest && ev.target.closest('.cal'))) calClose(); });
 // Maintenance and risk calendar: one cell per day, darker with every risk condition that held that day; a dot marks
 // plant or building work scheduled for it. Planning view only, nothing here feeds a decision.
 function calendarCard() { const C = D.calendar, L = C.limits, c = el('div', 'card'), by = {}; for (const d of C.days) by[d.d] = d;
@@ -812,6 +816,7 @@ function calendarCard() { const C = D.calendar, L = C.limits, c = el('div', 'car
       cell.addEventListener('mousemove', ev => showTip(ev, say(key, d))); cell.addEventListener('mouseleave', hideTip);
       cell.addEventListener('click', () => { hideTip(); const on = cell.classList.contains('sel'); g.querySelectorAll('i.sel').forEach(q => q.classList.remove('sel')); if (on) { info.textContent = HINT_CAL; info.classList.remove('on'); } else { cell.classList.add('sel'); info.innerHTML = say(key, d); info.classList.add('on'); } });
       g.append(cell); } }
+  calClose = () => { g.querySelectorAll('i.sel').forEach(q => q.classList.remove('sel')); info.textContent = HINT_CAL; info.classList.remove('on'); };
   c.append(g, info);
   const lg = el('div', 'legend big'); lg.innerHTML = [0, 1, 2, 3].map(n => '<span><i class="sw" style="background:' + shade(n) + (n ? '' : ';border:1px solid var(--line)') + '"></i>' + (n === 3 ? '3 or more' : n === 0 ? 'none' : n) + '</span>').join('') + '<span><i class="sw cal-k work"></i>plant or building work</span><span><i class="sw cal-k late"></i>work postponed</span>';
   c.append(lg);
@@ -1050,7 +1055,7 @@ let lastW = window.innerWidth, timer = null;
 if (/[?&]voicetest\b/.test(location.search)) setTimeout(voiceTest, 0);
 if (/[?&]emergencytest\b/.test(location.search)) setTimeout(() => console.log(JSON.stringify(VT.emergency({query: 'R201', what: 'Water is coming through the ceiling in the corridor on the second floor.'}))), 300);
 // ?caltest taps the first calendar day with work on it, for a screenshot check
-if (/[?&]caltest\b/.test(location.search)) setTimeout(() => { const q = document.querySelector('.cal i.late, .cal i.work'); if (q) q.click(); }, 0);
+if (/[?&]caltest\b/.test(location.search)) setTimeout(() => { const q = document.querySelector('.cal i.late, .cal i.work'); if (q) q.click(); if (/caltest=out/.test(location.search)) document.body.click(); }, 0);
 // ?tiptest pins a tooltip at the right edge, for a screenshot check of the placement
 if (/[?&]tiptest\b/.test(location.search)) setTimeout(() => { const vw = document.documentElement.clientWidth; showTip({clientX: vw - 8, clientY: 300}, '<b>Water leak in a room · R208</b><br>2026-11-10 16:30 CET<br>risk: high'); const r = tip.getBoundingClientRect(); document.title = 'tip ' + Math.round(r.left) + '..' + Math.round(r.right) + ' of ' + vw; const m = document.createElement('div'); m.style.cssText = 'position:fixed;left:' + (vw - 9) + 'px;top:294px;width:6px;height:12px;background:#ffb020;z-index:20'; document.body.append(m); }, 50);
 window.addEventListener('resize', () => { clearTimeout(timer); timer = setTimeout(() => { if (Math.abs(window.innerWidth - lastW) > 40) { lastW = window.innerWidth; render(); } }, 150); });
