@@ -501,7 +501,7 @@ function overview(root) {
   // time strip
   const c = el('div', 'card'); c.append(el('h2', null, 'When the cases happened'), el('p', 'note', 'One dot per case, one lane per scenario; red dots are critical. The blue curve behind each lane shows how many cases fall around that time, the red curve how many of them are critical. Hover for details, click a dot to open.'));
   const narrow = window.innerWidth < 700, W = narrow ? Math.max(300, window.innerWidth - 74) : 1000, lanes = ['S01', 'S02', 'S03', 'S04', 'S05', 'ENG', 'LOG'];
-  const gap = narrow ? 58 : 50, rise = narrow ? 26 : 30, m = {l: narrow ? 4 : 190, r: narrow ? 8 : 14, t: narrow ? 44 : 38, b: 26}, H = m.t + (lanes.length - 1) * gap + 14 + m.b;
+  const gap = narrow ? 68 : 64, rise = narrow ? 36 : 44, m = {l: narrow ? 4 : 190, r: narrow ? 8 : 14, t: narrow ? 54 : 52, b: 26}, H = m.t + (lanes.length - 1) * gap + 14 + m.b;
   const t0 = Math.min(...E.map(e => e.start)), t1 = Math.max(...E.map(e => e.start), t0 + 1);
   const x = v => m.l + (v - t0) / (t1 - t0) * (W - m.l - m.r), s = svg('svg', {viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': 'Cases over time'});
   // Density curve behind each lane: how many cases happen around that time. A Gaussian window of about
