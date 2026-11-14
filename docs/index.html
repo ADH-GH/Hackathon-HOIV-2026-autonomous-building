@@ -135,7 +135,7 @@ nav button small{display:block;font-size:11px;line-height:1.35;color:var(--mute)
 .legend i.mark{border-top:0;border-left:2px solid var(--mark);height:12px;width:0}
 svg{display:block;width:100%;height:auto;overflow:visible}
 svg text{font:10.5px var(--mono);fill:var(--mute)}
-svg .lbl{fill:var(--ink2)}
+svg .lbl{fill:var(--ink2)}.lbl.in{font:500 11.5px/1 var(--mono);letter-spacing:.04em;paint-order:stroke;stroke:var(--panel);stroke-width:3px;stroke-linejoin:round;pointer-events:none}
 #tip{position:fixed;left:0;top:0;width:max-content;pointer-events:none;background:var(--ink);color:var(--bg);font-size:12px;line-height:1.4;padding:7px 9px;border-radius:6px;max-width:300px;z-index:9;display:none}
 .log{margin:6px 0 0;padding:0;list-style:none;font-size:13.5px}
 .log li{display:grid;grid-template-columns:104px 1fr;gap:8px;padding:5px 0;border-bottom:1px solid var(--grid)}
@@ -199,12 +199,12 @@ input[type=search]{height:36px;font:inherit;color:var(--ink);background:var(--bg
 svg text.ax{font:400 11px/1 var(--mono);fill:var(--mute)}
 .card h3{font:600 14px/1.3 var(--display);margin:16px 0 4px}
 .legend.big{font-size:14px;gap:22px;margin-top:10px;margin-bottom:0}.legend.big .wide{color:var(--mute);margin-left:auto;cursor:help}.legend.big i.sw{width:15px;height:15px;border-radius:4px;vertical-align:-2px;margin-right:8px}
-.bldwrap{position:relative}.seg{position:absolute;top:8px;left:0;display:flex;gap:6px;z-index:1}
+.bldwrap{position:relative}.seg{display:flex;gap:6px;margin:2px 88px 6px 0;flex-wrap:wrap}
 .seg button{height:32px;font:600 13px/1 var(--sans);color:var(--ink2);background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:0 12px;cursor:pointer}
-.seg button.on{color:var(--ink);border-color:var(--accent);box-shadow:inset 0 -2px 0 var(--accent)}.bldzoom{position:absolute;top:8px;right:0;display:flex;flex-direction:column;gap:6px}
-.bldzoom button{width:36px;height:36px;font:500 20px/1 var(--sans);color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:8px;cursor:pointer}
+.seg button.on{color:var(--ink);border-color:var(--accent);box-shadow:inset 0 -2px 0 var(--accent)}.bldzoom{position:absolute;top:2px;right:0;display:flex;gap:6px}
+.bldzoom button{width:32px;height:32px;font:500 20px/1 var(--sans);color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:8px;cursor:pointer}
 .bldzoom button:hover{border-color:var(--mute);background:var(--raise)}
-.duo{display:grid;grid-template-columns:minmax(0,1.75fr) minmax(0,1fr);gap:12px;align-items:stretch;margin-bottom:12px}
+.duo{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px;align-items:stretch;margin-bottom:0}
 .duo>.card{margin:0;display:flex;flex-direction:column}
 .duo .tiles{flex:1;grid-auto-flow:row;grid-template-columns:repeat(2,minmax(0,1fr));grid-auto-rows:1fr}
 .duo .tiles .tile{display:flex;flex-direction:column;justify-content:center;padding:10px 14px 11px}
@@ -517,8 +517,8 @@ function tile(v, k, small, key, go) { const t = el('div', 'tile' + (key ? ' key'
 let yaw = 0.62, zoom = 1, panY = 0, bldLayer = 'cases', bldFit = null; window.addEventListener('resize', () => bldFit && bldFit());
 function buildingView(inc) {
   const B = D.building; if (!B || !B.rooms || !B.rooms.length) return null;
-  const NOTE = {cases: 'Rooms and plant, coloured by their most serious case, with the number of cases. Drag to turn or move, click to open a case.', noise: 'Noise complaints of guests per room over the year. Drag to turn or move.', gaps: 'Hours in which a room sent no temperature reading, and per floor the gateway its sensors hang on. Drag to turn or move.'};
-  const note = el('p', 'note'), setNote = () => { note.textContent = NOTE[bldLayer] + ' Schematic: the dataset gives floor and orientation per room, no floor plan.'; }; setNote();
+  const NOTE = {cases: 'Coloured by the most serious case, with the number of cases. Drag to turn, click to open.', noise: 'Noise complaints of guests per room over the year.', gaps: 'Hours without a temperature reading per room, and the gateway of each floor.'};
+  const note = el('p', 'note'), setNote = () => { note.textContent = NOTE[bldLayer] + ' Schematic: the dataset has floors and orientations, no floor plan.'; }; setNote();
   const card = el('div', 'card'); card.append(el('h2', null, 'Where it happened'), note);
   const rank = {critical: 3, high: 2, medium: 1, low: 0}, at = {}, wide = [];
   for (const e of inc) { const as = [...new Set(e.decisions.flatMap(d => d.affected_assets || []).map(a => a.replace(/^WM_(R\d+)$/, '$1')))], rooms = as.filter(a => /^R\d{3}$/.test(a));
@@ -587,7 +587,7 @@ function buildingView(inc) {
   wrap.append(s, ctl); card.append(wrap);
   const lg = el('div', 'legend big'), sw = (c, t) => '<span><i class="sw" style="background:' + c + '"></i>' + t + '</span>';
   const legend = () => { if (bldLayer === 'cases') { lg.innerHTML = sw('var(--crit)', 'critical case') + sw('var(--appr)', 'high') + sw('var(--series)', 'medium or low') + '<span><i class="sw" style="background:var(--raise);border:1px solid var(--line)"></i>no case of its own</span>';
-      if (wide.length) { const w = el('span', 'wide', wide.length + ' building-wide cases not shown per room'); w.title = 'Cold snaps, event weekends and building-wide energy plans concern many rooms at once. They are counted for the building as a whole.'; lg.append(w); } }
+      if (wide.length) { const w = el('span', 'wide', '+ ' + wide.length + ' building-wide'); w.title = wide.length + ' cases concern many rooms at once (cold snaps, event weekends, building-wide energy plans). They are counted for the building as a whole and are not shown per room.'; lg.append(w); } }
     else { const tot = bldLayer === 'noise' ? Object.values(NOISE).reduce((a, b) => a + b, 0) + ' noise complaints in the year' : Math.round(Object.values(GAPS).reduce((a, b) => a + b, 0)) + ' room-hours without a reading; end box: gateway';
       lg.innerHTML = '<span><i class="sw" style="background:var(--hot)"></i>many</span><span><i class="sw" style="background:color-mix(in oklab, var(--hot) 22%, var(--cool))"></i>few</span><span><i class="sw" style="background:var(--raise);border:1px solid var(--line)"></i>none</span>';
       const w = el('span', 'wide', tot); w.title = bldLayer === 'noise' ? 'Guest requests of the type noise complaint, counted per room' : 'Quarter hours in which a room sent no temperature, summed per room; the building system raised its own communication-loss alarms, shown on the gateway'; lg.append(w); } };
@@ -680,9 +680,10 @@ function overview(root) {
     kt(inc.filter(e => e.priority === 'critical').length, 'critical cases', 'red in building and timeline', 'Cases whose highest priority is critical'),
     kt(wait.length, 'waiting for a person', needConsent + ' also need guest consent', 'Decisions that wait for approval. Click to open the approvals', false, 'queue'),
     kt(E.length - inc.length, 'routine guest answers', 'not counted as incidents', 'Routine answers to guests. Tick the box in S01 or S03 to see them'));
-  const kf = el('div', 'card'); kf.style.marginTop = '0'; kf.append(el('h2', null, 'Key figures'), el('p', 'note', 'Head start, how it was checked, what waits, what is counted. Hover a box for details.'), tl);
-  const bld = buildingView(inc);            // the building on the left, the four key figures as a 2 x 2 block on the right
-  if (bld) { const duo = el('div', 'duo'); bld.style.marginTop = '0'; duo.append(bld, kf); root.append(duo); } else root.append(kf);
+  const kf = el('div', 'card'); kf.append(el('h2', null, 'Key figures'), el('p', 'note', 'Head start, how it was checked, what waits, what is counted. Hover a box for details.'), tl);
+  const bld = buildingView(inc), duo = bld ? el('div', 'duo') : null;   // first row: where it happened (the building) beside when it happened (the timeline)
+  if (duo) { bld.style.marginTop = '0'; duo.append(bld); root.append(duo); }
+  root.append(kf);
   const na = all.filter(d => level(d) === 'autonomous').length, nh = all.filter(d => level(d) === 'human_approval').length, nc = all.length - na - nh;
   const sb = el('div', 'card'); sb.append(el('h2', null, 'Who decides'), el('p', 'note', 'Share of all decisions by autonomy level. The gate is code: a detector can ask for more oversight, never for less.'));
   const bar = el('div', 'split-bar'); [[na, 'var(--auto)', 'autonomous'], [nh, 'var(--appr)', 'human approval'], [nc, 'var(--cons)', 'approval + guest consent']].forEach(([n, col, name]) => { const seg = el('div'); seg.style.background = col; seg.style.width = Math.max(n ? 0.8 : 0, n / all.length * 100) + '%';
@@ -699,9 +700,9 @@ function overview(root) {
       link.append(svg('path', {d: `M${sx.toFixed(1)} 0V${mid}H${tx.toFixed(1)}V22`, fill: 'none', stroke: segs[i].style.background, 'stroke-width': 1.5, 'stroke-opacity': 0.8, 'stroke-linejoin': 'round'})); }); };
   requestAnimationFrame(whoDraw); if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => whoDraw && whoDraw());
   // time strip
-  const c = el('div', 'card'); c.append(el('h2', null, 'When the cases happened'), el('p', 'note', 'One dot per case, one lane per scenario; red dots are critical. The blue curve behind each lane shows how many cases fall around that time, the red curve how many of them are critical. Hover for details, click a dot to open.'));
-  const narrow = window.innerWidth < 700, W = narrow ? Math.max(300, window.innerWidth - 74) : 1000, lanes = ['S01', 'S02', 'S03', 'S04', 'S05', 'ENG', 'LOG'];
-  const gap = narrow ? 68 : 64, rise = narrow ? 36 : 44, m = {l: narrow ? 4 : 190, r: narrow ? 8 : 14, t: narrow ? 54 : 52, b: 26}, H = m.t + (lanes.length - 1) * gap + 14 + m.b;
+  const c = el('div', 'card'); c.append(el('h2', null, 'When the cases happened'), el('p', 'note', 'One dot per case, one lane per scenario; red is critical. The curves show how many cases fall around that time. Hover for details, click a dot to open.'));
+  const narrow = window.innerWidth < 700, half = !!duo && window.innerWidth > 1100, W = narrow ? Math.max(300, window.innerWidth - 74) : half ? 660 : 1000, lanes = ['S01', 'S02', 'S03', 'S04', 'S05', 'ENG', 'LOG'];
+  const gap = narrow ? 68 : half ? 47 : 64, rise = narrow ? 36 : half ? 33 : 44, m = {l: 6, r: narrow ? 8 : 10, t: (narrow ? 36 : half ? 33 : 44) + 6, b: 26}, H = m.t + (lanes.length - 1) * gap + 14 + m.b;
   const t0 = Math.min(...E.map(e => e.start)), t1 = Math.max(...E.map(e => e.start), t0 + 1);
   const x = v => m.l + (v - t0) / (t1 - t0) * (W - m.l - m.r), s = svg('svg', {viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': 'Cases over time'});
   // Density curve behind each lane: how many cases happen around that time. A Gaussian window of about
@@ -710,6 +711,7 @@ function overview(root) {
   const dens = lanes.map(ln => { const ts = inc.filter(q => q.scenario === ln).map(q => q.start); return grid.map(g => ts.reduce((a, t) => a + Math.exp(-0.5 * Math.pow((g - t) / BW, 2)), 0)); });
   const densCrit = lanes.map(ln => { const ts = inc.filter(q => q.scenario === ln && q.priority === 'critical').map(q => q.start); return grid.map(g => ts.reduce((a, t) => a + Math.exp(-0.5 * Math.pow((g - t) / BW, 2)), 0)); });
   const peak = Math.max(1e-9, ...dens.flat());
+  const lanesLabels = [];
   lanes.forEach((ln, i) => { const y = m.t + i * gap, d = dens[i], cases = inc.filter(q => q.scenario === ln);
     let area = `M${x(grid[0]).toFixed(1)} ${y}`; d.forEach((v, k) => { area += `L${x(grid[k]).toFixed(1)} ${(y - v / peak * rise).toFixed(1)}`; }); area += `L${x(grid[N - 1]).toFixed(1)} ${y}Z`;
     let line = ''; d.forEach((v, k) => { line += (k ? 'L' : 'M') + x(grid[k]).toFixed(1) + ' ' + (y - v / peak * rise).toFixed(1); });
@@ -717,7 +719,7 @@ function overview(root) {
     const dc = densCrit[i]; if (dc.some(v => v > 0.01)) { let ca = `M${x(grid[0]).toFixed(1)} ${y}`, cl = ''; dc.forEach((v, k) => { const yy = (y - v / peak * rise).toFixed(1); ca += `L${x(grid[k]).toFixed(1)} ${yy}`; cl += (k ? 'L' : 'M') + x(grid[k]).toFixed(1) + ' ' + yy; }); ca += `L${x(grid[N - 1]).toFixed(1)} ${y}Z`;
       let seg = '', pen = false; dc.forEach((v, k) => { if (v / peak * rise < 0.6) { pen = false; return; } seg += (pen ? 'L' : 'M') + x(grid[k]).toFixed(1) + ' ' + (y - v / peak * rise).toFixed(1); pen = true; });
       s.append(svg('path', {d: ca, fill: 'var(--crit)', 'fill-opacity': 0.22}), svg('path', {d: seg, fill: 'none', stroke: 'var(--crit)', 'stroke-opacity': 0.75, 'stroke-width': 1.2})); }
-    s.append(svg('line', {x1: m.l, x2: W - m.r, y1: y, y2: y, stroke: 'var(--line)'})); s.append(svg('text', {x: narrow ? m.l : 0, y: narrow ? y - rise - 4 : y + 4, class: 'lbl'}, SC[ln]));
+    s.append(svg('line', {x1: m.l, x2: W - m.r, y1: y, y2: y, stroke: 'var(--line)'})); lanesLabels.push(svg('text', {x: m.l + 2, y: y - 9, class: 'lbl in'}, SC[ln]));        // the lane's name sits inside the lane, just above its zero line
     const band = svg('rect', {x: m.l, y: y - rise, width: W - m.l - m.r, height: rise + 8, fill: 'transparent'});
     band.addEventListener('mousemove', ev => { const r = s.getBoundingClientRect(), tv = t0 + ((ev.clientX - r.left) / r.width * W - m.l) / (W - m.l - m.r) * (t1 - t0), near = cases.filter(q => Math.abs(q.start - tv) <= 15 * DAY), n = near.length, nc = near.filter(q => q.priority === 'critical').length;
       showTip(ev, '<b>' + esc(SC[ln]) + '</b><br>' + n + ' case' + (n === 1 ? '' : 's') + ' in the 30 days around ' + esc(F_DAY.format(new Date(tv))) + (nc ? '<br>' + nc + ' of them critical' : '')); });
@@ -725,8 +727,9 @@ function overview(root) {
     for (const e of cases) { const cc = svg('circle', {cx: x(e.start), cy: y, r: (e.priority === 'critical' ? 6 : 4.5) + (narrow ? 1 : 0), fill: e.priority === 'critical' ? 'var(--crit)' : 'var(--series)', stroke: 'var(--panel)', 'stroke-width': 2, style: 'cursor:pointer', class: 'dot'});
       cc.addEventListener('mousemove', ev => showTip(ev, '<b>' + esc(episodeTitle(e)) + '</b><br>' + esc(lt(e.start)) + '<br>risk: ' + e.priority)); cc.addEventListener('mouseleave', hideTip);
       cc.addEventListener('click', () => open(e)); s.append(cc); } });
-  const ticks = narrow ? 3 : 6; for (let i = 0; i <= ticks; i++) { const tv = t0 + (t1 - t0) * i / ticks; s.append(svg('text', {x: x(tv), y: H - 6, 'text-anchor': i === 0 ? 'start' : i === ticks ? 'end' : 'middle'}, F_DAY.format(new Date(tv)))); }
-  c.append(s); root.append(c);
+  for (const t of lanesLabels) s.append(t);          // above curves and bands, so the names stay readable; they take no pointer events
+  const ticks = narrow ? 3 : half ? 4 : 6; for (let i = 0; i <= ticks; i++) { const tv = t0 + (t1 - t0) * i / ticks; s.append(svg('text', {x: x(tv), y: H - 6, 'text-anchor': i === 0 ? 'start' : i === ticks ? 'end' : 'middle'}, F_DAY.format(new Date(tv)))); }
+  c.append(s); if (duo) { c.style.marginTop = '0'; duo.append(c); } else root.append(c);
   // table
   const tb = el('div', 'card'); tb.append(el('h2', null, 'Technical incidents and how early they were seen'), el('p', 'note', 'How much earlier the system saw each fault than the building did. "Seen earlier by" is the time between our first decision and the moment the repair was logged in the dataset: 187 h means we flagged it 187 hours before anyone wrote the repair order. Longer is better. The repair orders are used for this comparison only; no detector reads them.'));
   const sc = el('div', 'scroll'), table = el('table'), hr = el('tr'); ['Case', 'Our first decision (Vienna)', 'Risk', 'Repair logged in the dataset', 'Seen earlier by'].forEach(h => hr.append(el('th', null, h))); table.append(hr);
