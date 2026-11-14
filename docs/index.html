@@ -195,7 +195,7 @@ input[type=search]{height:36px;font:inherit;color:var(--ink);background:var(--bg
 .bld .bl{font:500 10px/1 var(--mono);letter-spacing:.08em;fill:var(--ink2);pointer-events:none}
 .bld .bf{font:500 10.5px/1 var(--mono);letter-spacing:.12em;text-transform:uppercase;fill:var(--mute)}
 .legend i.sw{width:12px;height:12px;border:0;border-radius:3px;vertical-align:-1px}
-.legend.big{font-size:14px;gap:22px;margin-top:10px}.legend.big i.sw{width:15px;height:15px;border-radius:4px;vertical-align:-2px;margin-right:8px}
+.legend.big{font-size:14px;gap:22px;margin-top:10px;margin-bottom:0}.legend.big .wide{color:var(--mute);margin-left:auto;cursor:help}.legend.big i.sw{width:15px;height:15px;border-radius:4px;vertical-align:-2px;margin-right:8px}
 .bldwrap{position:relative}.bldzoom{position:absolute;top:8px;right:0;display:flex;flex-direction:column;gap:6px}
 .bldzoom button{width:36px;height:36px;font:500 20px/1 var(--sans);color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:8px;cursor:pointer}
 .bldzoom button:hover{border-color:var(--mute);background:var(--raise)}
@@ -203,7 +203,7 @@ input[type=search]{height:36px;font:inherit;color:var(--ink);background:var(--bg
 .duo>.card{margin:0;display:flex;flex-direction:column}
 .duo .tiles{flex:1;grid-auto-flow:row;grid-template-columns:repeat(2,minmax(0,1fr));grid-auto-rows:1fr}
 .duo .tiles .tile{display:flex;flex-direction:column;justify-content:center;padding:14px 14px 16px}
-.duo .tiles .tile b{font-size:34px}
+.duo .tiles .tile b{font-size:30px}
 @media (max-width:1100px){.duo{grid-template-columns:1fr}.duo .tiles{flex:none;grid-auto-rows:auto}.duo .tiles .tile{justify-content:flex-start}.duo .tiles .tile b{font-size:23px}}
 @media (max-width:700px){.duo .tiles .tile b{font-size:21px}.duo .tiles .tile{padding:9px 10px 10px}}
 /* comfort: motion, hover, focus */
@@ -506,17 +506,17 @@ function tile(v, k, small, key, go) { const t = el('div', 'tile' + (key ? ' key'
 // an orientation and no floor plan, so rooms are placed by number: five south rooms in front, five north rooms behind,
 // floors pulled apart so every room stays visible. Drag turns it. A case that touches many rooms at once (a cold snap,
 // an event weekend) is a building-wide case and is not painted onto single rooms.
-let yaw = 0.62, zoom = 1, panY = 0;
+let yaw = 0.62, zoom = 1, panY = 0, bldFit = null; window.addEventListener('resize', () => bldFit && bldFit());
 function buildingView(inc) {
   const B = D.building; if (!B || !B.rooms || !B.rooms.length) return null;
   const card = el('div', 'card'); card.append(el('h2', null, 'Where it happened'),
-    el('p', 'note', 'Every room and plant asset of PLATO-40, coloured by its most serious case; the number is how many cases it had. Drag sideways to turn, up or down to move, plus and minus to zoom; hover for the cases, click to open the most serious one. Schematic: the dataset gives a floor and an orientation per room, not a floor plan.'));
+    el('p', 'note', 'Rooms and plant, coloured by their most serious case, with the number of cases. Drag to turn or move, click to open a case. Schematic: the dataset gives floor and orientation per room, no floor plan.'));
   const rank = {critical: 3, high: 2, medium: 1, low: 0}, at = {}, wide = [];
   for (const e of inc) { const as = [...new Set(e.decisions.flatMap(d => d.affected_assets || []).map(a => a.replace(/^WM_(R\d+)$/, '$1')))], rooms = as.filter(a => /^R\d{3}$/.test(a));
     if (rooms.length > 6) wide.push(e);
     for (const a of as) { if (/^R\d{3}$/.test(a) && rooms.length > 6) continue; (at[a] = at[a] || []).push(e); } }
   for (const k in at) at[k].sort((a, b) => rank[b.priority] - rank[a.priority] || b.start - a.start);
-  const FH = 0.5, GAP = 1.8, boxes = [], nF = B.floors || Math.max(...B.rooms.map(r => r.floor));
+  const FH = 0.5, GAP = 1.42, boxes = [], nF = B.floors || Math.max(...B.rooms.map(r => r.floor));
   const perFloor = {}; for (const r of B.rooms) (perFloor[r.floor + r.o] = perFloor[r.floor + r.o] || []).push(r);
   for (const key in perFloor) perFloor[key].sort((a, b) => a.id.localeCompare(b.id)).forEach((r, i) => { const north = r.o === 'N', z = (r.floor - 1) * GAP;
     boxes.push({id: r.id, label: r.id + ' · floor ' + r.floor + ', faces ' + (north ? 'north' : 'south'), x0: i, x1: i + 0.94, y0: north ? -1.45 : 0.25, y1: north ? -0.25 : 1.45, z0: z, z1: z + FH, room: true}); });
@@ -529,11 +529,11 @@ function buildingView(inc) {
   if (has('WASTE_MAIN')) plant('WASTE_MAIN', 'WASTE_MAIN · central waste container', W + 0.35, -1.2, 0.9, 0.9, 0, 0.5);
   if (has('AHU1')) plant('AHU1', 'AHU1 · air handling unit, roof', 0.3, -1.1, 1.5, 0.9, roof, 0.45);
   if (has('PV1')) plant('PV1', 'PV1 · photovoltaics, roof', 2.3, -1.2, 2.5, 2.4, roof, 0.08);
-  const VW = 980, VH = 640, S = 66, cx0 = W / 2, s = svg('svg', {viewBox: `0 0 ${VW} ${VH}`, class: 'bld', role: 'img', 'aria-label': 'Schematic 3D view of the building with the number of cases per room and asset'});
+  const VW = 860, VH = 500, S = 66, cx0 = W / 2, s = svg('svg', {viewBox: `0 0 ${VW} ${VH}`, class: 'bld', role: 'img', 'aria-label': 'Schematic 3D view of the building with the number of cases per room and asset'});
   const colour = b => { const l = at[b.id]; if (!l) return ['var(--raise)', 0.9]; const p = l[0].priority; return [p === 'critical' ? 'var(--crit)' : p === 'high' ? 'var(--appr)' : 'var(--series)', Math.min(0.95, 0.55 + 0.1 * l.length)]; };
   const tipFor = b => { const l = at[b.id] || []; return '<b>' + b.label + '</b><br>' + (l.length ? l.length + ' case' + (l.length > 1 ? 's' : '') + '<br>' + l.slice(0, 4).map(e => lt(e.start).slice(0, 10) + ' · ' + episodeTitle(e) + ' · ' + e.priority).join('<br>') + (l.length > 4 ? '<br>and ' + (l.length - 4) + ' more' : '') : 'no case of its own'); };
   function draw() { s.replaceChildren(); const c = Math.cos(yaw), sn = Math.sin(yaw);
-    const P = (x, y, z) => { const xr = (x - cx0) * c - y * sn, yr = (x - cx0) * sn + y * c; return [VW / 2 + 30 + xr * S * zoom, VH * 0.5 + panY + (yr * S * 0.46 - (z - top / 2) * S * 0.86) * zoom, yr]; };
+    const P = (x, y, z) => { const xr = (x - cx0) * c - y * sn, yr = (x - cx0) * sn + y * c; return [VW / 2 + 30 + xr * S * zoom, VH * 0.5 + panY + (yr * S * 0.4 - (z - top / 2) * S * 0.86) * zoom, yr]; };
     const pts = a => a.map(p => p[0].toFixed(1) + ',' + p[1].toFixed(1)).join(' ');
     for (let f = 0; f <= nF; f++) { const z = f * GAP - 0.03, q = [P(-0.1, -1.55, z), P(W + 0.04, -1.55, z), P(W + 0.04, 1.55, z), P(-0.1, 1.55, z)];           // floor slab
       const slab = svg('polygon', {points: pts(q), fill: 'var(--bg)', 'fill-opacity': 0.55, stroke: 'var(--line)', 'stroke-width': 1}); slab.dataset.o = f * 1000 - 500; s.append(slab); }
@@ -565,7 +565,12 @@ function buildingView(inc) {
     b.onclick = () => { zoom = Math.min(2.4, Math.max(0.6, zoom * f)); if (zoom <= 1) panY = 0; draw(); }; ctl.append(b); }
   wrap.append(s, ctl); card.append(wrap);
   const lg = el('div', 'legend big'); lg.innerHTML = '<span><i class="sw" style="background:var(--crit)"></i>critical case</span><span><i class="sw" style="background:var(--appr)"></i>high</span><span><i class="sw" style="background:var(--series)"></i>medium or low</span><span><i class="sw" style="background:var(--raise);border:1px solid var(--line)"></i>no case of its own</span>'; card.append(lg);
-  if (wide.length) card.append(el('p', 'note', wide.length + ' cases concern many rooms at once (cold snaps, event weekends, building-wide energy plans). They are counted for the building as a whole and are not painted onto single rooms.'));
+  if (wide.length) { const w = el('span', 'wide', wide.length + ' building-wide cases not shown per room'); w.title = 'Cold snaps, event weekends and building-wide energy plans concern many rooms at once. They are counted for the building as a whole.'; lg.append(w); }
+  // On a wide screen the view takes exactly the height that is left, so building and key figures are visible without scrolling.
+  bldFit = () => { if (!s.isConnected) return; if (innerWidth <= 1100) { s.style.height = ''; return; }
+    s.style.height = '300px'; const r = s.getBoundingClientRect(), below = card.getBoundingClientRect().bottom - r.bottom;
+    s.style.height = Math.round(Math.max(190, Math.min(640, innerHeight - (r.top + scrollY) - below - 16))) + 'px'; };
+  requestAnimationFrame(bldFit); if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => bldFit && bldFit());
   return card; }
 let whoDraw = null; window.addEventListener('resize', () => whoDraw && whoDraw());
 function overview(root) {
