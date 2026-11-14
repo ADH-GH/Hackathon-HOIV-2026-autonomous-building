@@ -699,7 +699,7 @@ function overview(root) {
   const tl = el('div', 'tiles');
   const wait = pending(), needConsent = wait.filter(d => level(d) === 'approval_and_consent').length;
   const kt = (v, k, small, hint, key, go) => { const t = tile(v, k, small, key, go); t.title = hint; return t; };     // short on the box, the full sentence on hover
-  tl.append(kt(leads.length ? Math.round(leads[Math.floor(leads.length / 2)]) + ' h' : 'n/a', 'median head start', 'first decision to repair order', 'Median time from our first decision to the repair order in the dataset, over the technical incidents', true),
+  tl.append(kt(leads.length ? Math.round(leads.length % 2 ? leads[(leads.length - 1) / 2] : (leads[leads.length / 2 - 1] + leads[leads.length / 2]) / 2) + ' h' : 'n/a', 'median head start', 'first decision to repair order', 'Median time from our first decision to the repair order in the dataset, over the technical incidents', true),
     kt(leads.length ? leads[0] + '–' + leads[leads.length - 1] + ' h' : 'n/a', 'shortest to longest', 'burst pipe to slow leak', 'A burst pipe shows within hours; a slow leak or a clogging filter shows days ahead'),
     kt(checked.length + ' of ' + tech.length, 'incidents confirmed', 'by a later work order', 'Technical incidents for which the dataset holds a later corrective work order. Work orders are used for checking only; no detector reads them'),
     kt(inc.filter(e => e.priority === 'critical').length, 'critical cases', 'red in building and timeline', 'Cases whose highest priority is critical'),
