@@ -45,7 +45,7 @@ nav button{display:flex;flex-direction:column;justify-content:flex-start;align-i
 nav button:hover{background:var(--raise);border-color:var(--mute)}
 nav button.on{background:var(--raise);border-color:var(--accent);box-shadow:inset 0 -3px 0 var(--accent)}
 nav button b{display:block;font:500 28px/1.1 var(--mono);letter-spacing:-.02em;color:var(--series);white-space:nowrap}
-nav button i{display:block;font:500 10.5px/1.3 var(--mono);font-style:normal;letter-spacing:.14em;text-transform:uppercase;color:var(--mute);margin-top:6px}
+nav button i{display:block;white-space:nowrap;font:500 10.5px/1.3 var(--mono);font-style:normal;letter-spacing:.14em;text-transform:uppercase;color:var(--mute);margin-top:6px}
 nav button span{display:block;font:500 12px/1.3 var(--sans);letter-spacing:-.01em;color:var(--ink2);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 nav button.on span{color:var(--ink)}
 nav button small{display:block;font-size:11px;line-height:1.35;color:var(--mute);margin-top:3px}
@@ -776,7 +776,7 @@ function render() {
   // Every box has the same three lines: figure, short code, name. SC labels are "S01 Turnaround": code, then name.
   const split = k => { const i = SC[k].indexOf(' '); return [SC[k].slice(0, i), SC[k].slice(i + 1)]; };
   const tabs = [['overview', inc.length, 'All', 'Overview'], ...Object.keys(SC).map(k => [k, by(k), ...split(k)]), ['queue', pending().length, 'Open', 'Approvals'], ['trail', all.length, 'Log', 'All decisions']];
-  if (D.budget) tabs.splice(tabs.length - 2, 0, ['budget', Math.round(D.budget.bill.eur / 1000) + 'k', 'Plan · EUR', 'Budget']);
+  if (D.budget) tabs.splice(tabs.length - 2, 0, ['budget', Math.round(D.budget.bill.eur / 1000) + 'k', 'Plan €', 'Budget']);
   if (D.staff) tabs.splice(tabs.length - 2, 0, ['staff', D.staff.resources.length, 'Plan', 'Staff']);
   for (const [k, n, code, name] of tabs) { const b = el('button', k === tab ? 'on' : ''); b.title = TABHINT[k] || ''; b.dataset.tab = k; b.setAttribute('aria-current', k === tab ? 'page' : 'false');
     b.setAttribute('aria-label', code + ' ' + name + ', ' + n);
