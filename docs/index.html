@@ -96,7 +96,7 @@ nav button small{display:block;font-size:11px;line-height:1.35;color:var(--mute)
 .tile b{display:block;font:500 28px/1.1 var(--mono);letter-spacing:-.02em;color:var(--series);white-space:nowrap}
 .tile span{display:block;font:500 10.5px/1.35 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--mute);margin-top:6px;overflow-wrap:anywhere}
 .tile small{display:block;font-size:11px;line-height:1.35;color:var(--mute);margin-top:3px}
-.card .tiles .tile{background:var(--bg)}
+.card .tiles .tile{background:var(--panel)}
 .card{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:20px;margin-top:12px;min-width:0}
 .card h2{margin:0 0 4px;font:600 18px/1.3 var(--display);letter-spacing:-.01em;color:var(--ink)}
 .card p.note{margin:0 0 12px;color:var(--mute);font-size:14px}
@@ -152,6 +152,11 @@ td.m{font:400 12px/1.6 var(--mono);color:var(--ink2);white-space:nowrap}
 tr.go{cursor:pointer}tr.go:hover{background:var(--raise)}
 .scroll{overflow-x:auto}
 .empty{padding:28px 14px;color:var(--mute)}
+.filters{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:10px 0 6px}
+.filters input[type=search]{flex:1 1 260px;width:auto;margin:0}
+.filters select,.filters button{height:36px;font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:0 10px;cursor:pointer}
+.filters button{background:transparent;font-weight:600}.filters .fcount{font:500 12.5px/1 var(--mono);color:var(--mute);margin-left:auto;white-space:nowrap}
+@media (max-width:700px){.filters select{flex:1 1 45%}.filters .fcount{margin-left:0}}
 input[type=search]{height:36px;font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:0 12px;width:100%;margin-top:8px}
 .act{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:10px;padding-top:10px;border-top:1px dashed var(--line)}
 .act button{height:36px;font:600 14px/1 var(--sans);border-radius:8px;padding:0 16px;cursor:pointer;border:1px solid var(--line);background:transparent;color:var(--ink)}
@@ -787,15 +792,30 @@ function scenario(root, sc) {
     L.scrollTop = Math.max(0, L.scrollTop + on.getBoundingClientRect().top - tools.getBoundingClientRect().bottom); };
   place(); requestAnimationFrame(place); if (document.fonts && document.fonts.ready) document.fonts.ready.then(place);
 }
+const logF = {q: '', scenario: '', action: '', priority: '', level: ''};       // filters of the log; they survive a change of view
 function trail(root) {
-  const c = el('div', 'card'); c.style.marginTop = '0'; c.append(el('h2', null, 'Every decision, in order'), el('p', 'note', 'The complete log as written to ' + D.source + '. Click a row to open its case.'));
-  const sc = el('div', 'scroll'), table = el('table'), hr = el('tr'); ['Time (Vienna)', 'Action', 'Assets', 'Risk', 'Autonomy', 'Reason'].forEach(h => hr.append(el('th', null, h))); table.append(hr);
+  const c = el('div', 'card'); c.style.marginTop = '0'; c.append(el('h2', null, 'Every decision, in order'), el('p', 'note', 'The complete log as written to ' + D.source + '. Filter it, then click a row to open its case.'));
   const rows = E.flatMap(e => e.decisions.map(d => [d, e])).sort((a, b) => tsOf(a[0]) - tsOf(b[0])), cap = 1500;
-  for (const [d, e] of rows.slice(0, cap)) { const tr = el('tr', 'go'); tr.onclick = () => open(e);
-    const a = d.affected_assets || []; tr.append(el('td', 'n', dhm(tsOf(d))), el('td', null, d.action.replace(/_/g, ' ')), el('td', null, a.slice(0, 3).join(', ') + (a.length > 3 ? ' +' + (a.length - 3) : '')));
-    const p = el('td'); p.append(el('span', 'tag p-' + d.priority, d.priority)); const l = el('td'); l.append(el('span', 'tag l-' + level(d), LEVEL[level(d)]));
-    tr.append(p, l, el('td', null, d.reason.length > 170 ? d.reason.slice(0, 170) + '…' : d.reason)); table.append(tr); }
-  labelCells(table); sc.append(table); c.append(sc); if (rows.length > cap) c.append(el('p', 'note', 'Showing the first ' + cap + ' of ' + rows.length + '.')); root.append(c);
+  const bar = el('div', 'filters'), count = el('span', 'fcount'), sc = el('div', 'scroll'), more = el('p', 'note');
+  const uniq = f => [...new Set(rows.map(f))].filter(Boolean).sort();
+  const pick = (key, label, values, name) => { const sel = el('select'); sel.setAttribute('aria-label', label); const all0 = el('option', null, label + ': all'); all0.value = ''; sel.append(all0);
+    for (const v of values) { const o = el('option', null, name ? name(v) : v.replace(/_/g, ' ')); o.value = v; sel.append(o); } sel.value = logF[key]; sel.onchange = () => { logF[key] = sel.value; fill(); }; return sel; };
+  const q = el('input'); q.type = 'search'; q.placeholder = 'Search room, asset or words in the reason'; q.setAttribute('aria-label', 'Search the log'); q.value = logF.q; q.oninput = () => { logF.q = q.value; fill(); };
+  const reset = el('button', null, 'Reset'); reset.type = 'button'; reset.onclick = () => { for (const k in logF) logF[k] = ''; render(); };
+  bar.append(q, pick('scenario', 'View', Object.keys(SC).filter(k => rows.some(r => r[1].scenario === k)), k => SC[k].replace(/^S(\d\d)/, 'S-$1')), pick('action', 'Action', uniq(r => r[0].action)),
+    pick('priority', 'Risk', ['critical', 'high', 'medium', 'low'].filter(p => rows.some(r => r[0].priority === p))), pick('level', 'Autonomy', Object.keys(LEVEL).filter(l => rows.some(r => level(r[0]) === l)), l => LEVEL[l]), reset, count);
+  function fill() { const words = logF.q.toLowerCase().split(/\s+/).filter(Boolean);
+    const hit = rows.filter(([d, e]) => (!logF.scenario || e.scenario === logF.scenario) && (!logF.action || d.action === logF.action) && (!logF.priority || d.priority === logF.priority) && (!logF.level || level(d) === logF.level)
+      && (!words.length || (() => { const hay = ((d.affected_assets || []).join(' ') + ' ' + d.reason + ' ' + d.action + ' ' + d.issue_type).toLowerCase(); return words.every(w => hay.includes(w)); })()));
+    const table = el('table'), hr = el('tr'); ['Time (Vienna)', 'Action', 'Assets', 'Risk', 'Autonomy', 'Reason'].forEach(h => hr.append(el('th', null, h))); table.append(hr);
+    for (const [d, e] of hit.slice(0, cap)) { const tr = el('tr', 'go'); tr.onclick = () => open(e);
+      const a = d.affected_assets || []; tr.append(el('td', 'n', dhm(tsOf(d))), el('td', null, d.action.replace(/_/g, ' ')), el('td', null, a.slice(0, 3).join(', ') + (a.length > 3 ? ' +' + (a.length - 3) : '')));
+      const p = el('td'); p.append(el('span', 'tag p-' + d.priority, d.priority)); const l = el('td'); l.append(el('span', 'tag l-' + level(d), LEVEL[level(d)]));
+      tr.append(p, l, el('td', null, d.reason.length > 170 ? d.reason.slice(0, 170) + '…' : d.reason)); table.append(tr); }
+    labelCells(table); sc.replaceChildren(hit.length ? table : el('p', 'note', 'No decision matches these filters.'));
+    count.textContent = hit.length === rows.length ? rows.length + ' decisions' : hit.length + ' of ' + rows.length + ' decisions';
+    more.textContent = hit.length > cap ? 'Showing the first ' + cap + ' of ' + hit.length + '.' : ''; }
+  fill(); c.append(bar, sc, more); root.append(c);
 }
 function queue(root) {
   const open_ = pending(), done = all.filter(d => approvals[d.event_id] && approvals[d.event_id].state);
