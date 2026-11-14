@@ -35,9 +35,16 @@ floor waste bins.
 | Approval queue in the dashboard (approve, reject, guest consent, exportable log) | working; effect is simulated |
 | Voice control of the dashboard through an ElevenLabs agent (`--voice-agent`) | tool handlers verified by self-test; spoken conversation untested |
 
-## Run
+## Setup and environment
 
-Python 3.11 or newer. No dependencies.
+- Python 3.11 or newer. No packages to install: the pipeline uses the standard library only.
+- Clone the repository and run the commands below from its root.
+- No secret, no network access and no environment variable is needed to run the pipeline, the checks,
+  the tests or the dashboard build. `.env.example` lists the one optional name, `ELEVENLABS_API_KEY`,
+  which only the script that sets up the voice agent reads.
+- Tested on macOS with Python 3.11+; nothing in the code is specific to an operating system.
+
+## Run
 
 ```bash
 python -m building_ops run <data_dir> --out decisions.jsonl
