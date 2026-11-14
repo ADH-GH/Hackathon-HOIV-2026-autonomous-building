@@ -271,6 +271,23 @@ on-call window are computed from local wall-clock times, so they move with dayli
 
 The tag `pre-holdout` was set on 2026-11-14, before the holdout release.
 
+**Holdout run, 2026-11-14.** `decisions_holdout.jsonl` was written by a clean checkout of the tag
+`pre-holdout` (commit `cedf1c5`) with the one documented command:
+
+```bash
+python -m building_ops run <holdout_dir> --out decisions_holdout.jsonl
+```
+
+The current `main` gives a byte-identical file, which confirms that nothing after the tag touched a
+detector, a threshold or a rule. 1,143 decisions: 1,101 autonomous, 41 wait for a person, 1 also for
+the guest's consent; `python -m building_ops check decisions_holdout.jsonl` passes.
+
+Looked at after the run, against the holdout's own work orders (which no detector reads): the dataset
+holds nine corrective work orders on plant, meters and leaks, and each of them was preceded by a
+decision of ours. Eight fall inside the 14-day window the dashboard uses for this comparison, between
+20 and 260 hours ahead (median 92 h); the ninth, a loaded ventilation filter, was flagged 16 days
+before its unplanned change. No threshold was adjusted after seeing the holdout.
+
 Changes after `pre-holdout`: presentation only. The dashboard page got a background pattern, a
 favicon and a reworked phone layout (header, navigation boxes, tables as cards). The overview got
 a schematic 3D view of the building that locates the cases (drawn from `building.json`), and the
