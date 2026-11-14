@@ -30,7 +30,7 @@ header{padding:44px 48px 0;max-width:1536px;margin:0 auto}
 .top{display:flex;justify-content:space-between;align-items:flex-start;gap:16px}
 .kicker{font:500 12.5px/1.2 var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--accent)}
 .kicker::before{content:"";display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 4px var(--glow);margin-right:10px;vertical-align:1px}
-h1{margin:10px 0 2px;font:600 38px/1.1 var(--display);letter-spacing:-.02em}
+h1{margin:15px 0 7px;font:600 38px/1.1 var(--display);letter-spacing:-.02em}
 .sub{color:var(--mute);font-size:12.5px;margin-top:5px;overflow-wrap:anywhere}
 .hlink{display:inline-flex;align-items:center;height:36px;font:600 14px/1 var(--sans);color:var(--ink);text-decoration:none;border:1px solid var(--line);border-radius:8px;padding:0 14px;margin-right:6px;vertical-align:top}
 .hlink[hidden]{display:none}
