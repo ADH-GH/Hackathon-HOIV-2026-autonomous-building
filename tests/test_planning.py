@@ -50,6 +50,22 @@ class PlanningTest(unittest.TestCase):
         self.assertIsNone(planning.budget(Dataset(self.dir)))
         self.assertIsNone(planning.staff(Dataset(self.dir)))
 
+    def test_calendar_marks_a_day_on_which_conditions_meet_and_keeps_room_repairs_out(self):
+        write(self.dir / "staff_roster.csv", ["shift_id", "resource_id", "role", "start_utc", "end_utc", "status", "status_known_utc"],
+              [["S1", "TECH_1", "technician", "2026-07-27T06:00:00Z", "2026-07-27T14:00:00Z", "vacation", "2026-06-27T06:00:00Z"],
+               ["S2", "TECH_1", "technician", "2026-07-28T06:00:00Z", "2026-07-28T14:00:00Z", "scheduled", "2026-06-27T06:00:00Z"]])
+        write(self.dir / "equipment.csv", ["timestamp_utc", "asset_id", "metric", "value"],
+              [["2026-07-27T10:00:00Z", "AHU1", "filter_dp_pa", "260"], ["2026-07-28T10:00:00Z", "AHU1", "filter_dp_pa", "120"]])
+        write(self.dir / "work_orders.csv", ["work_order_id", "created_utc", "asset_id", "type", "status", "scheduled_utc", "completed_utc", "assigned_to", "summary"],
+              [["W1", "2026-07-20T08:00:00Z", "AHU1", "preventive", "postponed", "2026-07-28T08:00:00Z", "", "TECH_1", "Filter change"],
+               ["W2", "2026-07-20T08:00:00Z", "R101", "corrective", "completed", "2026-07-28T08:00:00Z", "2026-07-28T09:00:00Z", "TECH_1", "Room defect"]])
+        c = planning.calendar(Dataset(self.dir))
+        days = {d["d"]: d for d in c["days"]}
+        self.assertEqual(c["year"], 2026)
+        self.assertEqual(sorted(days["2026-07-27"]["f"]), ["filter", "tech"])
+        self.assertEqual(days["2026-07-28"]["f"], {})
+        self.assertEqual([w["asset"] for w in days["2026-07-28"]["wo"]], ["AHU1"])
+
 
 if __name__ == "__main__":
     unittest.main()

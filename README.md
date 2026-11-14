@@ -297,11 +297,15 @@ favicon and a reworked phone layout (header, navigation boxes, tables as cards).
 a schematic 3D view of the building that locates the cases (drawn from `building.json`), and the
 title and spacing were adjusted. Two planning views, Budget and Staff, were added; they summarise the
 year from the dataset and feed no decision. The building view got two more layers, noise complaints and data
-gaps per gateway, which are plain counts from the dataset. The voice assistant's prompt got one rule: it opens the case, room or asset under discussion on the dashboard without being asked (feedback during the event; the tool existed before). No detector, threshold or rule was changed, so the decisions are the same.
+gaps per gateway, which are plain counts from the dataset. The overview got a maintenance and risk calendar: per day, which of five conditions held (busy house, technician absent, cold forecast, loaded filter, silent sensors) and which plant work was scheduled; plain reads from the dataset that feed no decision. The voice assistant's prompt got one rule: it opens the case, room or asset under discussion on the dashboard without being asked (feedback during the event; the tool existed before). No detector, threshold or rule was changed, so the decisions are the same.
 
 ## Planning views
 
 Two views of the dashboard summarise the year for planning. They feed no decision.
+
+The overview ends with a **maintenance and risk calendar**: one cell per day, coloured by how many risk
+conditions met, with the scheduled plant and building work marked and a short list of the days to plan around.
+The thresholds are constants at the top of `building_ops/planning.py`.
 
 - **Budget:** electricity priced with the hourly tariff and split by what the dataset meters separately
   (heat pump, ventilation fans, the rest), by month, with the size of four levers. Electricity is the

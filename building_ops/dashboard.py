@@ -164,6 +164,7 @@ def build(data_dir: str | Path, decisions_path: str | Path, out: str | Path,
         "range": [manifest.get("start_utc"), manifest.get("end_utc")],
         "source": str(decisions_path),
         "budget": planning.budget(ds),      # electricity priced with the tariff, by metered part; planning view only
+        "calendar": planning.calendar(ds),  # risk conditions and scheduled plant work per day; planning view only
         "staff": planning.staff(ds),        # who works in and for the building, with what they did and how reliably
         "building": _building(ds),          # floor and orientation per room, for the schematic 3D view
         "switch": {"label": switch[0], "url": switch[1]} if switch else None,   # link to the dashboard of another dataset

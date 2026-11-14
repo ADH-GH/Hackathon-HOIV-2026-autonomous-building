@@ -201,6 +201,11 @@ input[type=search]{height:36px;font:inherit;color:var(--ink);background:var(--bg
 .bld .bn{font:600 13px/1 var(--mono);fill:var(--bg);pointer-events:none}.bld .bn.lo{fill:var(--ink)}
 .bld .bl{font:500 10px/1 var(--mono);letter-spacing:.08em;fill:var(--ink2);pointer-events:none}
 .bld .bf{font:500 10.5px/1 var(--mono);letter-spacing:.12em;text-transform:uppercase;fill:var(--mute)}
+.cal{display:grid;grid-template-columns:auto repeat(31,minmax(0,1fr));gap:3px;align-items:center;margin:4px 0 12px}
+.cal .cal-m{font-size:12px;color:var(--mute);padding-right:8px}.cal i{height:20px;border-radius:4px;position:relative;display:block}.cal i.off{visibility:hidden}
+.cal i.work::after,.cal i.late::after,.cal-k::after{content:"";position:absolute;left:50%;top:50%;width:7px;height:7px;margin:-3.5px 0 0 -3.5px;border-radius:50%;background:var(--ink);box-sizing:border-box}
+.cal i.late::after,.cal-k.late::after{background:none;border:2px solid var(--ink)}.legend i.cal-k{position:relative;display:inline-block;background:var(--raise);border:1px solid var(--line)}
+@media (max-width:700px){.cal{gap:1.5px}.cal i{height:14px;border-radius:2px}.cal i.work::after,.cal i.late::after{width:5px;height:5px;margin:-2.5px 0 0 -2.5px}.cal .cal-m{font-size:10.5px;padding-right:4px}}
 .legend i.sw{width:12px;height:12px;border:0;border-radius:3px;vertical-align:-1px}
 :root{--c2:oklch(76% .09 195);--c3:oklch(58% .03 255);--hot:oklch(78% .17 58);--cool:oklch(40% .045 235)}
 svg text.ax{font:400 11px/1 var(--mono);fill:var(--mute)}
@@ -788,7 +793,32 @@ function overview(root) {
     if (e.check) lead.title = 'Our first decision was taken ' + Math.round(e.check.lead_h) + ' hours before the repair order ' + e.check.id + ' was written (' + lt(e.check.t) + ')';
     tr.append(el('td', null, e.check ? e.check.text + ' · ' + dhm(e.check.t) : 'none within 14 days'), lead); table.append(tr); }
   labelCells(table); sc.append(table); tb.append(sc); root.append(tb);
+  if (D.calendar) root.append(calendarCard());
 }
+// Maintenance and risk calendar: one cell per day, darker with every risk condition that held that day; a dot marks
+// plant or building work scheduled for it. Planning view only, nothing here feeds a decision.
+function calendarCard() { const C = D.calendar, L = C.limits, c = el('div', 'card'), by = {}; for (const d of C.days) by[d.d] = d;
+  c.append(el('h2', null, 'Maintenance and risk calendar'), el('p', 'note', 'One cell per day of ' + C.year + '. A stronger colour means more risk conditions on that day: a busy house (' + L.busy + ' or more arrivals), the technician absent, a cold forecast (' + L.cold + ' °C or lower), a loaded ventilation filter (' + L.filter + ' Pa or more), sensors silent (' + L.gap + ' room-hours or more). None of them is a fault; together they mark the days on which a fault would hurt most. Read from the dataset, feeds no decision.'));
+  const shade = n => n ? 'color-mix(in oklab, var(--hot) ' + [0, 26, 60, 100][Math.min(3, n)] + '%, var(--cool))' : 'var(--raise)';
+  const g = el('div', 'cal'), MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'], p2 = n => String(n).padStart(2, '0');
+  const say = (key, d) => { const f = Object.values(d ? d.f : {}), w = d ? d.wo : [];
+    return '<b>' + key + '</b>' + (f.length ? '<br>' + f.map(esc).join('<br>') : '<br>no risk condition') + w.map(x => '<br>' + (x.status === 'postponed' ? 'postponed: ' : x.type + ' work: ') + esc(x.asset) + (x.summary ? ' · ' + esc(x.summary) : '')).join(''); };
+  for (let m = 0; m < 12; m++) { g.append(el('span', 'cal-m', MON[m])); const len = new Date(C.year, m + 1, 0).getDate();
+    for (let day = 1; day <= 31; day++) { const cell = el('i'); if (day > len) { cell.className = 'off'; g.append(cell); continue; }
+      const key = C.year + '-' + p2(m + 1) + '-' + p2(day), d = by[key], n = d ? Object.keys(d.f).length : 0; cell.style.background = shade(n);
+      if (d && d.wo.length) cell.classList.add(d.wo.some(x => x.status === 'postponed') ? 'late' : 'work');
+      cell.addEventListener('mousemove', ev => showTip(ev, say(key, d))); cell.addEventListener('mouseleave', hideTip); g.append(cell); } }
+  c.append(g);
+  const lg = el('div', 'legend big'); lg.innerHTML = [0, 1, 2, 3].map(n => '<span><i class="sw" style="background:' + shade(n) + (n ? '' : ';border:1px solid var(--line)') + '"></i>' + (n === 3 ? '3 or more' : n === 0 ? 'none' : n) + '</span>').join('') + '<span><i class="sw cal-k work"></i>plant or building work</span><span><i class="sw cal-k late"></i>work postponed</span>';
+  c.append(lg);
+  // The days to plan around: the most conditions at once, and every postponed job that fell on a day with a condition.
+  const top = C.days.filter(d => Object.keys(d.f).length >= 3 || (Object.keys(d.f).length >= 1 && d.wo.some(x => x.status === 'postponed'))).sort((a, b) => Object.keys(b.f).length - Object.keys(a.f).length || (a.d < b.d ? -1 : 1)).slice(0, 6);
+  if (top.length) { c.append(el('h3', null, 'Days to plan around')); const sc = el('div', 'scroll'), t = el('table'), tb = el('tbody'); t.innerHTML = '<thead><tr><th>Day</th><th>Conditions that met</th><th>Scheduled work</th><th>What follows</th></tr></thead>';
+    for (const d of top) { const tr = el('tr'), f = d.f, late = d.wo.some(x => x.status === 'postponed');
+      const advice = late ? 'Do not postpone: the job slipped into a day that was already loaded' : f.filter && f.tech ? 'Change the filter before the technician leaves' : f.filter ? 'Change the filter before this day' : f.cold && f.gap ? 'Check the gateway before the cold: heating faults would go unseen' : f.gap ? 'Check the gateway first: a fault would go unseen' : 'Keep plant work off this day';
+      tr.append(el('td', 'mono', d.d), el('td', null, Object.values(f).join(' · ')), el('td', null, d.wo.map(x => (x.status === 'postponed' ? 'postponed: ' : '') + x.asset + ' ' + x.type).join(', ') || 'none'), el('td', null, advice)); tb.append(tr); }
+    t.append(tb); labelCells(t); sc.append(t); c.append(sc); }
+  return c; }
 function scenario(root, sc) {
   const list = E.filter(e => e.scenario === sc), routine = list.filter(e => e.routine).length;
   const shown = list.filter(e => (showRoutine[sc] || !e.routine) && (!query || JSON.stringify(e.decisions).toLowerCase().includes(query)));

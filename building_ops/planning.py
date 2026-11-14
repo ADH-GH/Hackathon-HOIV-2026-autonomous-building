@@ -18,6 +18,10 @@ from .dataset import Dataset, parse_ts
 from .signals import local
 
 STEP_H = 0.25                     # telemetry interval in hours
+BUSY_ARRIVALS = 16                # a day counts as busy from this many arrivals (40 % of the rooms)
+COLD_C = -8.0                     # a day counts as cold if the forecast goes this low
+FILTER_PA = 200.0                 # filter pressure from which the filter counts as loaded
+GAP_ROOM_H = 8.0                  # room-hours without a temperature reading from which a day counts as blind
 ON_TIME_H = 4.0                   # a work order counts as on schedule if finished within this many hours of its slot
 
 
@@ -184,3 +188,70 @@ def staff(ds: Dataset) -> dict | None:
                     "on_time": x["on_time"], "timed": x["timed"], "postponed": x["postponed"], "misses": misses.get(x["id"], 0)})
     return {"resources": out, "on_time_h": ON_TIME_H,
             "absent_months": [{"month": m, **dict(c)} for m, c in sorted(absent_month.items())]}
+
+
+def calendar(ds: Dataset) -> dict | None:
+    """One row per day of the year: which risk conditions held, and which plant or building work was scheduled.
+
+    Five conditions, each read from one table. None of them is a fault; together they mark the days on which a
+    fault would hurt most, which is where maintenance is better brought forward. Nothing here feeds a decision.
+    """
+    days: dict[str, dict[str, Any]] = defaultdict(lambda: {"f": {}, "wo": []})
+    if ds.has("bookings"):
+        arr: Counter = Counter()
+        for r in ds.rows("bookings"):
+            t = parse_ts(r.get("arrival_utc"))
+            if t and r.get("status") != "cancelled":
+                arr[local(t).date().isoformat()] += 1
+        for d, n in arr.items():
+            days[d]["arr"] = n
+            if n >= BUSY_ARRIVALS:
+                days[d]["f"]["busy"] = f"{n} arrivals"
+    if ds.has("staff_roster"):
+        for r in ds.rows("staff_roster"):
+            t = parse_ts(r.get("start_utc"))
+            if t and r.get("role") == "technician" and r.get("status") != "scheduled":
+                days[local(t).date().isoformat()]["f"]["tech"] = "technician absent (" + r["status"] + ")"
+    if ds.has("weather_forecast"):
+        low: dict[str, float] = {}
+        for r in ds.rows("weather_forecast"):
+            t, v = parse_ts(r.get("target_utc")), _f(r.get("outdoor_c_forecast"))
+            if t and v is not None:
+                d = local(t).date().isoformat()
+                low[d] = min(low.get(d, v), v)
+        for d, v in low.items():
+            if v <= COLD_C:
+                days[d]["f"]["cold"] = f"forecast down to {v:.0f} °C"
+    if ds.has("equipment"):
+        dp: dict[str, list[float]] = defaultdict(list)
+        for r in ds.rows("equipment"):
+            if r["metric"] == "filter_dp_pa":
+                t, v = parse_ts(r["timestamp_utc"]), _f(r["value"])
+                if t and v is not None:
+                    dp[local(t).date().isoformat()].append(v)
+        for d, v in dp.items():
+            if median(v) >= FILTER_PA:
+                days[d]["f"]["filter"] = f"filter pressure {median(v):.0f} Pa"
+    if ds.has("room_telemetry"):
+        gap: Counter = Counter()
+        for r in ds.rows("room_telemetry"):
+            t = parse_ts(r.get("timestamp_utc"))
+            if t and r.get("temperature_c") in ("", None):
+                gap[local(t).date().isoformat()] += 1
+        for d, n in gap.items():
+            if n * STEP_H >= GAP_ROOM_H:
+                days[d]["f"]["gap"] = f"{n * STEP_H:.0f} room-hours without a reading"
+    if ds.has("work_orders"):
+        for w in ds.rows("work_orders"):
+            a = w["asset_id"]
+            if a.startswith("R") and a[1:].isdigit():
+                continue                                  # room repairs are in the cases; the calendar shows plant and building
+            t = parse_ts(w.get("scheduled_utc")) or parse_ts(w.get("created_utc"))
+            if t:
+                days[local(t).date().isoformat()]["wo"].append({"asset": a, "type": w["type"], "status": w["status"], "summary": w.get("summary", "")})
+    if not days:
+        return None
+    year = Counter(d[:4] for d in days).most_common(1)[0][0]          # the replayed year; a few rows spill over its edges
+    return {"days": [{"d": d, "f": x["f"], "wo": x["wo"]} for d, x in sorted(days.items()) if d[:4] == year and (x["f"] or x["wo"])],
+            "year": int(year),
+            "limits": {"busy": BUSY_ARRIVALS, "cold": COLD_C, "filter": FILTER_PA, "gap": GAP_ROOM_H}}
