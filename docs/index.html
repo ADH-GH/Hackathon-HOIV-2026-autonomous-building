@@ -205,6 +205,8 @@ circle.dot{transition:r .12s ease}
 circle.dot:hover{r:8}
 .split-bar{display:flex;height:12px;border-radius:6px;overflow:hidden;gap:2px;margin:8px 0 6px}
 .split-bar div{height:100%;transition:width .6s ease}
+.who-link{display:block;margin:-6px 0 0;overflow:visible}
+.legend.who{display:flex;flex-wrap:wrap;gap:8px;margin-top:0}.legend.who .tag{margin:0}.legend.who .tag:nth-child(2){margin-left:auto}
 .keys{font:400 11px/1.5 var(--mono);color:var(--mute);margin-top:6px}
 kbd{font:600 10.5px/1 var(--mono);border:1px solid var(--line);border-bottom-width:2px;border-radius:4px;padding:2px 5px;color:var(--ink2);background:var(--panel)}
 #toast{position:fixed;left:50%;bottom:22px;transform:translate(-50%,20px);background:var(--ink);color:var(--bg);font:600 12.5px/1.3 var(--sans);padding:10px 14px;border-radius:8px;opacity:0;transition:opacity .2s ease,transform .2s ease;pointer-events:none;z-index:10}
@@ -482,6 +484,7 @@ function labelCells(table) { const hs = [...table.querySelectorAll('th')].map(h 
 function tile(v, k, small, key, go) { const t = el('div', 'tile' + (key ? ' key' : '') + (go ? ' go' : '')), b = el('b', null, v); t.append(b, el('span', null, k)); if (small) t.append(el('small', null, small));
   const mm = /^(\d+)( h)?$/.exec(String(v)); if (mm) countUp(b, +mm[1], mm[2] || '');
   if (go) { t.tabIndex = 0; t.title = 'Open this view'; t.onclick = () => { tab = go; history.replaceState(null, '', '#' + go); render(); }; t.onkeydown = ev => { if (ev.key === 'Enter') t.onclick(); }; } return t; }
+let whoDraw = null; window.addEventListener('resize', () => whoDraw && whoDraw());
 function overview(root) {
   const inc = E.filter(e => !e.routine), by = s => inc.filter(e => e.scenario === s).length;
   const checked = E.filter(e => e.check), leads = checked.map(e => Math.round(e.check.lead_h)).sort((a, b) => a - b);
@@ -497,7 +500,16 @@ function overview(root) {
   const bar = el('div', 'split-bar'); [[na, 'var(--auto)', 'autonomous'], [nh, 'var(--appr)', 'human approval'], [nc, 'var(--cons)', 'approval + guest consent']].forEach(([n, col, name]) => { const seg = el('div'); seg.style.background = col; seg.style.width = Math.max(n ? 0.8 : 0, n / all.length * 100) + '%';
     seg.addEventListener('mousemove', ev => showTip(ev, '<b>' + name + '</b><br>' + n + ' of ' + all.length + ' decisions (' + (n / all.length * 100).toFixed(1) + ' %)')); seg.addEventListener('mouseleave', hideTip); bar.append(seg); });
   const lgd = el('div', 'legend'); [[na, 'l-autonomous', 'autonomous'], [nh, 'l-human_approval', 'human approval'], [nc, 'l-approval_and_consent', 'approval + guest consent']].forEach(([n, cls, name]) => { const sp = el('span', 'tag ' + cls, name + ' · ' + n); sp.title = HINT[cls.slice(2)]; lgd.append(sp); });
-  sb.append(bar, lgd); root.append(sb);
+  // Thin connectors tie each label to its part of the bar: the two small parts sit far right, so their labels move under them.
+  const link = svg('svg', {class: 'who-link', height: 22, 'aria-hidden': 'true'}); lgd.classList.add('who');
+  sb.append(bar, link, lgd); root.append(sb);
+  whoDraw = () => { if (!lgd.isConnected) return; const tags = [...lgd.children], segs = [...bar.children], box = sb.getBoundingClientRect(), W = bar.getBoundingClientRect().width;
+    const oneRow = tags.every(t => Math.abs(t.offsetTop - tags[0].offsetTop) < 4); link.style.display = oneRow ? 'block' : 'none'; if (!oneRow) return;
+    link.setAttribute('width', W); link.setAttribute('viewBox', `0 0 ${W} 22`); link.replaceChildren(); const x0 = bar.getBoundingClientRect().left;
+    tags.forEach((t, i) => { const tr = t.getBoundingClientRect(), sr = segs[i].getBoundingClientRect(); if (!sr.width) return;
+      const tx = tr.left + tr.width / 2 - x0, sx = tx > sr.left - x0 + 2 && tx < sr.right - x0 - 2 ? tx : (sr.left + sr.right) / 2 - x0, mid = 6 + i * 5;      // staggered so the lines never share a path
+      link.append(svg('path', {d: `M${sx.toFixed(1)} 0V${mid}H${tx.toFixed(1)}V22`, fill: 'none', stroke: segs[i].style.background, 'stroke-width': 1.5, 'stroke-opacity': 0.8, 'stroke-linejoin': 'round'})); }); };
+  requestAnimationFrame(whoDraw); if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => whoDraw && whoDraw());
   // time strip
   const c = el('div', 'card'); c.append(el('h2', null, 'When the cases happened'), el('p', 'note', 'One dot per case, one lane per scenario; red dots are critical. The blue curve behind each lane shows how many cases fall around that time, the red curve how many of them are critical. Hover for details, click a dot to open.'));
   const narrow = window.innerWidth < 700, W = narrow ? Math.max(300, window.innerWidth - 74) : 1000, lanes = ['S01', 'S02', 'S03', 'S04', 'S05', 'ENG', 'LOG'];
