@@ -111,7 +111,7 @@ def _building(ds) -> dict | None:
 
 
 def build(data_dir: str | Path, decisions_path: str | Path, out: str | Path,
-          actions_path: str | Path | None = None, title: str = "PLATO-40 Autonomous Operations",
+          actions_path: str | Path | None = None, title: str = "PLATO-40 Autonomous Operations Board",
           voice_agent: str | None = None, web_fonts: bool = False, api_docs: str | None = None) -> Path:
     ds = Dataset(data_dir)
     decisions = _read(decisions_path)
