@@ -376,7 +376,7 @@ function toast(msg) { const t = $('toast'); t.textContent = msg; t.classList.add
 const calm = /[?&]still\b/.test(location.search) || (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
 if (calm) document.documentElement.classList.add('still');
 function countUp(node, target, suffix) { if (calm || !isFinite(target)) { node.textContent = target + (suffix || ''); return; }
-  const t0 = performance.now(), dur = 600; (function tick(now) { const k = Math.min(1, (now - t0) / dur), v = Math.round(target * (1 - Math.pow(1 - k, 3)));
+  const t0 = performance.now(), dur = 600; (function tick(now) { const k = Math.max(0, Math.min(1, (now - t0) / dur)), v = Math.round(target * (1 - Math.pow(1 - k, 3)));
     node.textContent = v + (suffix || ''); if (k < 1) requestAnimationFrame(tick); })(t0); }
 function spark(e) { const S = e.series; if (!S || !S.v) return null; const pts = S.v.map((v, i) => [S.t[i], v]).filter(p => p[1] != null); if (pts.length < 4) return null;
   const xs = pts.map(p => p[0]), ys = pts.map(p => p[1]), x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys);
