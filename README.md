@@ -288,6 +288,10 @@ decision of ours. Eight fall inside the 14-day window the dashboard uses for thi
 20 and 260 hours ahead (median 92 h); the ninth, a loaded ventilation filter, was flagged 16 days
 before its unplanned change. No threshold was adjusted after seeing the holdout.
 
+The holdout year has a dashboard of its own, built by the same command from `decisions_holdout.jsonl`:
+<https://adh-gh.github.io/Hackathon-HOIV-2026-autonomous-building/holdout/>. A link in the header switches
+between the two years. Adding that page and link is a presentation change after the run.
+
 Changes after `pre-holdout`: presentation only. The dashboard page got a background pattern, a
 favicon and a reworked phone layout (header, navigation boxes, tables as cards). The overview got
 a schematic 3D view of the building that locates the cases (drawn from `building.json`), and the

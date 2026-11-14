@@ -112,7 +112,7 @@ def _building(ds) -> dict | None:
 
 def build(data_dir: str | Path, decisions_path: str | Path, out: str | Path,
           actions_path: str | Path | None = None, title: str = "PLATO-40 Autonomous Operations Board",
-          voice_agent: str | None = None, web_fonts: bool = False, api_docs: str | None = None) -> Path:
+          voice_agent: str | None = None, web_fonts: bool = False, api_docs: str | None = None, switch: list[str] | None = None) -> Path:
     ds = Dataset(data_dir)
     decisions = _read(decisions_path)
     actions = {a["event_id"]: a for a in _read(actions_path)}
@@ -166,6 +166,7 @@ def build(data_dir: str | Path, decisions_path: str | Path, out: str | Path,
         "budget": planning.budget(ds),      # electricity priced with the tariff, by metered part; planning view only
         "staff": planning.staff(ds),        # who works in and for the building, with what they did and how reliably
         "building": _building(ds),          # floor and orientation per room, for the schematic 3D view
+        "switch": {"label": switch[0], "url": switch[1]} if switch else None,   # link to the dashboard of another dataset
         "apiDocs": api_docs,                # link to the API description; None leaves the link out
         "voiceAgent": voice_agent,          # ElevenLabs agent id; None keeps the page free of any network request
         "actions": actions,

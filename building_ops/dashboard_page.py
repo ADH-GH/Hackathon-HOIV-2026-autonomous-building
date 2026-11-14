@@ -183,7 +183,7 @@ input[type=search]{height:36px;font:inherit;color:var(--ink);background:var(--bg
 @media (max-width:700px){
   header{margin-top:0;padding-top:calc(44px + env(safe-area-inset-top, 0px))}.hbox{padding-top:20px}
   .top{flex-direction:column;align-items:stretch;gap:12px}
-  .top>div:last-child{display:flex;gap:8px}.top>div:last-child button{flex:1;margin:0}
+  .top>div:last-child{display:flex;gap:8px;flex-wrap:wrap}.top>div:last-child button{flex:1;margin:0}.top>div:last-child .hlink{flex:1 1 100%;justify-content:center;margin:0}
   nav{grid-auto-flow:row;grid-template-columns:repeat(4,minmax(0,1fr));grid-auto-columns:auto;overflow:visible;gap:6px;padding-bottom:0}
   nav button{padding:7px 5px 8px 7px}nav button b,.tiles .tile b{font-size:21px}nav button i{font-size:9.5px;margin-top:4px}
   nav button span{font-size:10.5px;letter-spacing:-.01em;line-height:1.2;white-space:normal;overflow:visible;min-height:2.4em;overflow-wrap:normal}
@@ -295,7 +295,7 @@ footer{max-width:1536px;margin:0 auto;padding:4px 48px 32px;color:var(--mute);fo
       <h1 id="title"></h1>
       <div class="sub" id="source"></div>
     </div>
-    <div><button id="brief" type="button" hidden>Voice briefing</button><button id="theme" type="button">Light theme</button></div>
+    <div><a id="other" class="hlink" hidden></a><button id="brief" type="button" hidden>Voice briefing</button><button id="theme" type="button">Light theme</button></div>
   </div>
   <nav id="nav"></nav>
   </div>
@@ -354,7 +354,7 @@ function controls(d) {
 
 $('title').textContent = D.title;
 const INC = E.filter(e => !e.routine).length, ROUTINE = E.length - INC;
-$('source').style.whiteSpace = 'pre-line'; $('source').textContent = 'Dataset: ' + D.profile + ' · ' + all.length + ' decisions in ' + E.length + ' cases (' + INC + ' incidents and plans + ' + ROUTINE + ' routine guest answers; a case can hold several decisions)\nVienna local time · PLATO-40 is fictional, data synthetic, effects simulated';
+$('source').style.whiteSpace = 'pre-line'; $('source').textContent = 'Dataset: ' + (D.profile === 'holdout' ? 'holdout (the unseen year, run with the code tagged pre-holdout)' : D.profile) + ' · ' + all.length + ' decisions in ' + E.length + ' cases (' + INC + ' incidents and plans + ' + ROUTINE + ' routine guest answers; a case can hold several decisions)\nVienna local time · PLATO-40 is fictional, data synthetic, effects simulated';
 
 /* ---------- tooltip ---------- */
 const tip = $('tip');
@@ -986,6 +986,7 @@ document.addEventListener('keyup', ev => { if (ev.code === 'Space' && pttActive(
 $('vform').addEventListener('submit', ev => { ev.preventDefault(); const t = $('vtext').value.trim(); if (!t) return;
   if (!call) { vsay('Start the voice briefing first.'); return; }
   try { call.sendUserMessage(t); vsay(t, true); $('vtext').value = ''; } catch (err) { vsay(String(err && err.message || err)); } });
+if (D.switch) { const o = $('other'); o.href = D.switch.url; o.textContent = D.switch.label + ' →'; o.title = 'Open the dashboard of the other dataset'; o.hidden = false; }
 if (D.apiDocs) { $('apilink').href = D.apiDocs; $('apifoot').hidden = false; }
 if (D.voiceAgent) { const b = $('brief'); b.hidden = false; b.title = 'Hear the status, the critical cases and what waits for approval'; b.onclick = briefing; }
 // ?voicetest runs the tool handlers without any network or microphone and shows what they return
