@@ -312,6 +312,7 @@ def build() -> dict:
                            "Three directions: **ingest** (real systems push rows in), **decisions and approvals** (people and dashboards read "
                            "and answer), **actions** (the system calls a connector, the connector reports back). PLATO-40 is a fictional "
                            "property; nothing here describes a real PLATO building or what CLARA does today.",
+            "contact": {"name": "Alf-David Heermann", "email": "alfheermann@gmail.com"},
             "license": {"name": "MIT"},
         },
         "servers": [{"url": "https://building-ops.example/v1", "description": "Placeholder. There is no deployed server."}],

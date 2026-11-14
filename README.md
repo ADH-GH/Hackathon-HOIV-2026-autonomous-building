@@ -273,6 +273,10 @@ with `python -m building_ops.openapi > docs/api/openapi.json` and readable at
 <https://adh-gh.github.io/Hackathon-HOIV-2026-autonomous-building/api/>. It is a design; no server
 implements it.
 
+## Creator
+
+Alf-David Heermann, <alfheermann@gmail.com>, team Alf & Friends, proximata Hackathon '26, Rhomberg track.
+
 ## Licence
 
 MIT, see [LICENSE](LICENSE).

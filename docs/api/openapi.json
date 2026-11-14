@@ -4,6 +4,10 @@
   "title": "PLATO-40 Building Operations API",
   "version": "0.1.0-draft",
   "description": "Interface for running the decision pipeline on live systems instead of the replayed dataset.\n\n**Status: a design, not a running service.** The hackathon submission reads a directory of files and writes `decisions.jsonl`; no server implements these paths yet. The field names are those of the PLATO-40 dataset and of DECISION_CONTRACT v2, so a connector that fills these feeds gives the detectors exactly what they read today.\n\nThree directions: **ingest** (real systems push rows in), **decisions and approvals** (people and dashboards read and answer), **actions** (the system calls a connector, the connector reports back). PLATO-40 is a fictional property; nothing here describes a real PLATO building or what CLARA does today.",
+  "contact": {
+   "name": "Alf-David Heermann",
+   "email": "alfheermann@gmail.com"
+  },
   "license": {
    "name": "MIT"
   }
