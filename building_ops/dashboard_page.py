@@ -50,7 +50,29 @@ nav button small{display:block;font-size:11px;line-height:1.35;color:var(--mute)
 #brief{height:36px;font:600 14px/1 var(--sans);color:var(--onaccent);background:var(--accent);border:1px solid var(--accent);border-radius:8px;padding:0 14px;cursor:pointer;margin-right:8px}
 #brief.live{background:transparent;color:var(--ink);border-color:var(--line)}
 #brief[hidden]{display:none}
-#vbox{position:fixed;right:16px;bottom:16px;width:min(380px,calc(100vw - 32px));background:var(--panel);border:1px solid var(--accent);border-radius:8px;padding:12px 14px;z-index:8;display:none}
+/* Emergency view: covers the whole dashboard and shows one case only */
+#emg{position:fixed;inset:0;z-index:20;background:var(--bg);display:none;overflow:auto;padding:28px 48px 140px}
+#emg.on{display:block}
+#emg .e-in{max-width:1100px;margin:0 auto}
+#emg .e-bar{border:1px solid var(--crit);border-radius:8px;background:color-mix(in srgb,var(--crit) 12%,var(--panel));padding:18px 20px;display:flex;gap:16px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+#emg .e-eyebrow{font:500 11px/1 var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--crit)}
+#emg h1{font:600 30px/1.15 var(--display);letter-spacing:-.01em;margin:8px 0 0}
+#emg .e-line{font:500 15px/1.4 var(--sans);color:var(--ink);margin-top:8px}
+#emg .e-line b{color:var(--crit)}
+#emg .e-sim{font-size:12.5px;color:var(--ink2);margin-top:4px}
+#emg button{height:36px;font:600 14px/1 var(--sans);color:var(--ink);background:transparent;border:1px solid var(--line);border-radius:8px;padding:0 14px;cursor:pointer;white-space:nowrap}
+#emg .e-facts{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-top:12px}
+#emg .e-fact{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:12px 14px;min-width:0}
+#emg .e-fact span{display:block;font:500 10.5px/1.3 var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--mute)}
+#emg .e-fact b{display:block;font:500 17px/1.3 var(--sans);margin-top:5px;overflow-wrap:anywhere}
+#emg .e-sec{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:16px 20px;margin-top:12px}
+#emg .e-sec h2{font:600 16px/1.2 var(--display);margin:0 0 8px}
+#emg .e-sec p{margin:0;font-size:15px;line-height:1.5;color:var(--ink)}
+#emg .e-sec li{font-size:14px;line-height:1.5;color:var(--ink2);margin:3px 0}
+#emg .e-sec ul{margin:0;padding-left:18px}
+#emg .e-sec li code{font:400 12.5px/1.5 var(--mono);color:var(--ink2);overflow-wrap:anywhere}
+@media (max-width:760px){#emg{padding:16px 16px 160px}#emg .e-facts{grid-template-columns:repeat(2,minmax(0,1fr))}#emg h1{font-size:23px}}
+#vbox{position:fixed;right:16px;bottom:16px;width:min(380px,calc(100vw - 32px));background:var(--panel);border:1px solid var(--accent);border-radius:8px;padding:12px 14px;z-index:30;display:none}
 #vbox.on{display:block}
 #vbox .st{font:500 11px/1 var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--accent)}
 #vbox .cap{margin-top:8px;font-size:13px;max-height:170px;overflow:auto;color:var(--ink2)}
@@ -60,6 +82,7 @@ nav button small{display:block;font-size:11px;line-height:1.35;color:var(--mute)
 .vctl label{font-size:12.5px;color:var(--ink2)}
 #ptt{flex:1;height:44px;font:600 14px/1 var(--sans);border-radius:8px;border:1px solid var(--accent);background:transparent;color:var(--ink);cursor:pointer;user-select:none;-webkit-user-select:none;touch-action:none}
 #ptt.down{background:var(--accent);color:var(--onaccent)}
+#emgBtn{flex:1;height:36px;font:600 14px/1 var(--sans);border-radius:8px;border:1px solid var(--crit);background:transparent;color:var(--crit);cursor:pointer}
 #ptt:disabled{opacity:.45;cursor:default}
 .vtype{display:flex;gap:6px;margin-top:8px}
 .vtype input{flex:1;min-width:0;height:36px;font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:0 10px}
@@ -212,7 +235,8 @@ footer{max-width:1536px;margin:0 auto;padding:4px 48px 32px;color:var(--mute);fo
 <footer>PLATO-40 synthetic dataset, proximata Hackathon '26 · Rhomberg track (CC BY 4.0). Every finding concerns the fictional PLATO-40 only. Simulated effects are labelled; nothing here was measured on a real building.</footer>
 <div id="tip"></div>
 <div id="toast" role="status" aria-live="polite"></div>
-<div id="vbox" aria-live="polite"><div class="st" id="vst">Voice</div><div class="cap" id="vcap2"></div><div class="vctl"><button id="ptt" type="button">Hold to talk</button><label><input id="pttOn" type="checkbox" checked> push to talk</label></div><form class="vtype" id="vform"><input id="vtext" type="text" placeholder="or type: status, open R403, approve item 1" aria-label="Type to the assistant" autocomplete="off"><button type="submit">Send</button></form><small>In a loud room: hold the button or the space bar while you speak, release when done. The microphone is closed in between, so the room cannot talk to the assistant. Typing works as well. Approvals happen only on your clear yes; effects are simulated.</small></div>
+<div id="emg" role="alertdialog" aria-modal="true" aria-label="Emergency view"></div>
+<div id="vbox" aria-live="polite"><div class="st" id="vst">Voice</div><div class="cap" id="vcap2"></div><div class="vctl"><button id="ptt" type="button">Hold to talk</button><label><input id="pttOn" type="checkbox" checked> push to talk</label></div><div class="vctl"><button id="emgBtn" type="button" title="Show only the open case and connect the emergency team (simulated)">Emergency</button></div><form class="vtype" id="vform"><input id="vtext" type="text" placeholder="or type: status, open R403, approve item 1" aria-label="Type to the assistant" autocomplete="off"><button type="submit">Send</button></form><small>In a loud room: hold the button or the space bar while you speak, release when done. The microphone is closed in between, so the room cannot talk to the assistant. Typing works as well. Approvals happen only on your clear yes; effects are simulated.</small></div>
 <script id="data" type="application/json">__DATA__</script>
 <script>
 const D = JSON.parse(document.getElementById('data').textContent);
@@ -558,6 +582,34 @@ function summary(e) { const main = e.decisions.find(d => d.action === 'flag_anom
   return {title: episodeTitle(e), when: lt(e.start), risk: e.priority, decisions: e.decisions.length, actions: [...new Set(e.decisions.map(d => d.action.replace(/_/g, ' ')))],
     oversight: [...new Set(e.decisions.map(d => LEVEL[level(d)]))], finding: short(main.reason, 320),
     checked_against_dataset: e.check ? 'A work order was written ' + Math.round(e.check.lead_h) + ' hours after our decision: ' + e.check.text : 'no later work order to compare' }; }
+// Emergency: the whole dashboard gives way to one case. The view shows only what an emergency team
+// needs: where, what was found, since when, what the system already did. The connection to the team
+// is simulated here and labelled as such; no call is placed.
+let emgTimer = null;
+function emergency(e, what) { const box = $('emg'), inn = el('div', 'e-in'); clearTimeout(emgTimer);
+  const bar = el('div', 'e-bar'), left = el('div'), line = el('div', 'e-line'), end = el('button', null, 'End emergency view'); end.type = 'button'; end.onclick = endEmergency;
+  line.innerHTML = '<b>Connecting</b> you to the on-call emergency team …';
+  emgTimer = setTimeout(() => { line.innerHTML = '<b>Emergency team on the line.</b> They see this case.'; }, 2500);
+  left.append(el('div', 'e-eyebrow', 'Emergency · PLATO-40'), el('h1', null, e ? episodeTitle(e) : 'Emergency reported by the caller'), line,
+    el('div', 'e-sim', 'Simulated in this demo: no real call is placed. In operation this step bridges the caller to the on-call number. In real danger dial 112.'));
+  bar.append(left, end); inn.append(bar);
+  const sec = (title, node) => { const c = el('div', 'e-sec'); c.append(el('h2', null, title), node); inn.append(c); };
+  if (what) sec('The caller said', el('p', null, '“' + what + '”'));
+  if (e) { const assets = [...new Set(e.decisions.flatMap(d => d.affected_assets || []))], main = e.decisions.find(d => d.action === 'flag_anomaly') || e.decisions[0];
+    const facts = el('div', 'e-facts'), fact = (k, v) => { const f = el('div', 'e-fact'); f.append(el('span', null, k), el('b', null, v)); facts.append(f); };
+    fact('Where', assets.slice(0, 4).join(', ') || 'not stated'); fact('First seen (Vienna)', lt(e.start)); fact('Risk', e.priority);
+    fact('Waiting for a person', e.decisions.filter(d => level(d) !== 'autonomous' && !(approvals[d.event_id] && approvals[d.event_id].state)).length + ' of ' + e.decisions.length + ' decisions');
+    inn.append(facts);
+    sec('What was found', el('p', null, main.reason));
+    const ev = el('ul'); for (const x of [...new Set(e.decisions.flatMap(d => d.evidence || []))].slice(0, 6)) { const li = el('li'); li.append(el('code', null, x)); ev.append(li); }
+    if (ev.children.length) sec('Evidence', ev);
+    const done = el('ul'); for (const d of e.decisions) { const st = approvals[d.event_id] && approvals[d.event_id].state;
+      done.append(el('li', null, dhm(tsOf(d)) + ' · ' + d.action.replace(/_/g, ' ') + ' · ' + (level(d) === 'autonomous' ? 'done by the system (simulated)' : st ? st + ' by a person' : 'waits for ' + LEVEL[level(d)]))); }
+    sec('What the system has done so far', done); }
+  else sec('No case identified', el('p', null, 'The system has no matching case for this report. Say or type the room, for example “R403”, and the case will be shown here.'));
+  box.replaceChildren(inn); box.className = 'on'; box.scrollTop = 0; document.body.style.overflow = 'hidden'; }
+function endEmergency() { clearTimeout(emgTimer); $('emg').className = ''; $('emg').replaceChildren(); document.body.style.overflow = ''; }
+document.addEventListener('keydown', ev => { if (ev.key === 'Escape' && $('emg').className === 'on') endEmergency(); });
 const VT = {
   get_status() { const inc = E.filter(e => !e.routine), by = s => inc.filter(e => e.scenario === s).length, p = pending(), rank = {critical: 0, high: 1, medium: 2, low: 3};
     return {dataset: D.profile, decisions_total: all.length, cases: {turnaround: by('S01'), water: by('S02'), heating: by('S03'), maintenance: by('S04'), event_weekends: by('S05'), energy_plans: by('ENG'), logistics_orders: by('LOG')}, routine_guest_answers: E.length - inc.length,
@@ -585,6 +637,13 @@ const VT = {
   approve({item}) { const r = VT._item(item); if (r.error) return r; const d = r.d;
     if (level(d) === 'approval_and_consent' && !(approvals[d.event_id] && approvals[d.event_id].consent)) return {error: 'Guest consent is not on record for this item. Not approved.'};
     decide(d, 'approved'); return {ok: true, result: 'approved in the simulation', action: d.action.replace(/_/g, ' '), assets: (d.affected_assets || []).slice(0, 3), still_waiting: pending().length}; },
+  emergency({query, what} = {}) { let e = null;
+    if (query) { const r = VT.open_case({query}); if (!r.error) e = selected[tab]; }
+    if (!e && tab in SC) e = selected[tab] || null;
+    emergency(e, what ? String(what).slice(0, 300) : '');
+    return Object.assign({ok: true, connection: 'simulated: the emergency team is shown as connected, no real call is placed', screen: 'the dashboard now shows only this case'},
+      e ? {case: summary(e), where: [...new Set(e.decisions.flatMap(d => d.affected_assets || []))].slice(0, 4)} : {case: null, note: 'No matching case. Ask for the room and call emergency again with it.'}); },
+  end_emergency() { endEmergency(); return {ok: true, result: 'emergency view closed, dashboard is back'}; },
   reject({item}) { const r = VT._item(item); if (r.error) return r; decide(r.d, 'rejected'); return {ok: true, result: 'rejected, not executed', action: r.d.action.replace(/_/g, ' '), still_waiting: pending().length}; },
 };
 // "Voice briefing" in the header is the one voice entry point: a click starts a call with the
@@ -620,6 +679,7 @@ function talk(down) { if (!pttActive()) return; clearTimeout(releaseTimer);
   if (down) { talking = true; mic(true); $('ptt').classList.add('down'); $('vst').textContent = 'You are speaking'; }
   else if (talking) { $('ptt').classList.remove('down'); releaseTimer = setTimeout(() => { talking = false; mic(false); if (call) $('vst').textContent = 'Listening for the assistant'; }, 350); } }   // short tail so the last word is not cut
 $('pttOn').onchange = applyPtt;
+$('emgBtn').onclick = () => { VT.emergency({}); if (call) try { call.sendUserMessage('Emergency. I have opened the emergency view for the case on screen. Connect the emergency team and brief them.'); } catch (err) {} };
 for (const [evn, down] of [['pointerdown', true], ['pointerup', false], ['pointerleave', false], ['pointercancel', false]]) $('ptt').addEventListener(evn, ev => { ev.preventDefault(); talk(down); });
 const typing = ev => /^(INPUT|TEXTAREA|SELECT)$/.test(ev.target.tagName || '');
 document.addEventListener('keydown', ev => { if (ev.code === 'Space' && pttActive() && !typing(ev)) { ev.preventDefault(); if (!ev.repeat) talk(true); } });
@@ -653,6 +713,7 @@ document.addEventListener('keydown', ev => { if (/^(INPUT|TEXTAREA|SELECT)$/.tes
     const i = list.indexOf(selected[tab]), j = Math.max(0, Math.min(list.length - 1, i + (ev.key === 'ArrowDown' ? 1 : -1))); if (list[j] && j !== i) { selected[tab] = list[j]; history.replaceState(null, '', '#' + tab + ':' + encodeURIComponent(list[j].id)); render(); } ev.preventDefault(); } });
 let lastW = window.innerWidth, timer = null;
 if (/[?&]voicetest\b/.test(location.search)) setTimeout(voiceTest, 0);
+if (/[?&]emergencytest\b/.test(location.search)) setTimeout(() => console.log(JSON.stringify(VT.emergency({query: 'R201', what: 'Water is coming through the ceiling in the corridor on the second floor.'}))), 300);
 // ?tiptest pins a tooltip at the right edge, for a screenshot check of the placement
 if (/[?&]tiptest\b/.test(location.search)) setTimeout(() => { const vw = document.documentElement.clientWidth; showTip({clientX: vw - 8, clientY: 300}, '<b>Water leak in a room · R208</b><br>2026-11-10 16:30 CET<br>risk: high'); const r = tip.getBoundingClientRect(); document.title = 'tip ' + Math.round(r.left) + '..' + Math.round(r.right) + ' of ' + vw; const m = document.createElement('div'); m.style.cssText = 'position:fixed;left:' + (vw - 9) + 'px;top:294px;width:6px;height:12px;background:#ffb020;z-index:20'; document.body.append(m); }, 50);
 window.addEventListener('resize', () => { clearTimeout(timer); timer = setTimeout(() => { if (Math.abs(window.innerWidth - lastW) > 40) { lastW = window.innerWidth; render(); } }, 150); });

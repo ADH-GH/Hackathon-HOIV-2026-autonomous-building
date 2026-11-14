@@ -221,14 +221,17 @@ outage, no order. Robot transport of floor bins is not planned: no floor bin exc
 header. A click starts a call with an ElevenLabs agent, which first reports the status, the critical
 cases and what waits for approval, and then takes questions. It answers status questions, opens views and cases
 and reads the approval queue; it approves or rejects only after it has read the item back and
-heard a clear yes. Its eight tools are client tools that run in the page
+heard a clear yes. Its ten tools are client tools that run in the page
 (`voice/create_agent.py` holds the agent configuration), so there is no server. The rules stay in
 the page's code, not in the prompt: an item that needs guest consent cannot be approved until
 consent is recorded, by voice or by click. The agent only accepts calls from an allowlist of
 origins and has a daily conversation limit; conversations are billed by ElevenLabs. Voice needs
 network, a microphone and a page served over https or localhost. The tool handlers can be checked
 without network or microphone: open the page with `?voicetest`. The spoken conversation itself has
-not been tested by us. For loud rooms the call starts in push-to-talk: the
+not been tested by us. Saying "emergency", or pressing the Emergency button in the voice box, clears the screen down to the one
+affected case (where, what was found, the evidence, what the system has done so far) and shows the
+on-call emergency team as connected. That connection is simulated and labelled as such; no call is
+placed. For loud rooms the call starts in push-to-talk: the
 microphone is open only while the button or the space bar is held, and a text field takes typed
 requests instead. The agent itself is set to ignore background voices, to wait longer before it
 takes the turn, and to favour the words that matter. Without the flag the dashboard has no voice

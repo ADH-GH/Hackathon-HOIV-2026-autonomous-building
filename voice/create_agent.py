@@ -3,7 +3,7 @@
     ELEVENLABS_API_KEY=... python voice/create_agent.py          # creates the agent, prints its id
     python voice/create_agent.py dump                            # prints the configuration, no API call
 
-The agent has no server side: its eight tools are client tools that run in the
+The agent has no server side: its ten tools are client tools that run in the
 dashboard page. Pass the printed agent id to the dashboard build with --voice-agent.
 Conversations are billed by ElevenLabs. The agent is public: anyone who has the id can
 talk to it, so do not publish a dashboard built with --voice-agent without thinking about that.
@@ -29,9 +29,13 @@ Help the operator see the status and decide on approvals.
 4. Before approve or reject, repeat the item in one sentence and ask "Shall I approve?" or "Shall I reject?". Call the tool only after a clear yes. One item at a time. This step is important.
 5. If an item needs guest consent, say so. Call record_guest_consent only when the operator states that the guest's consent is on record. Never assume consent. This step is important.
 6. After a tool call, report exactly what the tool returned. If it returned an error, say the error.
+7. Emergency. If the operator says "emergency", asks for the emergency team, or reports danger to people or the building (water coming through a ceiling, fire, smoke, gas, a person hurt or trapped), call emergency at once. Pass the room or case if one was named, and the operator's own words. Do not ask for confirmation first. This step is important.
+8. After emergency returned, say that the emergency team is being connected and that the screen now shows only this case. Then brief the team in two sentences: where, what was found, since when. If no case was found, ask for the room and call emergency again with it.
+9. Call end_emergency only when the operator says the emergency is over or asks for the dashboard back.
 
 # Guardrails
 - You never decide on your own. Approving, rejecting and recording consent happen only on the operator's explicit word.
+- The emergency connection is simulated in this demo and you cannot place real calls. If the operator describes a real danger to life, tell them to dial 112.
 - Everything is a simulation. Say "approved in the simulation", never that something was really done, dispatched or repaired.
 - Do not invent rooms, numbers, times or cases. If a tool returns nothing, say that nothing was found.
 - If asked about anything other than this building's operation, say that you only handle PLATO-40 operations.
@@ -50,6 +54,10 @@ TOOLS = [
     tool("record_guest_consent", "Record that the guest's consent is on record for an item that needs it. Only on the operator's explicit statement.", ITEM, ["item"]),
     tool("approve", "Approve one pending item. Only after the operator confirmed with a clear yes. Fails if guest consent is required and not on record.", ITEM, ["item"]),
     tool("reject", "Reject one pending item. Only after the operator confirmed with a clear yes.", ITEM, ["item"]),
+    tool("emergency", "Emergency: clears the dashboard so it shows only the affected case, and connects the caller to the on-call emergency team (simulated). Call at once, without asking for confirmation.",
+         {"query": {"type": "string", "description": "Room or case the emergency is about, such as R201, 'heat pump' or 'ventilation'. Leave out to use the case that is open on the dashboard."},
+          "what": {"type": "string", "description": "What the operator reported, in their own words"}}),
+    tool("end_emergency", "Close the emergency view and bring the dashboard back. Only when the operator says the emergency is over."),
 ]
 body = {
     "name": "HOIV Building Ops Voice",
@@ -61,13 +69,13 @@ body = {
             "prompt": {"prompt": PROMPT, "llm": "gemini-2.5-flash", "temperature": 0.2, "timezone": "Europe/Vienna",
                        "tools": TOOLS},
         },
-        "tts": {"voice_id": "JBFqnCBsd6RMkjVDRZzb"},
+        "tts": {"voice_id": "rKiu7lQ4c5P3az3745s3"},
         "conversation": {"max_duration_seconds": 300},
         # for loud rooms: ignore voices in the background, wait longer before taking the turn, boost the words that matter
         "vad": {"background_voice_detection": True},
         "turn": {"turn_eagerness": "patient", "turn_timeout": 20},
         "asr": {"quality": "high", "keywords": ["PLATO-40", "status", "briefing", "approve", "reject", "approval", "consent", "turnaround", "water leak",
-                                                "heat pump", "maintenance", "event weekend", "energy", "logistics", "overview", "open case"]},
+                                                "heat pump", "maintenance", "event weekend", "energy", "logistics", "overview", "open case", "emergency"]},
     },
     # The widget wears the dashboard's style set (dark card, blue primary button, 8 px radius).
     "platform_settings": {"widget": {
@@ -80,6 +88,16 @@ body = {
 }
 if len(sys.argv) > 1 and sys.argv[1] == "dump":
     print(json.dumps(body, indent=1)); sys.exit()
+if len(sys.argv) > 2 and sys.argv[1] == "update":          # python voice/create_agent.py update <agent id>: push prompt, tools, voice and turn settings
+    patch = {"conversation_config": body["conversation_config"]}
+    req = urllib.request.Request("https://api.elevenlabs.io/v1/convai/agents/" + sys.argv[2], data=json.dumps(patch).encode(), method="PATCH",
+                                 headers={"xi-api-key": os.environ["ELEVENLABS_API_KEY"], "content-type": "application/json"})
+    try:
+        c = json.loads(urllib.request.urlopen(req, timeout=60).read())["conversation_config"]
+        print("voice", c["tts"]["voice_id"], "| tools", [t["name"] for t in c["agent"]["prompt"].get("tools", [])], "| prompt has emergency:", "emergency" in c["agent"]["prompt"]["prompt"])
+    except urllib.error.HTTPError as e:
+        print("HTTP", e.code, e.read().decode()[:1500])
+    sys.exit()
 req = urllib.request.Request("https://api.elevenlabs.io/v1/convai/agents/create", data=json.dumps(body).encode(),
                              headers={"xi-api-key": os.environ["ELEVENLABS_API_KEY"], "content-type": "application/json"})
 try:
