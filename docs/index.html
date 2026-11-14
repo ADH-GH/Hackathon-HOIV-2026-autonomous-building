@@ -778,7 +778,7 @@ function render() {
   if (D.staff) tabs.splice(tabs.length - 2, 0, ['staff', D.staff.resources.length, 'Plan', 'Staff']);
   for (const [k, n, code, name] of tabs) { const b = el('button', k === tab ? 'on' : ''); b.title = TABHINT[k] || ''; b.dataset.tab = k; b.setAttribute('aria-current', k === tab ? 'page' : 'false');
     b.setAttribute('aria-label', code + ' ' + name + ', ' + n);
-    b.append(el('b', null, n), el('i', null, code), el('span', null, name === 'Event weekend' ? 'Weekend' : name));     // twelve boxes: the short name fits, the full one is in the hint
+    b.append(el('b', null, n), el('i', null, code.replace(/^S(\d\d)$/, 'S-$1')), el('span', null, name === 'Event weekend' ? 'Weekend' : name));     // twelve boxes: the short name fits, the full one is in the hint
     b.onclick = () => { tab = k; history.replaceState(null, '', '#' + k); render(); }; nav.append(b); }
   const root = $('view'); root.replaceChildren();
   if (tab === 'overview') overview(root); else if (tab === 'budget') budgetView(root); else if (tab === 'staff') staffView(root); else if (tab === 'trail') trail(root); else if (tab === 'queue') queue(root); else scenario(root, tab);
