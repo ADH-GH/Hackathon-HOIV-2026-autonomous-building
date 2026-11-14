@@ -191,6 +191,12 @@ input[type=search]{height:36px;font:inherit;color:var(--ink);background:var(--bg
   .scroll table td>*{justify-self:start}
   td.n,td.m{text-align:left;white-space:normal}
 }
+.bld{display:block;width:100%;height:auto;max-height:700px;touch-action:pan-y;cursor:grab;user-select:none;-webkit-user-select:none}
+.bld:active{cursor:grabbing}.bld .bx.hit{cursor:pointer}.bld .bx:hover polygon{stroke:var(--ink);stroke-width:1.2}
+.bld .bn{font:600 13px/1 var(--mono);fill:var(--bg);pointer-events:none}
+.bld .bl{font:500 10px/1 var(--mono);letter-spacing:.08em;fill:var(--ink2);pointer-events:none}
+.bld .bf{font:500 10.5px/1 var(--mono);letter-spacing:.12em;text-transform:uppercase;fill:var(--mute)}
+.legend i.sw{width:12px;height:12px;border:0;border-radius:3px;vertical-align:-1px}
 /* comfort: motion, hover, focus */
 header{position:sticky;top:0;z-index:5;background:color-mix(in srgb,var(--bg) 96%,transparent);backdrop-filter:blur(10px)}
 .tile{transition:transform .15s ease,border-color .15s ease,box-shadow .15s ease}
@@ -487,6 +493,66 @@ function labelCells(table) { const hs = [...table.querySelectorAll('th')].map(h 
 function tile(v, k, small, key, go) { const t = el('div', 'tile' + (key ? ' key' : '') + (go ? ' go' : '')), b = el('b', null, v); t.append(b, el('span', null, k)); if (small) t.append(el('small', null, small));
   const mm = /^(\d+)( h)?$/.exec(String(v)); if (mm) countUp(b, +mm[1], mm[2] || '');
   if (go) { t.tabIndex = 0; t.title = 'Open this view'; t.onclick = () => { tab = go; history.replaceState(null, '', '#' + go); render(); }; t.onkeydown = ev => { if (ev.key === 'Enter') t.onclick(); }; } return t; }
+// Where it happened: a schematic 3D building, drawn here from building.json. The dataset gives each room a floor and
+// an orientation and no floor plan, so rooms are placed by number: five south rooms in front, five north rooms behind,
+// floors pulled apart so every room stays visible. Drag turns it. A case that touches many rooms at once (a cold snap,
+// an event weekend) is a building-wide case and is not painted onto single rooms.
+let yaw = 0.62;
+function buildingView(root, inc) {
+  const B = D.building; if (!B || !B.rooms || !B.rooms.length) return;
+  const card = el('div', 'card'); card.append(el('h2', null, 'Where it happened'),
+    el('p', 'note', 'Every room and plant asset of PLATO-40, coloured by its most serious case; the number is how many cases it had. Drag to turn, hover for the cases, click to open the most serious one. Schematic: the dataset gives a floor and an orientation per room, not a floor plan.'));
+  const rank = {critical: 3, high: 2, medium: 1, low: 0}, at = {}, wide = [];
+  for (const e of inc) { const as = [...new Set(e.decisions.flatMap(d => d.affected_assets || []).map(a => a.replace(/^WM_(R\d+)$/, '$1')))], rooms = as.filter(a => /^R\d{3}$/.test(a));
+    if (rooms.length > 6) wide.push(e);
+    for (const a of as) { if (/^R\d{3}$/.test(a) && rooms.length > 6) continue; (at[a] = at[a] || []).push(e); } }
+  for (const k in at) at[k].sort((a, b) => rank[b.priority] - rank[a.priority] || b.start - a.start);
+  const FH = 0.5, GAP = 1.8, boxes = [], nF = B.floors || Math.max(...B.rooms.map(r => r.floor));
+  const perFloor = {}; for (const r of B.rooms) (perFloor[r.floor + r.o] = perFloor[r.floor + r.o] || []).push(r);
+  for (const key in perFloor) perFloor[key].sort((a, b) => a.id.localeCompare(b.id)).forEach((r, i) => { const north = r.o === 'N', z = (r.floor - 1) * GAP;
+    boxes.push({id: r.id, label: r.id + ' · floor ' + r.floor + ', faces ' + (north ? 'north' : 'south'), x0: i, x1: i + 0.94, y0: north ? -1.45 : 0.25, y1: north ? -0.25 : 1.45, z0: z, z1: z + FH, room: true}); });
+  const W = 5, roof = nF * GAP, top = roof + 0.5, plant = (id, label, x0, y0, w, d, z0, h) => boxes.push({id, label, x0, x1: x0 + w, y0, y1: y0 + d, z0, z1: z0 + h, name: id});
+  const has = id => B.assets.includes(id) || at[id];
+  if (has('HP1')) plant('HP1', 'HP1 · heat pump', -1.9, 0.3, 0.9, 0.9, 0, 0.7);
+  if (has('BAT1')) plant('BAT1', 'BAT1 · battery', -1.9, -1.2, 0.9, 0.9, 0, 0.55);
+  if (has('WM_MAIN')) plant('WM_MAIN', 'WM_MAIN · main water meter', -0.75, -0.2, 0.45, 0.45, 0, 0.3);
+  if (has('VEND1')) plant('VEND1', 'VEND1 · vending machine, lobby', W + 0.35, 0.7, 0.55, 0.55, 0, 0.75);
+  if (has('WASTE_MAIN')) plant('WASTE_MAIN', 'WASTE_MAIN · central waste container', W + 0.35, -1.2, 0.9, 0.9, 0, 0.5);
+  if (has('AHU1')) plant('AHU1', 'AHU1 · air handling unit, roof', 0.3, -1.1, 1.5, 0.9, roof, 0.45);
+  if (has('PV1')) plant('PV1', 'PV1 · photovoltaics, roof', 2.3, -1.2, 2.5, 2.4, roof, 0.08);
+  const VW = 980, VH = 640, S = 66, cx0 = W / 2, s = svg('svg', {viewBox: `0 0 ${VW} ${VH}`, class: 'bld', role: 'img', 'aria-label': 'Schematic 3D view of the building with the number of cases per room and asset'});
+  const colour = b => { const l = at[b.id]; if (!l) return ['var(--raise)', 0.9]; const p = l[0].priority; return [p === 'critical' ? 'var(--crit)' : p === 'high' ? 'var(--appr)' : 'var(--series)', Math.min(0.95, 0.55 + 0.1 * l.length)]; };
+  const tipFor = b => { const l = at[b.id] || []; return '<b>' + b.label + '</b><br>' + (l.length ? l.length + ' case' + (l.length > 1 ? 's' : '') + '<br>' + l.slice(0, 4).map(e => lt(e.start).slice(0, 10) + ' · ' + episodeTitle(e) + ' · ' + e.priority).join('<br>') + (l.length > 4 ? '<br>and ' + (l.length - 4) + ' more' : '') : 'no case of its own'); };
+  function draw() { s.replaceChildren(); const c = Math.cos(yaw), sn = Math.sin(yaw);
+    const P = (x, y, z) => { const xr = (x - cx0) * c - y * sn, yr = (x - cx0) * sn + y * c; return [VW / 2 + 30 + xr * S, VH * 0.5 + yr * S * 0.46 - (z - top / 2) * S * 0.86, yr]; };
+    const pts = a => a.map(p => p[0].toFixed(1) + ',' + p[1].toFixed(1)).join(' ');
+    for (let f = 0; f <= nF; f++) { const z = f * GAP - 0.03, q = [P(-0.1, -1.55, z), P(W + 0.04, -1.55, z), P(W + 0.04, 1.55, z), P(-0.1, 1.55, z)];           // floor slab
+      const slab = svg('polygon', {points: pts(q), fill: 'var(--bg)', 'fill-opacity': 0.55, stroke: 'var(--line)', 'stroke-width': 1}); slab.dataset.o = f * 1000 - 500; s.append(slab); }
+    const order = boxes.map(b => ({b, k: Math.round(b.z0 / GAP) * 1000 + P((b.x0 + b.x1) / 2, (b.y0 + b.y1) / 2, 0)[2] * 10})).sort((a, b2) => a.k - b2.k);
+    const slabs = [...s.children]; s.replaceChildren();
+    let si = 0; const flush = k => { while (si < slabs.length && +slabs[si].dataset.o <= k) s.append(slabs[si++]); };
+    for (const {b, k} of order) { flush(k); const [fill, op] = colour(b), g = svg('g', {class: 'bx' + (at[b.id] ? ' hit' : '')});
+      const sides = [[1, 0, [[b.x1, b.y0], [b.x1, b.y1]]], [-1, 0, [[b.x0, b.y1], [b.x0, b.y0]]], [0, 1, [[b.x1, b.y1], [b.x0, b.y1]]], [0, -1, [[b.x0, b.y0], [b.x1, b.y0]]]];
+      for (const [nx, ny, [[xa, ya], [xb, yb]]] of sides) { const facing = nx * sn + ny * c; if (facing <= 0.02) continue;
+        g.append(svg('polygon', {points: pts([P(xa, ya, b.z0), P(xb, yb, b.z0), P(xb, yb, b.z1), P(xa, ya, b.z1)]), fill, 'fill-opacity': op * (nx ? 0.42 : 0.6), stroke: 'var(--line)', 'stroke-width': 0.8, 'stroke-linejoin': 'round'})); }
+      const tp = [P(b.x0, b.y0, b.z1), P(b.x1, b.y0, b.z1), P(b.x1, b.y1, b.z1), P(b.x0, b.y1, b.z1)];
+      g.append(svg('polygon', {points: pts(tp), fill, 'fill-opacity': op, stroke: 'var(--line)', 'stroke-width': 0.8, 'stroke-linejoin': 'round'}));
+      const mx = (tp[0][0] + tp[2][0]) / 2, my = (tp[0][1] + tp[2][1]) / 2, n = (at[b.id] || []).length;
+      if (n) g.append(svg('text', {x: mx, y: my + 4, 'text-anchor': 'middle', class: 'bn'}, n));
+      if (b.name) g.append(svg('text', {x: mx, y: my - (n ? 12 : -4), 'text-anchor': 'middle', class: 'bl'}, b.name));
+      g.addEventListener('mousemove', ev => showTip(ev, tipFor(b))); g.addEventListener('mouseleave', hideTip);
+      if (n) g.addEventListener('click', () => { if (!moved) { hideTip(); open(at[b.id][0]); } });
+      s.append(g); }
+    flush(1e9);
+    for (let f = 0; f <= nF; f++) { const p = P(cx0, 0, f * GAP + FH / 2); s.append(svg('text', {x: 14, y: p[1] + 4, class: 'bf'}, f < nF ? 'Floor ' + (f + 1) : 'Roof')); } }
+  let dragX = null, moved = false;
+  s.addEventListener('pointerdown', ev => { dragX = ev.clientX; moved = false; });
+  window.addEventListener('pointerup', () => { dragX = null; setTimeout(() => { moved = false; }, 0); });
+  s.addEventListener('pointermove', ev => { if (dragX == null || !s.isConnected) return; const dx = ev.clientX - dragX; if (Math.abs(dx) < 3 && !moved) return; moved = true; hideTip(); yaw += dx * 0.008; dragX = ev.clientX; draw(); });
+  draw(); card.append(s);
+  const lg = el('div', 'legend'); lg.innerHTML = '<span><i class="sw" style="background:var(--crit)"></i>critical case</span><span><i class="sw" style="background:var(--appr)"></i>high</span><span><i class="sw" style="background:var(--series)"></i>medium or low</span><span><i class="sw" style="background:var(--raise);border:1px solid var(--line)"></i>no case of its own</span>'; card.append(lg);
+  if (wide.length) card.append(el('p', 'note', wide.length + ' cases concern many rooms at once (cold snaps, event weekends, building-wide energy plans). They are counted for the building as a whole and are not painted onto single rooms.'));
+  root.append(card); }
 let whoDraw = null; window.addEventListener('resize', () => whoDraw && whoDraw());
 function overview(root) {
   const inc = E.filter(e => !e.routine), by = s => inc.filter(e => e.scenario === s).length;
@@ -543,6 +609,7 @@ function overview(root) {
   const ticks = narrow ? 3 : 6; for (let i = 0; i <= ticks; i++) { const tv = t0 + (t1 - t0) * i / ticks; s.append(svg('text', {x: x(tv), y: H - 6, 'text-anchor': i === 0 ? 'start' : i === ticks ? 'end' : 'middle'}, F_DAY.format(new Date(tv)))); }
   c.append(s); root.append(c);
   // table
+  buildingView(root, inc);
   const tb = el('div', 'card'); tb.append(el('h2', null, 'Technical incidents and how early they were seen'), el('p', 'note', 'How much earlier the system saw each fault than the building did. "Seen earlier by" is the time between our first decision and the moment the repair was logged in the dataset: 187 h means we flagged it 187 hours before anyone wrote the repair order. Longer is better. The repair orders are used for this comparison only; no detector reads them.'));
   const sc = el('div', 'scroll'), table = el('table'), hr = el('tr'); ['Case', 'Our first decision (Vienna)', 'Risk', 'Repair logged in the dataset', 'Seen earlier by'].forEach(h => hr.append(el('th', null, h))); table.append(hr);
   for (const e of E.filter(q => ['room_flow', 'main_gap', 'cop'].includes(q.kind) || (q.kind === 'ahu' && q.issue_type !== 'data_quality'))) { const tr = el('tr', 'go'); tr.onclick = () => open(e);

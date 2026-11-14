@@ -64,8 +64,17 @@ def _kind(episode_id: str) -> tuple[str, str]:
     return "room_day", subject
 
 
+def _building(ds) -> dict | None:
+    """Rooms with floor and orientation. The dataset has no floor plan; the view derives a schematic from these two."""
+    if not ds.has("building"):
+        return None
+    b = ds.building.get("building", {})
+    rooms = [{"id": r["id"], "floor": r.get("floor"), "o": r.get("orientation")} for r in b.get("rooms", []) if r.get("id") and r.get("floor")]
+    return {"floors": b.get("floors"), "rooms": rooms, "assets": [a["id"] for a in b.get("assets", []) if a.get("id")]} if rooms else None
+
+
 def build(data_dir: str | Path, decisions_path: str | Path, out: str | Path,
-          actions_path: str | Path | None = None, title: str = "PLATO-40 autonomous operations",
+          actions_path: str | Path | None = None, title: str = "PLATO-40 Autonomous Operations",
           voice_agent: str | None = None, web_fonts: bool = False, api_docs: str | None = None) -> Path:
     ds = Dataset(data_dir)
     decisions = _read(decisions_path)
@@ -117,6 +126,7 @@ def build(data_dir: str | Path, decisions_path: str | Path, out: str | Path,
         "profile": manifest.get("profile", Path(data_dir).name),
         "range": [manifest.get("start_utc"), manifest.get("end_utc")],
         "source": str(decisions_path),
+        "building": _building(ds),          # floor and orientation per room, for the schematic 3D view
         "apiDocs": api_docs,                # link to the API description; None leaves the link out
         "voiceAgent": voice_agent,          # ElevenLabs agent id; None keeps the page free of any network request
         "actions": actions,
