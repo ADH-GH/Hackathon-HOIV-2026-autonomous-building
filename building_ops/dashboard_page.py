@@ -176,6 +176,7 @@ input[type=search]{height:36px;font:inherit;color:var(--ink);background:var(--bg
 }
 /* phone: title above the buttons, all ten navigation boxes visible, tables as cards */
 @media (max-width:700px){
+  header{padding-top:calc(28px + env(safe-area-inset-top, 0px))}.hbox{padding-top:18px}
   .top{flex-direction:column;align-items:stretch;gap:12px}
   .top>div:last-child{display:flex;gap:8px}.top>div:last-child button{flex:1;margin:0}
   nav{grid-auto-flow:row;grid-template-columns:repeat(4,minmax(0,1fr));grid-auto-columns:auto;overflow:visible;gap:6px;padding-bottom:0}
