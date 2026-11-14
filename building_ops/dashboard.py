@@ -66,7 +66,7 @@ def _kind(episode_id: str) -> tuple[str, str]:
 
 def build(data_dir: str | Path, decisions_path: str | Path, out: str | Path,
           actions_path: str | Path | None = None, title: str = "PLATO-40 autonomous operations",
-          voice_agent: str | None = None, web_fonts: bool = False) -> Path:
+          voice_agent: str | None = None, web_fonts: bool = False, api_docs: str | None = None) -> Path:
     ds = Dataset(data_dir)
     decisions = _read(decisions_path)
     actions = {a["event_id"]: a for a in _read(actions_path)}
@@ -117,6 +117,7 @@ def build(data_dir: str | Path, decisions_path: str | Path, out: str | Path,
         "profile": manifest.get("profile", Path(data_dir).name),
         "range": [manifest.get("start_utc"), manifest.get("end_utc")],
         "source": str(decisions_path),
+        "apiDocs": api_docs,                # link to the API description; None leaves the link out
         "voiceAgent": voice_agent,          # ElevenLabs agent id; None keeps the page free of any network request
         "actions": actions,
         "episodes": [

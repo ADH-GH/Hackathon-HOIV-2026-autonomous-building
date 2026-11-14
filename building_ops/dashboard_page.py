@@ -31,6 +31,9 @@ header{padding:20px 48px 0;max-width:1536px;margin:0 auto}
 .kicker::before{content:"";display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 4px var(--glow);margin-right:9px;vertical-align:1px}
 h1{margin:8px 0 0;font:600 28px/1.15 var(--display);letter-spacing:-.01em}
 .sub{color:var(--mute);font-size:12.5px;margin-top:5px;overflow-wrap:anywhere}
+.hlink{display:inline-flex;align-items:center;height:36px;font:600 14px/1 var(--sans);color:var(--ink);text-decoration:none;border:1px solid var(--line);border-radius:8px;padding:0 14px;margin-right:6px;vertical-align:top}
+.hlink[hidden]{display:none}
+footer{line-height:1.6}footer a{color:var(--ink2)}
 #theme{height:36px;font:600 14px/1 var(--sans);color:var(--ink);background:transparent;border:1px solid var(--line);border-radius:8px;padding:0 14px;cursor:pointer}
 #theme:hover{background:var(--raise)}
 .hbox{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:18px 20px 16px}
@@ -226,13 +229,13 @@ footer{max-width:1536px;margin:0 auto;padding:4px 48px 32px;color:var(--mute);fo
       <h1 id="title"></h1>
       <div class="sub" id="source"></div>
     </div>
-    <div><button id="brief" type="button" hidden>Voice briefing</button><button id="theme" type="button">Light</button></div>
+    <div><button id="brief" type="button" hidden>Voice briefing</button><a id="api" class="hlink" hidden target="_blank" rel="noopener">API</a><button id="theme" type="button">Light</button></div>
   </div>
   <nav id="nav"></nav>
   </div>
 </header>
 <div class="wrap" id="view"></div>
-<footer>PLATO-40 synthetic dataset, proximata Hackathon '26 · Rhomberg track (CC BY 4.0). Every finding concerns the fictional PLATO-40 only. Simulated effects are labelled; nothing here was measured on a real building.</footer>
+<footer>PLATO-40 synthetic dataset, proximata Hackathon '26 · Rhomberg track (CC BY 4.0). Every finding concerns the fictional PLATO-40 only. Simulated effects are labelled; nothing here was measured on a real building.<br>Created by Alf-David Heermann, <a href="mailto:alfheermann@gmail.com">alfheermann@gmail.com</a><span id="apifoot" hidden> · <a id="apilink" target="_blank" rel="noopener">API description (Swagger)</a></span></footer>
 <div id="tip"></div>
 <div id="toast" role="status" aria-live="polite"></div>
 <div id="emg" role="alertdialog" aria-modal="true" aria-label="Emergency view"></div>
@@ -687,6 +690,7 @@ document.addEventListener('keyup', ev => { if (ev.code === 'Space' && pttActive(
 $('vform').addEventListener('submit', ev => { ev.preventDefault(); const t = $('vtext').value.trim(); if (!t) return;
   if (!call) { vsay('Start the voice briefing first.'); return; }
   try { call.sendUserMessage(t); vsay(t, true); $('vtext').value = ''; } catch (err) { vsay(String(err && err.message || err)); } });
+if (D.apiDocs) { $('api').href = D.apiDocs; $('api').hidden = false; $('api').title = 'How real systems would connect: the API description'; $('apilink').href = D.apiDocs; $('apifoot').hidden = false; }
 if (D.voiceAgent) { const b = $('brief'); b.hidden = false; b.title = 'Hear the status, the critical cases and what waits for approval'; b.onclick = briefing; }
 // ?voicetest runs the tool handlers without any network or microphone and shows what they return
 function voiceTest() { const KEYBAK = approvals; approvals = {}; const log = [], run = (name, args) => log.push(name + '(' + JSON.stringify(args || {}) + ') -> ' + JSON.stringify(VT[name](args || {}), null, 1));
