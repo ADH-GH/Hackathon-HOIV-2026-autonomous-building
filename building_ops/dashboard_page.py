@@ -775,9 +775,9 @@ function render() {
   const inc = E.filter(e => !e.routine), by = k => inc.filter(e => e.scenario === k).length;
   // Every box has the same three lines: figure, short code, name. SC labels are "S01 Turnaround": code, then name.
   const split = k => { const i = SC[k].indexOf(' '); return [SC[k].slice(0, i), SC[k].slice(i + 1)]; };
-  const tabs = [['overview', inc.length, 'All', 'Overview'], ...Object.keys(SC).map(k => [k, by(k), ...split(k)]), ['queue', pending().length, 'Open', 'Approvals'], ['trail', all.length, 'Log', 'All decisions']];
-  if (D.budget) tabs.splice(tabs.length - 2, 0, ['budget', Math.round(D.budget.bill.eur / 1000) + 'k', 'Plan €', 'Budget']);
-  if (D.staff) tabs.splice(tabs.length - 2, 0, ['staff', D.staff.resources.length, 'Plan', 'Staff']);
+  const tabs = [['overview', inc.length, 'All', 'Overview'], ['queue', pending().length, 'Open', 'Approvals'], ...Object.keys(SC).map(k => [k, by(k), ...split(k)]), ['trail', all.length, 'Log', 'All decisions']];
+  if (D.budget) tabs.splice(tabs.length - 1, 0, ['budget', Math.round(D.budget.bill.eur / 1000) + 'k', 'Plan €', 'Budget']);
+  if (D.staff) tabs.splice(tabs.length - 1, 0, ['staff', D.staff.resources.length, 'Plan', 'Staff']);
   for (const [k, n, code, name] of tabs) { const b = el('button', k === tab ? 'on' : ''); b.title = TABHINT[k] || ''; b.dataset.tab = k; b.setAttribute('aria-current', k === tab ? 'page' : 'false');
     b.setAttribute('aria-label', code + ' ' + name + ', ' + n);
     b.append(el('b', null, n), el('i', null, code.replace(/^S(\d\d)$/, 'S-$1')), el('span', null, name === 'Event weekend' ? 'Weekend' : name));     // twelve boxes: the short name fits, the full one is in the hint
@@ -920,7 +920,7 @@ themeBtn.onclick = () => setTheme(document.documentElement.getAttribute('data-th
 try { setTheme(localStorage.getItem('theme') || 'dark'); } catch (err) { setTheme('dark'); }
 // keyboard: arrows move through cases and tabs (not while typing)
 document.addEventListener('keydown', ev => { if (/^(INPUT|TEXTAREA|SELECT)$/.test((ev.target.tagName || ''))) return;
-  const order = ['overview', ...Object.keys(SC), ...(D.budget ? ['budget'] : []), ...(D.staff ? ['staff'] : []), 'queue', 'trail'];
+  const order = ['overview', 'queue', ...Object.keys(SC), ...(D.budget ? ['budget'] : []), ...(D.staff ? ['staff'] : []), 'trail'];
   if (ev.key === 'ArrowRight' || ev.key === 'ArrowLeft') { const i = order.indexOf(tab), j = (i + (ev.key === 'ArrowRight' ? 1 : order.length - 1)) % order.length; tab = order[j]; history.replaceState(null, '', '#' + tab); render(); ev.preventDefault(); }
   else if ((ev.key === 'ArrowDown' || ev.key === 'ArrowUp') && tab in SC) { const list = E.filter(e => e.scenario === tab && (showRoutine[tab] || !e.routine) && (!query || JSON.stringify(e.decisions).toLowerCase().includes(query)));
     const i = list.indexOf(selected[tab]), j = Math.max(0, Math.min(list.length - 1, i + (ev.key === 'ArrowDown' ? 1 : -1))); if (list[j] && j !== i) { selected[tab] = list[j]; history.replaceState(null, '', '#' + tab + ':' + encodeURIComponent(list[j].id)); render(); } ev.preventDefault(); } });
