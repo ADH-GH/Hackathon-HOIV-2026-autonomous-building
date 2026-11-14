@@ -6,6 +6,7 @@ PAGE = r"""<!doctype html>
 <meta charset="utf-8">
 __FONTS__
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%2310141c'/%3E%3Ccircle cx='32' cy='32' r='21' fill='%23508cdc' fill-opacity='.22'/%3E%3Ccircle cx='32' cy='32' r='11' fill='%23508cdc'/%3E%3C/svg%3E">
 <title>__TITLE__</title>
 <style>
 /* Dark control-room look: deep background, layered panels, monospace figures, small caps labels.
@@ -209,6 +210,14 @@ kbd{font:600 10.5px/1 var(--mono);border:1px solid var(--line);border-bottom-wid
 #vpanel .cap{margin-top:8px;font-size:13px;max-height:150px;overflow:auto;color:var(--ink2)}
 #vpanel .cap p{margin:4px 0}#vpanel .cap p.me{color:var(--ink)}
 #vpanel small{display:block;margin-top:8px;color:var(--mute);font-size:11px}
+/* A very quiet backdrop, the same as on the showcase page: a dot grid, wide diagonal hairlines and two faint glows */
+body::before{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;
+background-image:radial-gradient(circle at 1px 1px,color-mix(in oklab,var(--ink) 5%,transparent) 1px,transparent 0),
+repeating-linear-gradient(45deg,color-mix(in oklab,var(--line) 14%,transparent) 0 1px,transparent 1px 96px),
+radial-gradient(ellipse 60% 45% at 85% -5%,color-mix(in oklab,var(--accent) 9%,transparent),transparent 70%),
+radial-gradient(ellipse 50% 40% at 5% 105%,color-mix(in oklab,var(--accent) 7%,transparent),transparent 70%);
+background-size:26px 26px,auto,auto,auto;
+-webkit-mask-image:radial-gradient(90% 80% at 50% 40%,#000 30%,rgb(0 0 0/.45) 100%);mask-image:radial-gradient(90% 80% at 50% 40%,#000 30%,rgb(0 0 0/.45) 100%)}
 /* scrollbars in the page's colours: thumb in the border tone, track in the panel tone */
 *{scrollbar-width:thin;scrollbar-color:var(--line) transparent}
 *::-webkit-scrollbar{width:10px;height:10px}

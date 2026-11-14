@@ -262,7 +262,10 @@ on-call window are computed from local wall-clock times, so they move with dayli
 2. Run the pipeline unchanged on the holdout and commit `decisions_holdout.jsonl`.
 3. Any change after the tag is listed here with its reason.
 
-Changes after `pre-holdout`: none (tag not set yet).
+The tag `pre-holdout` was set on 2026-11-14, before the holdout release.
+
+Changes after `pre-holdout`: presentation only. The dashboard page got a background pattern and a
+favicon. No detector, threshold or rule was changed, so the decisions are the same.
 
 ## Real data
 
