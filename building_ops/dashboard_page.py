@@ -200,10 +200,13 @@ input[type=search]{height:36px;font:inherit;color:var(--ink);background:var(--bg
 :root{--c2:oklch(76% .09 195);--c3:oklch(58% .03 255);--hot:oklch(78% .17 58);--cool:oklch(40% .045 235)}
 svg text.ax{font:400 11px/1 var(--mono);fill:var(--mute)}
 .card h3{font:600 14px/1.3 var(--display);margin:16px 0 4px}
-.legend.big{font-size:14px;gap:22px;margin-top:10px;margin-bottom:0}.legend.big .wide{color:var(--mute);margin-left:auto;cursor:help}.legend.big i.sw{width:15px;height:15px;border-radius:4px;vertical-align:-2px;margin-right:8px}
-.bldwrap{position:relative}.seg{display:flex;gap:6px;margin:2px 88px 6px 0;flex-wrap:wrap}
+.legend.big{font-size:13.5px;gap:6px 18px;margin-top:4px;margin-bottom:0}.legend.big .wide{color:var(--mute);margin-left:auto;cursor:help}.legend.big i.sw{width:15px;height:15px;border-radius:4px;vertical-align:-2px;margin-right:8px}
+.bldwrap{position:relative}.seg{display:flex;gap:6px;flex-wrap:wrap}
+.bldhead{display:flex;align-items:center;justify-content:space-between;gap:10px 16px;flex-wrap:wrap}.bldhead h2{margin:0}.bldctl{display:flex;gap:6px 14px;align-items:center;flex-wrap:wrap}
+.duo>.card>.note{margin:6px 0 4px}.duo>.card>.note.one{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.duo>.card>h2{min-height:34px;display:flex;align-items:center;margin:0}.tlstrip{display:block;width:100%}
 .seg button{height:32px;font:600 13px/1 var(--sans);color:var(--ink2);background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:0 12px;cursor:pointer}
-.seg button.on{color:var(--ink);border-color:var(--accent);box-shadow:inset 0 -2px 0 var(--accent)}.bldzoom{position:absolute;top:2px;right:0;display:flex;gap:6px}
+.seg button.on{color:var(--ink);border-color:var(--accent);box-shadow:inset 0 -2px 0 var(--accent)}.bldzoom{display:flex;gap:6px}
 .bldzoom button{width:32px;height:32px;font:500 20px/1 var(--sans);color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:8px;cursor:pointer}
 .bldzoom button:hover{border-color:var(--mute);background:var(--raise)}
 .duo{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px;align-items:stretch;margin-bottom:0}
@@ -516,18 +519,18 @@ function tile(v, k, small, key, go) { const t = el('div', 'tile' + (key ? ' key'
 // an orientation and no floor plan, so rooms are placed by number: five south rooms in front, five north rooms behind,
 // floors pulled apart so every room stays visible. Drag turns it. A case that touches many rooms at once (a cold snap,
 // an event weekend) is a building-wide case and is not painted onto single rooms.
-let yaw = 0.62, zoom = 1, panY = 0, bldLayer = 'cases', bldFit = null; window.addEventListener('resize', () => bldFit && bldFit());
+let yaw = 0.62, zoom = 1, panY = 0, bldLayer = 'cases', bldFit = null, tlFit = null; window.addEventListener('resize', () => { if (bldFit) bldFit(); else if (tlFit) tlFit(); });
 function buildingView(inc) {
   const B = D.building; if (!B || !B.rooms || !B.rooms.length) return null;
-  const NOTE = {cases: 'Coloured by the most serious case, with the number of cases. Drag to turn, click to open.', noise: 'Noise complaints of guests per room over the year.', gaps: 'Hours without a temperature reading per room, and the gateway of each floor.'};
-  const note = el('p', 'note'), setNote = () => { note.textContent = NOTE[bldLayer] + ' Schematic: the dataset has floors and orientations, no floor plan.'; }; setNote();
-  const card = el('div', 'card'); card.append(el('h2', null, 'Where it happened'), note);
+  const NOTE = {cases: 'Most serious case per room, with the number of cases.', noise: 'Noise complaints of guests per room over the year.', gaps: 'Hours without a temperature reading per room, and each floor\'s gateway.'};
+  const note = el('p', 'note one'), setNote = () => { note.textContent = NOTE[bldLayer] + ' Schematic: the dataset has no floor plan.'; note.title = 'Drag sideways to turn, up or down to move, plus and minus to zoom. In the cases layer a click opens the most serious case of a room. The dataset gives a floor and an orientation per room; the positions are derived from the room numbers.'; }; setNote();
+  const card = el('div', 'card'), head = el('div', 'bldhead'); head.append(el('h2', null, 'Where it happened')); card.append(head, note);
   const rank = {critical: 3, high: 2, medium: 1, low: 0}, at = {}, wide = [];
   for (const e of inc) { const as = [...new Set(e.decisions.flatMap(d => d.affected_assets || []).map(a => a.replace(/^WM_(R\d+)$/, '$1')))], rooms = as.filter(a => /^R\d{3}$/.test(a));
     if (rooms.length > 6) wide.push(e);
     for (const a of as) { if (/^R\d{3}$/.test(a) && rooms.length > 6) continue; (at[a] = at[a] || []).push(e); } }
   for (const k in at) at[k].sort((a, b) => rank[b.priority] - rank[a.priority] || b.start - a.start);
-  const FH = 0.5, GAP = 1.42, boxes = [], nF = B.floors || Math.max(...B.rooms.map(r => r.floor));
+  const FH = 0.5, GAP = 1.2, boxes = [], nF = B.floors || Math.max(...B.rooms.map(r => r.floor));
   const perFloor = {}; for (const r of B.rooms) (perFloor[r.floor + r.o] = perFloor[r.floor + r.o] || []).push(r);
   for (const key in perFloor) perFloor[key].sort((a, b) => a.id.localeCompare(b.id)).forEach((r, i) => { const north = r.o === 'N', z = (r.floor - 1) * GAP;
     boxes.push({id: r.id, label: r.id + ' · floor ' + r.floor + ', faces ' + (north ? 'north' : 'south'), x0: i, x1: i + 0.94, y0: north ? -1.45 : 0.25, y1: north ? -0.25 : 1.45, z0: z, z1: z + FH, room: true}); });
@@ -541,7 +544,7 @@ function buildingView(inc) {
   if (has('WASTE_MAIN')) plant('WASTE_MAIN', 'WASTE_MAIN · central waste container', W + 0.35, -1.2, 0.9, 0.9, 0, 0.5);
   if (has('AHU1')) plant('AHU1', 'AHU1 · air handling unit, roof', 0.3, -1.1, 1.5, 0.9, roof, 0.45);
   if (has('PV1')) plant('PV1', 'PV1 · photovoltaics, roof', 2.3, -1.2, 2.5, 2.4, roof, 0.08);
-  const VW = 860, VH = 500, S = 66, cx0 = W / 2, s = svg('svg', {viewBox: `0 0 ${VW} ${VH}`, class: 'bld', role: 'img', 'aria-label': 'Schematic 3D view of the building with the number of cases per room and asset'});
+  const VW = 800, VH = 450, S = 62, cx0 = W / 2, s = svg('svg', {viewBox: `0 0 ${VW} ${VH}`, class: 'bld', role: 'img', 'aria-label': 'Schematic 3D view of the building with the number of cases per room and asset'});
   // Three layers over the same building: the cases, the noise complaints, and the hours a room sent no reading.
   const NOISE = B.noise || {}, GAPS = B.gaps_h || {}, GW = B.gateways || [], maxOf = o => Math.max(1, ...Object.values(o));
   const LAYER = {cases: {name: 'Cases'}, noise: {name: 'Noise complaints', data: NOISE, max: maxOf(NOISE), unit: n => n + ' noise complaint' + (n === 1 ? '' : 's')},
@@ -586,7 +589,7 @@ function buildingView(inc) {
   draw(); const wrap = el('div', 'bldwrap'), ctl = el('div', 'bldzoom');
   for (const [sym, f, name] of [['+', 1.2, 'Zoom in'], ['−', 1 / 1.2, 'Zoom out']]) { const b = el('button', null, sym); b.type = 'button'; b.title = name; b.setAttribute('aria-label', name);
     b.onclick = () => { zoom = Math.min(2.4, Math.max(0.6, zoom * f)); if (zoom <= 1) panY = 0; draw(); }; ctl.append(b); }
-  wrap.append(s, ctl); card.append(wrap);
+  wrap.append(s); card.append(wrap);
   const lg = el('div', 'legend big'), sw = (c, t) => '<span><i class="sw" style="background:' + c + '"></i>' + t + '</span>';
   const legend = () => { if (bldLayer === 'cases') { lg.innerHTML = sw('var(--crit)', 'critical case') + sw('var(--appr)', 'high') + sw('var(--series)', 'medium or low') + '<span><i class="sw" style="background:var(--raise);border:1px solid var(--line)"></i>no case of its own</span>';
       if (wide.length) { const w = el('span', 'wide', '+ ' + wide.length + ' building-wide'); w.title = wide.length + ' cases concern many rooms at once (cold snaps, event weekends, building-wide energy plans). They are counted for the building as a whole and are not shown per room.'; lg.append(w); } }
@@ -595,12 +598,13 @@ function buildingView(inc) {
       const w = el('span', 'wide', tot); w.title = bldLayer === 'noise' ? 'Guest requests of the type noise complaint, counted per room' : 'Quarter hours in which a room sent no temperature, summed per room; the building system raised its own communication-loss alarms, shown on the gateway'; lg.append(w); } };
   const seg = el('div', 'seg'); for (const k of Object.keys(LAYER)) { if (k !== 'cases' && !Object.keys(LAYER[k].data).length) continue; const b = el('button', k === bldLayer ? 'on' : '', LAYER[k].name); b.type = 'button';
     b.onclick = () => { bldLayer = k; for (const x of seg.children) x.className = x === b ? 'on' : ''; setNote(); legend(); bldFit ? bldFit() : draw(); }; seg.append(b); }
-  if (seg.children.length > 1) wrap.prepend(seg);
+  const ctlRow = el('div', 'bldctl'); if (seg.children.length > 1) ctlRow.append(seg); ctlRow.append(ctl); head.append(ctlRow);
   legend(); card.append(lg);
   // On a wide screen the view takes exactly the height that is left, so building and key figures are visible without scrolling.
   bldFit = () => { if (!s.isConnected) return; if (innerWidth <= 1100) { s.style.height = ''; draw(); return; }
+    const tl = document.querySelector('.duo .tlstrip'); if (tl) tl.style.display = 'none';             // the neighbour must not stretch this box while it is measured
     s.style.height = '300px'; const r = s.getBoundingClientRect(), below = card.getBoundingClientRect().bottom - r.bottom;
-    s.style.height = Math.round(Math.max(190, Math.min(640, innerHeight - (r.top + scrollY) - below - 16))) + 'px'; draw(); };
+    s.style.height = Math.round(Math.max(190, Math.min(640, innerHeight - (r.top + scrollY) - below - 16))) + 'px'; draw(); if (tl) tl.style.display = ''; if (tlFit) tlFit(); };
   requestAnimationFrame(bldFit); if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => bldFit && bldFit());
   return card; }
 /* ---------- planning views: budget and staff. Summaries of the year, no decisions. ---------- */
@@ -702,11 +706,12 @@ function overview(root) {
       link.append(svg('path', {d: `M${sx.toFixed(1)} 0V${mid}H${tx.toFixed(1)}V22`, fill: 'none', stroke: segs[i].style.background, 'stroke-width': 1.5, 'stroke-opacity': 0.8, 'stroke-linejoin': 'round'})); }); };
   requestAnimationFrame(whoDraw); if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => whoDraw && whoDraw());
   // time strip
-  const c = el('div', 'card'); c.append(el('h2', null, 'When the cases happened'), el('p', 'note', 'One dot per case, one lane per scenario; red is critical. The curves show how many cases fall around that time. Hover for details, click a dot to open.'));
+  const c = el('div', 'card'); c.append(el('h2', null, 'When the cases happened'), el('p', 'note', 'One dot per case, one lane per scenario; red is critical. Curves: how many cases fall around that time.'));
+  const strip = fill => {
   const narrow = window.innerWidth < 700, half = !!duo && window.innerWidth > 1100, W = narrow ? Math.max(300, window.innerWidth - 74) : half ? 660 : 1000, lanes = ['S01', 'S02', 'S03', 'S04', 'S05', 'ENG', 'LOG'];
-  const gap = narrow ? 68 : half ? 47 : 64, rise = narrow ? 36 : half ? 33 : 44, m = {l: 6, r: narrow ? 8 : 10, t: (narrow ? 36 : half ? 33 : 44) + 6, b: 26}, H = m.t + (lanes.length - 1) * gap + 14 + m.b;
+  const m0 = {b: 26}, gap = fill ? Math.max(30, Math.min(84, (fill - 20 - m0.b) / (lanes.length - 1 + 0.72))) : narrow ? 68 : half ? 34 : 64, rise = fill || half ? gap * 0.72 : narrow ? 36 : 44, m = {l: 6, r: narrow ? 8 : 10, t: rise + 6, b: m0.b}, H = m.t + (lanes.length - 1) * gap + 14 + m.b;
   const t0 = Math.min(...E.map(e => e.start)), t1 = Math.max(...E.map(e => e.start), t0 + 1);
-  const x = v => m.l + (v - t0) / (t1 - t0) * (W - m.l - m.r), s = svg('svg', {viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': 'Cases over time'});
+  const x = v => m.l + (v - t0) / (t1 - t0) * (W - m.l - m.r), s = svg('svg', {viewBox: `0 0 ${W} ${H}`, role: 'img', class: 'tlstrip', 'aria-label': 'Cases over time'});
   // Density curve behind each lane: how many cases happen around that time. A Gaussian window of about
   // ten days, the same height scale for all lanes, so a taller curve means more cases.
   const DAY = 864e5, BW = 10 * DAY, N = 140, grid = Array.from({length: N}, (_, i) => t0 + (t1 - t0) * i / (N - 1));
@@ -731,7 +736,13 @@ function overview(root) {
       cc.addEventListener('click', () => open(e)); s.append(cc); } });
   for (const t of lanesLabels) s.append(t);          // above curves and bands, so the names stay readable; they take no pointer events
   const ticks = narrow ? 3 : half ? 4 : 6; for (let i = 0; i <= ticks; i++) { const tv = t0 + (t1 - t0) * i / ticks; s.append(svg('text', {x: x(tv), y: H - 6, 'text-anchor': i === 0 ? 'start' : i === ticks ? 'end' : 'middle'}, F_DAY.format(new Date(tv)))); }
-  c.append(s); if (duo) { c.style.marginTop = '0'; duo.append(c); } else root.append(c);
+  return s; };
+  let stripEl = strip(); c.append(stripEl); if (duo) { c.style.marginTop = '0'; duo.append(c); } else root.append(c);
+  // Beside the building the timeline takes the height that is left in its box, so no band stays empty under it.
+  tlFit = () => { if (!duo || !c.isConnected || window.innerWidth <= 1100) return; const width = stripEl.getBoundingClientRect().width || c.clientWidth - 40; stripEl.style.display = 'none';
+    const free = c.getBoundingClientRect().bottom - 20 - stripEl.previousElementSibling.getBoundingClientRect().bottom - 6; stripEl.style.display = '';
+    if (width < 50 || free < 120) return; const next = strip(free * 660 / width); stripEl.replaceWith(next); stripEl = next; };
+  requestAnimationFrame(() => bldFit ? bldFit() : tlFit());
   // table
   const tb = el('div', 'card'); tb.append(el('h2', null, 'Technical incidents and how early they were seen'), el('p', 'note', 'How much earlier the system saw each fault than the building did. "Seen earlier by" is the time between our first decision and the moment the repair was logged in the dataset: 187 h means we flagged it 187 hours before anyone wrote the repair order. Longer is better. The repair orders are used for this comparison only; no detector reads them.'));
   const sc = el('div', 'scroll'), table = el('table'), hr = el('tr'); ['Case', 'Our first decision (Vienna)', 'Risk', 'Repair logged in the dataset', 'Seen earlier by'].forEach(h => hr.append(el('th', null, h))); table.append(hr);
