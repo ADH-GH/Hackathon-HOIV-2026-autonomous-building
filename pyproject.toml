@@ -11,3 +11,6 @@ gardena-ble = ["gardena-bluetooth==3.1.0", "bleak==3.1.0"]
 
 [tool.setuptools]
 packages = ["building_ops", "building_ops.detectors", "building_ops.adapters"]
+
+[tool.setuptools.package-data]
+building_ops = ["data/gardena/*.jsonl"]

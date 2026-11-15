@@ -161,3 +161,47 @@ Legacy observation-only dashboard input still performs a separate default-policy
 assessment; it is not the exported result of a customized replay. Prefer the
 manifest for demonstrations. The assessment is deterministic at a fixed cutoff;
 hashes establish internal consistency, not authenticated physical provenance.
+
+## One-command offline experience
+
+```sh
+python -m building_ops gardena doctor
+python -m building_ops gardena demo --out out/gardena-demo
+# Open out/gardena-demo/experience.html in a browser.
+python -m building_ops gardena report --evidence out/gardena-demo/decisions.evidence.json --out out/gardena-demo/another-report.html
+```
+
+No hotel dataset, optional BLE packages, credentials, network or microphone is
+needed. Packaged synthetic scenarios include normal/prolonged watering,
+disconnection/recovery, low battery, stale data, qualified flow discrepancy and
+an unqualified-flow negative control. The demo uses an explicitly recorded
+60-second monitoring limit, not a manufacturer threshold. It exports original
+fixtures, strict decisions, canonical evidence and responsive standalone HTML.
+
+Assessment/decision/fixture bytes are deterministic for a fixed code revision.
+HTML records its actual wall-clock generation time, so that metadata changes
+between renders; the underlying assessment and policy do not. No sample values
+are presented as physical reads. Existing destinations are refused, not replaced.
+
+`doctor` checks platform and installed package metadata only. It does not scan,
+verify Bluetooth permission, grant owner authorization or test a device. Python
+3.11 remains sufficient for offline use; native decoding uses the documented
+isolated Python 3.12+ profile. No daemon, server or startup service is installed.
+
+### If onboarding stops
+
+| Condition | Safe next step |
+|---|---|
+| Bluetooth off / permission denied | Enable Bluetooth and allow the actual Terminal/Python runtime in macOS settings; retry only with owner permission. |
+| No candidate found | Check range, power and advertisement availability; never connect to a neighbor's device. |
+| Model uncertain | Read identification if available; use owner-confirmed 1889-20 only when independently established. Otherwise stop. |
+| Pairing/app conflict | Ask the owner; do not reset, unpair or displace an active controller. |
+| Connection/read timeout | Check range and authorized availability; no automatic reconfiguration. |
+| Missing characteristic | Preserve null/unknown and inspect capability coverage; do not write to obtain a status. |
+| Disconnect | Preserve acquired records; current state becomes unknown. Explicitly start another bounded session if authorized. |
+
+`observe --samples 10 --interval-seconds 60` already provides a bounded selected-
+device session. It exits on connection loss and disconnects in `finally`; Ctrl-C
+cancels the foreground task. No authorization-failure reconnect loop is added.
+After collection, run replay then report explicitly to preserve previous outputs.
+The static report does not refresh itself or operate a valve.

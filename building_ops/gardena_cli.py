@@ -16,6 +16,12 @@ from .telemetry import TelemetryError, append_observation, read_observations, ti
 def add_parser(sub):
     p = sub.add_parser('gardena', help='optional native macOS BLE observation and offline replay')
     commands = p.add_subparsers(dest='gardena_command', required=True)
+    commands.add_parser('doctor')
+    demo = commands.add_parser('demo')
+    demo.add_argument('--out', default='out/gardena-demo')
+    report = commands.add_parser('report')
+    report.add_argument('--evidence',required=True)
+    report.add_argument('--out',required=True)
     scan = commands.add_parser('scan')
     scan.add_argument('--seconds', type=float, default=12)
     scan.add_argument('--authorize-hardware', action='store_true')
@@ -71,6 +77,11 @@ async def _hardware(args):
 
 
 def run(args):
+    if args.gardena_command in ('doctor','demo','report'):
+        from .gardena_experience import doctor,demo,render
+        if args.gardena_command=='doctor':return doctor()
+        if args.gardena_command=='demo':return demo(args.out)
+        return render(args.evidence,args.out)
     if args.gardena_command != 'replay':
         return asyncio.run(_hardware(args))
     from .gardena_assessment import replay
