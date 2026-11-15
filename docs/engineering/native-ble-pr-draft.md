@@ -15,11 +15,11 @@ prolonged observations. Fake scanner and GATT backends exercise the real adapter
 interface without accessing macOS Bluetooth. A separate installed-profile test
 runs actual gardena-bluetooth 3.1.0 decoders and invokes write guards against mocks.
 
-## Root cause / capability gap
+## Root Cause
 The existing file-based detector and dashboard paths do not collect or qualify
 external Bluetooth observations. No new persistent backend is necessary.
 
-## Implementation
+## Change
 Optional lazy BLE imports, explicitly authorized/selected bounded reads, simple
 characteristic whitelist, denied writes, versioned private-ID-free observations,
 append-only bounded intake, monitoring proposals and an isolated static dashboard
@@ -33,11 +33,11 @@ Existing hotel tests and historical byte comparisons must pass. Installation and
 recorded test counts are documented in the integration evidence, not hardware
 certification. No current annual dataset was available or regenerated.
 
-## Claim alignment
+## Claim Alignment
 Adds a reproducible observation-to-finding-to-evidence path, not real autonomous
 building operation or demonstrated physical-device connectivity.
 
-## Remaining limitations
+## Remaining Limitations
 Hardware pairing, permissions, actual supported characteristics, physical model
 identity and live measurements await separate owner-authorized verification.
 Real flow needs an independent calibrated sensor. No controls, schedules, clock,
@@ -53,3 +53,13 @@ for CI, not claimed locally tested. Compileall and historical file comparisons
 pass. Fixture replay emits one prolonged-watering decision that passes strict
 safety checking. Workflow files were prepared locally; remote CI was not run.
 No physical scan, connection, pairing change or actuator command was performed.
+
+## Final integrated chain control
+
+The current engineering stack strengthens the existing mock-backend positive
+case: discovery/explicit selection, status reads, append-only observations, actual
+replay CLI, low-battery finding, strict decision CLI and simulation evidence are
+exercised as one chain. The fake transport's write counter remains zero and its
+private mock identifier never enters observations/decisions. This expands an
+existing case without inflating the test count. It does not claim physical device
+communication or modify the independently tested 83-case native branch head.

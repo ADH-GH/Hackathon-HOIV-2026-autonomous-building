@@ -6,7 +6,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 
 from building_ops.adapters.gardena_ble import GardenaBLE
 from building_ops.telemetry import TelemetryError, append_observation, observation, read_observations, validate_observation
@@ -55,6 +55,24 @@ class BLETest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(row['remaining_open_seconds'], 0)
         self.assertIsNone(row['flow_liters_per_minute'])
         self.assertEqual(row['source_mode'], 'simulated_fixture')
+        # Complete acquisition -> append -> replay -> strict decision evidence
+        # using only this mock backend, not a disconnected hand-written fixture.
+        fake.values['battery_percent']=10
+        reader.clock=lambda:T+timedelta(seconds=60)
+        low=await reader.read_status()
+        with tempfile.TemporaryDirectory() as tmp:
+            inputs=Path(tmp)/'observations.jsonl';out=Path(tmp)/'decisions.jsonl'
+            append_observation(inputs,row);append_observation(inputs,low)
+            result=subprocess.run([sys.executable,'-m','building_ops','gardena','replay','--input',str(inputs),'--out',str(out)],capture_output=True,text=True)
+            self.assertEqual(result.returncode,0,result.stderr)
+            findings=[json.loads(line) for line in out.read_text().splitlines()]
+            self.assertEqual([d['issue_type'] for d in findings],['irrigation_battery'])
+            result=subprocess.run([sys.executable,'-m','building_ops','check',str(out),'--strict-safety'],capture_output=True,text=True)
+            self.assertEqual(result.returncode,0,result.stderr)
+            evidence=json.loads(out.with_suffix('.evidence.json').read_text())
+            self.assertEqual(evidence['source_modes'],['simulated_fixture'])
+            self.assertEqual(evidence['operational_outcome'],'not_measured')
+            self.assertNotIn(DEVICE,inputs.read_text()+out.read_text())
         await reader.disconnect()
         self.assertEqual(fake.connections, [DEVICE]); self.assertEqual(fake.writes, 0)
         self.assertEqual(fake.disconnects, 1)
