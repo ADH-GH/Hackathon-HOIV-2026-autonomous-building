@@ -80,7 +80,7 @@ def demo(out):
     root.mkdir(parents=True)
     fixtures=Path(__file__).parent/'data/gardena'
     for name in ('demo.jsonl','flow.jsonl'):shutil.copyfile(fixtures/name,root/name)
-    report=replay(root/'demo.jsonl',root/'decisions.jsonl',policy=MonitoringPolicy(watering_limit_seconds=60,flow_tolerance_l_min=.1),
+    report=replay(root/'demo.jsonl',root/'decisions.jsonl',policy=MonitoringPolicy(watering_limit_seconds=60,flow_tolerance_l_min=.1,flow_relationships={'Flow_discrepancy':'fixture_zone','Flow_unqualified':'fixture_zone'}),
                   as_of='2026-11-15T12:02:00Z',flow_input=root/'flow.jsonl')
     result=render(root/'decisions.evidence.json',root/'experience.html')
     result.update(finding_count=report['decision_count'],evidence=str(root/'decisions.evidence.json'),source_mode='simulated_fixture',hardware_test='NOT_TESTED')

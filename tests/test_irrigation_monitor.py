@@ -50,12 +50,12 @@ class IrrigationTest(unittest.TestCase):
         self.assertTrue(all(d['action']=='flag_anomaly' for d in result))
 
     def test_independent_flow_qualification(self):
-        policy=MonitoringPolicy(flow_tolerance_l_min=.1,flow_settle_seconds=0,flow_persistence_seconds=60)
+        policy=MonitoringPolicy(flow_tolerance_l_min=.1,flow_settle_seconds=0,flow_persistence_seconds=60,flow_relationships={'fixture':'fixture_zone'})
         for opened,flow,expected in [(False,2,True),(True,0,True),(False,0,False),(True,2,False)]:
             rows=[sample(i,opened=opened) for i in (0,60,120)]
             flows=[dict(device_alias='fixture',timestamp_utc=r['observed_at_utc'],flow_liters_per_minute=flow,
                         quality='VALID',source='independent_meter',source_mode='simulated_fixture',hydraulic_scope_confirmed=True,
-                        calibration_reference='synthetic_calibration') for r in rows]
+                        calibration_reference='synthetic_calibration',schema_version=2,units='L/min',independent=True,hydraulic_zone='fixture_zone',time_sync_reference='synthetic_clock',timestamp_uncertainty_seconds=0) for r in rows]
             result=analyze(rows,policy=policy,flow_observations=flows)
             self.assertEqual(bool(result),expected)
             self.assertEqual(analyze(rows,policy=policy),[])

@@ -17,6 +17,7 @@ class MonitoringPolicy:
     freshness_seconds: int = 180
     max_gap_seconds: int = 180
     flow_tolerance_l_min: float | None = None
+    flow_relationships: dict[str, str] | None = None
     flow_settle_seconds: int = 30
     flow_persistence_seconds: int = 60
     flow_max_skew_seconds: int = 60
@@ -29,6 +30,11 @@ class MonitoringPolicy:
             raise TelemetryError('battery monitoring threshold must be 0..100')
         if type(self.flow_settle_seconds) is not int or self.flow_settle_seconds < 0:
             raise TelemetryError('settling period must be nonnegative')
+        if self.flow_relationships is not None:
+            from ..telemetry import alias
+            if not isinstance(self.flow_relationships,dict) or len(self.flow_relationships)>100:
+                raise TelemetryError('flow relationships must map selected device aliases to hydraulic zone aliases')
+            for device,zone in self.flow_relationships.items():alias(device);alias(zone)
         v = self.flow_tolerance_l_min
         if v is not None and (type(v) not in (int, float) or v < 0 or (type(v) is float and not math.isfinite(v))):
             raise TelemetryError('flow tolerance must be finite and nonnegative')
@@ -38,8 +44,17 @@ def validate_flow(row):
     """Supplied sensor provenance is a declaration, not authentication or calibration proof."""
     required = {'device_alias', 'timestamp_utc', 'flow_liters_per_minute', 'quality',
                 'source', 'source_mode', 'hydraulic_scope_confirmed', 'calibration_reference'}
-    if not isinstance(row, dict) or set(row) != required:
+    extended={'schema_version','units','independent','hydraulic_zone','time_sync_reference','timestamp_uncertainty_seconds'}
+    if not isinstance(row, dict) or set(row) not in (required,required|extended):
         raise TelemetryError('external flow evidence has an invalid schema')
+    if 'schema_version' in row:
+        from ..telemetry import alias
+        if type(row['schema_version']) is not int or row['schema_version']!=2 or row['units']!='L/min' or type(row['independent']) is not bool:
+            raise TelemetryError('flow version 2 requires explicit L/min units and independent declaration')
+        alias(row['hydraulic_zone'])
+        sync=row['time_sync_reference'];uncertainty=row['timestamp_uncertainty_seconds']
+        if not isinstance(sync,str) or not sync.strip() or len(sync)>200 or any(ord(c)<32 for c in sync):raise TelemetryError('flow time synchronization reference required')
+        if type(uncertainty) not in (float,int) or not 0<=uncertainty<=86400 or (type(uncertainty) is float and not math.isfinite(uncertainty)):raise TelemetryError('finite nonnegative flow timestamp uncertainty required')
     timestamp(row['timestamp_utc'])
     from ..telemetry import alias, MODES, QUALITIES
     alias(row['device_alias'])
@@ -68,7 +83,13 @@ def analyze(observations, *, policy=None, as_of=None, flow_observations=()):
         unique[key] = row
     rows = sorted(unique.values(), key=lambda r: (timestamp(r['observed_at_utc']), r['device_alias']))
     cutoff = timestamp(as_of) if as_of is not None else max((timestamp(r['observed_at_utc']) for r in rows), default=None)
-    flows = sorted((validate_flow(r) for r in flow_observations), key=lambda r: timestamp(r['timestamp_utc']))
+    flow_unique={}
+    for f in flow_observations:
+        validate_flow(f)
+        key=(f['device_alias'],f['source_mode'],timestamp(f['timestamp_utc']))
+        if key in flow_unique and fingerprint(flow_unique[key])!=fingerprint(f):raise TelemetryError('conflicting independent flow identity')
+        flow_unique[key]=f
+    flows=sorted(flow_unique.values(),key=lambda f:timestamp(f['timestamp_utc']))
     decisions, states = [], {}
 
     def finding(row, at, issue, reason, episode, evidence, priority='medium'):
@@ -131,7 +152,11 @@ def analyze(observations, *, policy=None, as_of=None, flow_observations=()):
         eligible = [f for f in flows if f['device_alias'] == row['device_alias'] and f['source_mode'] == row['source_mode']
                     and timestamp(f['timestamp_utc']) <= t]
         f = eligible[-1] if eligible else None
-        qualified = f is not None and f['quality'] == 'VALID' and f['hydraulic_scope_confirmed'] is True and policy.flow_tolerance_l_min is not None and (t-timestamp(f['timestamp_utc'])).total_seconds() <= policy.flow_max_skew_seconds
+        relationship=(policy.flow_relationships or {}).get(row['device_alias'])
+        qualified = f is not None and f.get('schema_version')==2 and f.get('independent') is True and relationship is not None and f.get('hydraulic_zone')==relationship and f.get('timestamp_uncertainty_seconds',float('inf')) <= policy.flow_max_skew_seconds and f['quality'] == 'VALID' and f['hydraulic_scope_confirmed'] is True and policy.flow_tolerance_l_min is not None and (t-timestamp(f['timestamp_utc'])).total_seconds()+f['timestamp_uncertainty_seconds'] <= policy.flow_max_skew_seconds
+        # Reusing one cached meter sample cannot establish persistent flow.
+        if f and s.get('last_flow_time')==f['timestamp_utc']:qualified=False
+        if f:s['last_flow_time']=f['timestamp_utc']
         conflict = None
         if qualified and (t-s.get('changed',t)).total_seconds() >= policy.flow_settle_seconds:
             positive = f['flow_liters_per_minute'] > policy.flow_tolerance_l_min

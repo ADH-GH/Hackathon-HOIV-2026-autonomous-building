@@ -49,6 +49,7 @@ def add_parser(sub):
     replay.add_argument('--battery-low-percent', type=int, default=20)
     replay.add_argument('--freshness-seconds', type=int, default=180)
     replay.add_argument('--flow-input')
+    replay.add_argument('--flow-map',help='JSON object mapping controller aliases to independently confirmed hydraulic zone aliases')
     replay.add_argument('--flow-tolerance-l-min', type=float)
 
 
@@ -93,7 +94,12 @@ def run(args):
     if args.gardena_command != 'replay':
         return asyncio.run(_hardware(args))
     from .gardena_assessment import replay
+    relationships=None
+    if args.flow_map:
+        if Path(args.flow_map).stat().st_size>65536:raise TelemetryError('flow mapping exceeds size limit')
+        try:relationships=json.loads(Path(args.flow_map).read_text())
+        except ValueError as exc:raise TelemetryError('invalid flow mapping JSON') from exc
     return replay(args.input,args.out,policy=MonitoringPolicy(
         watering_limit_seconds=args.watering_limit_seconds,battery_low_percent=args.battery_low_percent,
-        freshness_seconds=args.freshness_seconds,flow_tolerance_l_min=args.flow_tolerance_l_min),
+        freshness_seconds=args.freshness_seconds,flow_tolerance_l_min=args.flow_tolerance_l_min,flow_relationships=relationships),
         as_of=args.as_of,flow_input=args.flow_input)
