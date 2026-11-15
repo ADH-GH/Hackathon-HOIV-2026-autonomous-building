@@ -7,3 +7,5 @@ __pycache__/
 data/
 # Scratch output; the submitted files live at the repository root.
 out/
+.venv-gardena/
+*.egg-info/
