@@ -98,11 +98,19 @@ def run(args):
     with output.open('x', encoding='utf-8') as stream:
         stream.write(''.join(json.dumps(d, sort_keys=True, allow_nan=False) + '\n' for d in decisions))
     cutoff = args.as_of or (rows[-1]['observed_at_utc'] if rows else None)
+    project_root = Path(__file__).resolve().parent.parent
+    dirty = None
     try:
-        revision = subprocess.check_output(['git', 'rev-parse', 'HEAD'], stderr=subprocess.DEVNULL, text=True).strip()
+        revision = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=project_root, stderr=subprocess.DEVNULL, text=True).strip()
+        dirty = bool(subprocess.check_output(['git', 'status', '--porcelain'], cwd=project_root, stderr=subprocess.DEVNULL))
     except (OSError, subprocess.SubprocessError):
         revision = None
-    report = {'schema_version': 1, 'code_revision': revision, 'python': platform.python_version(),
+    implementation = {str(p.relative_to(project_root)): hashlib.sha256(p.read_bytes()).hexdigest()
+                      for p in [Path(__file__), project_root/'building_ops/telemetry.py',
+                                project_root/'building_ops/adapters/gardena_ble.py',
+                                project_root/'building_ops/detectors/irrigation_monitor.py']}
+    report = {'schema_version': 1, 'code_revision': revision, 'dirty': dirty,
+              'implementation_sha256': implementation, 'python': platform.python_version(),
               'input_sha256': hashlib.sha256(Path(args.input).read_bytes()).hexdigest(),
               'decisions_sha256': hashlib.sha256(output.read_bytes()).hexdigest(), 'observation_count': len(rows), 'decision_count': len(decisions),
               'source_modes': sorted({r['source_mode'] for r in rows}), 'as_of_utc': cutoff,

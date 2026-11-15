@@ -45,6 +45,8 @@ def validate_flow(row):
     alias(row['device_alias'])
     if not isinstance(row['source'], str) or not row['source'] or row['source'] == 'gardena_ble':
         raise TelemetryError('independent flow source must be identified')
+    if not isinstance(row['source_mode'], str) or not isinstance(row['quality'], str):
+        raise TelemetryError('flow mode and quality must be strings')
     if row['source_mode'] not in MODES or row['quality'] not in QUALITIES or type(row['hydraulic_scope_confirmed']) is not bool:
         raise TelemetryError('invalid flow qualification')
     v = row['flow_liters_per_minute']
