@@ -59,7 +59,14 @@ def main() -> None:
     s.add_argument("--out", default="out/sample")
     from .gardena_cli import add_parser as add_gardena_parser
     add_gardena_parser(sub)
+    from .gardena_ha_cli import add_parser as add_ha_parser
+    add_ha_parser(sub)
     args = ap.parse_args()
+    if args.cmd == "gardena-ha":
+        from .gardena_ha_cli import run as run_ha
+        result = run_ha(args)
+        print(json.dumps(result,sort_keys=True))
+        sys.exit(1 if result.get("transport_failures",0) else 0)
     if args.cmd == "gardena":
         from .gardena_cli import run as run_gardena
         print(json.dumps(run_gardena(args), indent=2))

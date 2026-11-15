@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "devices": [
+    {
+      "asset_id": "GARDEN_A",
+      "device_model": "1889-20",
+      "model_verification": "owner_declared",
+      "entities": {
+        "valve_state": "valve.synthetic_gardena",
+        "battery_percent": "sensor.synthetic_battery",
+        "active_watering": "binary_sensor.synthetic_active",
+        "remaining_open_seconds": "sensor.synthetic_remaining"
+      },
+      "flow": {
+        "entity_id": "sensor.synthetic_flow",
+        "kind": "rate",
+        "independent": true,
+        "hydraulic_scope_confirmed": true,
+        "calibration_reference": "synthetic-calibration-v1",
+        "max_interval_seconds": 120
+      },
+      "policy": {
+        "max_age_seconds": 180,
+        "max_skew_seconds": 60,
+        "max_gap_seconds": 120,
+        "persistence_seconds": 60,
+        "settle_seconds": 30,
+        "flow_tolerance_l_min": 0.1,
+        "battery_low_percent": 20
+      }
+    }
+  ]
+}
