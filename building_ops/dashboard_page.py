@@ -895,6 +895,31 @@ function queue(root) {
   root.append(lg);
 }
 function open(e) { tab = e.scenario in SC ? e.scenario : 'trail'; history.replaceState(null, '', '#' + tab + ':' + encodeURIComponent(e.id)); if (e.routine) showRoutine[e.scenario] = true; selected[e.scenario] = e; query = ''; render(); window.scrollTo(0, 0); }
+function gardenaView(root) {
+  const Dg = D.externalGardena, card = el('div', 'card');
+  card.append(el('h2', null, 'External Telemetry / GARDENA Water Control'),
+    el('p', 'note', 'Static snapshot assessed at ' + Dg.as_of_utc + '. No live updates, no valve control. External observations are excluded from hotel autonomy metrics.'));
+  if (!Dg.devices.length) card.append(el('p', null, 'No observations available at this cutoff.'));
+  const field = (box, title, value) => box.append(el('p', null, title + ': ' + (value === null || value === undefined ? 'unavailable' : String(value))));
+  for (const d of Dg.devices) {
+    const box = el('div', 'card'); box.append(el('h3', null, d.device_alias));
+    field(box, 'Model / provenance', (d.device_model || 'unknown') + ' / ' + d.model_verification);
+    field(box, 'Evidence mode', d.source_mode); field(box, 'Quality', d.quality);
+    field(box, 'Last observed connection', d.connection_state); field(box, 'Last observation UTC', d.observed_at_utc);
+    field(box, 'Reported valve state at observation', d.valve_state); field(box, 'Active watering reported', d.active_watering);
+    field(box, 'Remaining seconds reported', d.remaining_open_seconds); field(box, 'Battery percent reported', d.battery_percent);
+    field(box, 'Last usable valve state / UTC', (d.last_usable_valve_state || 'unknown') + ' / ' + (d.last_usable_valve_timestamp || 'unavailable'));
+    field(box, 'Independent water flow', null);
+    box.append(el('p', 'note', 'Valve operation is not measured flow. Stale or disconnected observations do not establish the current valve state. No physical action or successful outcome is inferred.'));
+    card.append(box);
+  }
+  card.append(el('h3', null, 'Monitoring findings'));
+  for (const d of Dg.findings) { const box = el('div', 'card'); field(box, 'UTC', d.timestamp_utc); field(box, 'Finding', d.reason);
+    for (const e of d.evidence) box.append(el('code', null, e)); card.append(box); }
+  if (!Dg.findings.length) card.append(el('p', null, 'No finding under the displayed monitoring policy; this is not proof of normal water flow.'));
+  field(card, 'Monitoring policy (not manufacturer fault thresholds)', JSON.stringify(Dg.policy));
+  root.append(card);
+}
 function render() {
   hideTip();
   const nav = $('nav'); nav.replaceChildren();
@@ -902,6 +927,7 @@ function render() {
   // Every box has the same three lines: figure, short code, name. SC labels are "S01 Turnaround": code, then name.
   const split = k => { const i = SC[k].indexOf(' '); return [SC[k].slice(0, i), SC[k].slice(i + 1)]; };
   const tabs = [['overview', inc.length, 'All', 'Overview'], ['queue', pending().length, 'Open', 'Approvals'], ...Object.keys(SC).map(k => [k, by(k), ...split(k)]), ['trail', all.length, 'Log', 'All decisions']];
+  if (D.externalGardena) tabs.splice(tabs.length - 1, 0, ['gardena', D.externalGardena.devices.length, 'External', 'GARDENA']);
   if (D.budget) tabs.splice(tabs.length - 1, 0, ['budget', Math.round(D.budget.bill.eur / 1000) + 'k', 'Plan €', 'Budget']);
   if (D.staff) tabs.splice(tabs.length - 1, 0, ['staff', D.staff.resources.length, 'Plan', 'Staff']);
   for (const [k, n, code, name] of tabs) { const b = el('button', k === tab ? 'on' : ''); b.title = TABHINT[k] || ''; b.dataset.tab = k; b.setAttribute('aria-current', k === tab ? 'page' : 'false');
@@ -909,7 +935,7 @@ function render() {
     b.append(el('b', null, n), el('i', null, code.replace(/^S(\d\d)$/, 'S-$1')), el('span', null, name === 'Event weekend' ? 'Weekend' : name));     // twelve boxes: the short name fits, the full one is in the hint
     b.onclick = () => { tab = k; history.replaceState(null, '', '#' + k); render(); }; nav.append(b); }
   const root = $('view'); root.replaceChildren();
-  if (tab === 'overview') overview(root); else if (tab === 'budget') budgetView(root); else if (tab === 'staff') staffView(root); else if (tab === 'trail') trail(root); else if (tab === 'queue') queue(root); else scenario(root, tab);
+  if (tab === 'gardena' && D.externalGardena) gardenaView(root); else if (tab === 'overview') overview(root); else if (tab === 'budget') budgetView(root); else if (tab === 'staff') staffView(root); else if (tab === 'trail') trail(root); else if (tab === 'queue') queue(root); else scenario(root, tab);
 }
 
 /* ---------- voice control (opt-in): the agent's tools run here, in the page ---------- */

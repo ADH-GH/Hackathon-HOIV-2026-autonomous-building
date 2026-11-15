@@ -1,0 +1,8 @@
+bleak==3.1.0
+bleak-retry-connector==4.7.1
+gardena-bluetooth==3.1.0
+pyobjc-core==13.0
+pyobjc-framework-Cocoa==13.0
+pyobjc-framework-CoreBluetooth==13.0
+pyobjc-framework-libdispatch==13.0
+tzlocal==5.4.5
