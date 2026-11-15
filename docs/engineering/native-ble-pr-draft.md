@@ -42,3 +42,14 @@ Hardware pairing, permissions, actual supported characteristics, physical model
 identity and live measurements await separate owner-authorized verification.
 Real flow needs an independent calibrated sensor. No controls, schedules, clock,
 firmware or pairing settings are changed; operational outcomes stay not_measured.
+
+## Observed local results
+
+On Python 3.12.8, the native branch runs 83 unittest cases. The default environment
+passes with two optional-decoder tests explicitly skipped; the installed pinned
+macOS environment passes all 83 without skips. Node v20.20.2 executed the actual
+static view renderer and checked generated script syntax; Node 24 is configured
+for CI, not claimed locally tested. Compileall and historical file comparisons
+pass. Fixture replay emits one prolonged-watering decision that passes strict
+safety checking. Workflow files were prepared locally; remote CI was not run.
+No physical scan, connection, pairing change or actuator command was performed.

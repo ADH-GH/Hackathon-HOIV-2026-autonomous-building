@@ -114,6 +114,8 @@ class ObservationTest(unittest.TestCase):
             with self.subTest(change=change),self.assertRaises(TelemetryError): validate_observation(dict(row,**change))
 
     def test_normal_workflow_has_no_ble_import_or_access(self):
+        from building_ops.adapters.gardena_ble import NativeBackend
+        with self.assertRaises(TelemetryError): NativeBackend()
         code="import sys; import building_ops.__main__; assert 'bleak' not in sys.modules; assert 'gardena_bluetooth' not in sys.modules"
         self.assertEqual(subprocess.run([sys.executable,'-c',code],capture_output=True).returncode,0)
         r=subprocess.run([sys.executable,'-m','building_ops','gardena','scan'],capture_output=True,text=True)
@@ -125,7 +127,7 @@ class ObservationTest(unittest.TestCase):
 class PinnedProtocolTest(unittest.IsolatedAsyncioTestCase):
     async def test_upstream_decoders_and_write_guard(self):
         from building_ops.adapters.gardena_ble import NativeBackend
-        backend=NativeBackend()
+        backend=NativeBackend(authorized=True)
         class Char: properties=['read']
         class Service:
             def get_characteristic(self,uuid):return Char()
@@ -153,7 +155,7 @@ class PinnedProtocolTest(unittest.IsolatedAsyncioTestCase):
     async def test_discovery_uses_service_filter_without_connections(self):
         from types import SimpleNamespace
         from building_ops.adapters.gardena_ble import NativeBackend,SCAN_SERVICE
-        backend=NativeBackend(); captured={}
+        backend=NativeBackend(authorized=True); captured={}
         class Scanner:
             def __init__(self,**kw):captured.update(kw)
             async def __aenter__(self):

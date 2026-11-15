@@ -25,7 +25,9 @@ class NativeBackend:
     """Uses pinned upstream decoders, never its segmented read/write client."""
     physical = True
 
-    def __init__(self):
+    def __init__(self, *, authorized=False):
+        if not authorized:
+            raise TelemetryError('explicit owner authorization required before native Bluetooth setup')
         if sys.version_info < (3, 12) or platform.system() != 'Darwin':
             raise TelemetryError('native adapter requires macOS and isolated Python 3.12+')
         try:
@@ -126,7 +128,7 @@ class GardenaBLE:
         if not self.authorized:
             raise TelemetryError('explicit owner authorization required before any Bluetooth access')
         if self.backend is None:
-            self.backend = NativeBackend()
+            self.backend = NativeBackend(authorized=True)
         return self.backend
 
     async def discover_devices(self, timeout_seconds=12, *, reveal_ids=False):
