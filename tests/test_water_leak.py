@@ -20,11 +20,12 @@ def z(ts):
 class Fixture:
     """Forty quiet rooms; tests add flow to one of them."""
 
-    def __init__(self):
-        self.flow = {r: [0.0] * STEPS for r in ROOMS}      # litres per interval
+    def __init__(self, steps=STEPS):
+        self.steps = steps
+        self.flow = {r: [0.0] * steps for r in ROOMS}      # litres per interval
         self.blank = set()                                 # (room, step) readings left empty
         self.override = {}                                 # (room, step) -> raw meter value
-        self.main_extra = [0.0] * STEPS
+        self.main_extra = [0.0] * steps
         self.events = []
 
     def write(self, root: Path) -> Dataset:
@@ -33,7 +34,7 @@ class Fixture:
         with (root / "room_water.csv").open("w") as rw, (root / "water_main.csv").open("w") as wm:
             rw.write("timestamp_utc,room_id,meter_total_l\n")
             wm.write("timestamp_utc,meter_total_l\n")
-            for i in range(STEPS):
+            for i in range(self.steps):
                 ts = z(T0 + i * Q)
                 for r in ROOMS:
                     totals[r] += self.flow[r][i]

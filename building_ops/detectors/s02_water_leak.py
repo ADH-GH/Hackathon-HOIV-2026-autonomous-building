@@ -50,7 +50,7 @@ def _z(ts: datetime) -> str:
 
 class _Room:
     __slots__ = ("prev", "run_start", "run_len", "run_min", "run_sum", "burst_len", "burst_start",
-                 "burst_sum", "back", "jitter_reported", "last_incident", "open_kind")
+                 "burst_sum", "back", "jitter_reported", "last_incident", "open_kind", "healthy_since")
 
     def __init__(self) -> None:
         self.prev: tuple[datetime, float] | None = None
@@ -62,6 +62,7 @@ class _Room:
         self.jitter_reported = False
         self.last_incident: datetime | None = None
         self.open_kind: str | None = None
+        self.healthy_since: datetime | None = None
 
     def reset_runs(self) -> None:
         self.run_start = self.burst_start = None
@@ -82,10 +83,12 @@ def detect(ds: Dataset) -> Iterable[Decision]:
         if ts is None or value is None:
             st.prev = None            # a blank reading breaks the series; it is not zero flow
             st.reset_runs()
+            st.healthy_since = None
             continue
         prev, st.prev = st.prev, (ts, value)
         if prev is None or ts - prev[0] != STEP:
             st.reset_runs()
+            st.healthy_since = None
             continue
         delta = value - prev[1]
         if delta < 0:
@@ -94,6 +97,7 @@ def detect(ds: Dataset) -> Iterable[Decision]:
             else:
                 st.back.append(1)
             st.reset_runs()
+            st.healthy_since = None
         else:
             st.back.append(0)
             room_sum[ts] += delta
@@ -101,6 +105,7 @@ def detect(ds: Dataset) -> Iterable[Decision]:
 
         if sum(st.back) >= JITTER_STEPS:
             st.reset_runs()
+            st.healthy_since = None
             if not st.jitter_reported:
                 st.jitter_reported = True
                 yield Decision(
@@ -119,6 +124,9 @@ def detect(ds: Dataset) -> Iterable[Decision]:
         if delta <= 0:
             if delta == 0:
                 st.reset_runs()
+                st.healthy_since = st.healthy_since or prev[0]
+                if ts - st.healthy_since >= SAME_INCIDENT:
+                    st.open_kind = st.last_incident = None
             continue
 
         # flow in this interval
@@ -134,6 +142,13 @@ def detect(ds: Dataset) -> Iterable[Decision]:
             st.burst_sum += delta
         else:
             st.burst_len = 0
+
+        # Recovery requires observed continuity, not merely elapsed wall-clock time.
+        qualified = st.run_len >= QUIET_STEPS or st.burst_len >= BURST_STEPS
+        if qualified:
+            st.healthy_since = None
+        elif st.healthy_since is not None and ts - st.healthy_since >= SAME_INCIDENT:
+            st.open_kind = st.last_incident = None
 
         kind = None
         if st.burst_len == BURST_STEPS:
