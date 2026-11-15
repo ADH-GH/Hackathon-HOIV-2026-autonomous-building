@@ -895,6 +895,32 @@ function queue(root) {
   root.append(lg);
 }
 function open(e) { tab = e.scenario in SC ? e.scenario : 'trail'; history.replaceState(null, '', '#' + tab + ':' + encodeURIComponent(e.id)); if (e.routine) showRoutine[e.scenario] = true; selected[e.scenario] = e; query = ''; render(); window.scrollTo(0, 0); }
+function gardenaView(root) {
+  const Dg = D.externalGardena, card = el('div', 'card');
+  card.append(el('h2', null, 'External Telemetry / GARDENA Water Control'),
+    el('p', 'note', 'Static snapshot assessed at ' + Dg.as_of_utc + '. No live updates, no valve control. External observations are excluded from hotel autonomy metrics.'));
+  for (const warning of (Dg.qualification_warnings || [])) card.append(el('p', 'note', warning));
+  if (!Dg.devices.length) card.append(el('p', null, 'No observations available at this cutoff.'));
+  const field = (box, title, value) => box.append(el('p', null, title + ': ' + (value === null || value === undefined ? 'unavailable' : String(value))));
+  for (const d of Dg.devices) {
+    const box = el('div', 'card'); box.append(el('h3', null, d.device_alias));
+    field(box, 'Model / provenance', (d.device_model || 'unknown') + ' / ' + d.model_verification);
+    field(box, 'Evidence mode', d.source_mode); field(box, 'Quality', d.quality);
+    field(box, 'Last observed connection', d.connection_state); field(box, 'Last observation UTC', d.observed_at_utc);
+    field(box, 'Reported valve state at observation', d.valve_state); field(box, 'Active watering reported', d.active_watering);
+    field(box, 'Remaining seconds reported', d.remaining_open_seconds); field(box, 'Battery percent reported', d.battery_percent);
+    field(box, 'Last usable valve state / UTC', (d.last_usable_valve_state || 'unknown') + ' / ' + (d.last_usable_valve_timestamp || 'unavailable'));
+    field(box, 'Independent water flow', null);
+    box.append(el('p', 'note', 'Valve operation is not measured flow. Stale or disconnected observations do not establish the current valve state. No physical action or successful outcome is inferred.'));
+    card.append(box);
+  }
+  card.append(el('h3', null, 'Monitoring findings'));
+  for (const d of Dg.findings) { const box = el('div', 'card'); field(box, 'UTC', d.timestamp_utc); field(box, 'Finding', d.reason);
+    for (const e of d.evidence) box.append(el('code', null, e)); card.append(box); }
+  if (!Dg.findings.length) card.append(el('p', null, 'No finding under the displayed monitoring policy; this is not proof of normal water flow.'));
+  field(card, 'Monitoring policy (not manufacturer fault thresholds)', JSON.stringify(Dg.policy));
+  root.append(card);
+}
 function render() {
   hideTip();
   const nav = $('nav'); nav.replaceChildren();
@@ -902,6 +928,7 @@ function render() {
   // Every box has the same three lines: figure, short code, name. SC labels are "S01 Turnaround": code, then name.
   const split = k => { const i = SC[k].indexOf(' '); return [SC[k].slice(0, i), SC[k].slice(i + 1)]; };
   const tabs = [['overview', inc.length, 'All', 'Overview'], ['queue', pending().length, 'Open', 'Approvals'], ...Object.keys(SC).map(k => [k, by(k), ...split(k)]), ['trail', all.length, 'Log', 'All decisions']];
+  if (D.externalGardena) tabs.splice(tabs.length - 1, 0, ['gardena', D.externalGardena.devices.length, 'External', 'GARDENA']);
   if (D.budget) tabs.splice(tabs.length - 1, 0, ['budget', Math.round(D.budget.bill.eur / 1000) + 'k', 'Plan €', 'Budget']);
   if (D.staff) tabs.splice(tabs.length - 1, 0, ['staff', D.staff.resources.length, 'Plan', 'Staff']);
   for (const [k, n, code, name] of tabs) { const b = el('button', k === tab ? 'on' : ''); b.title = TABHINT[k] || ''; b.dataset.tab = k; b.setAttribute('aria-current', k === tab ? 'page' : 'false');
@@ -909,7 +936,7 @@ function render() {
     b.append(el('b', null, n), el('i', null, code.replace(/^S(\d\d)$/, 'S-$1')), el('span', null, name === 'Event weekend' ? 'Weekend' : name));     // twelve boxes: the short name fits, the full one is in the hint
     b.onclick = () => { tab = k; history.replaceState(null, '', '#' + k); render(); }; nav.append(b); }
   const root = $('view'); root.replaceChildren();
-  if (tab === 'overview') overview(root); else if (tab === 'budget') budgetView(root); else if (tab === 'staff') staffView(root); else if (tab === 'trail') trail(root); else if (tab === 'queue') queue(root); else scenario(root, tab);
+  if (tab === 'gardena' && D.externalGardena) gardenaView(root); else if (tab === 'overview') overview(root); else if (tab === 'budget') budgetView(root); else if (tab === 'staff') staffView(root); else if (tab === 'trail') trail(root); else if (tab === 'queue') queue(root); else scenario(root, tab);
 }
 
 /* ---------- voice control (opt-in): the agent's tools run here, in the page ---------- */
@@ -948,6 +975,7 @@ function emergency(e, what) { const box = $('emg'), inn = el('div', 'e-in'); cle
   box.replaceChildren(inn); box.className = 'on'; box.scrollTop = 0; document.body.style.overflow = 'hidden'; }
 function endEmergency() { clearTimeout(emgTimer); $('emg').className = ''; $('emg').replaceChildren(); document.body.style.overflow = ''; }
 document.addEventListener('keydown', ev => { if (ev.key === 'Escape' && $('emg').className === 'on') endEmergency(); });
+__IRRIGATION_JS__
 const VT = {
   get_status() { const inc = E.filter(e => !e.routine), by = s => inc.filter(e => e.scenario === s).length, p = pending(), rank = {critical: 0, high: 1, medium: 2, low: 3};
     return {dataset: D.profile, decisions_total: all.length, cases: {turnaround: by('S01'), water: by('S02'), heating: by('S03'), maintenance: by('S04'), event_weekends: by('S05'), energy_plans: by('ENG'), logistics_orders: by('LOG')}, routine_guest_answers: E.length - inc.length,
@@ -996,7 +1024,8 @@ async function briefing() {
     await navigator.mediaDevices.getUserMedia({audio: true});
     st.textContent = 'Connecting';
     let mod; try { mod = await import('https://cdn.jsdelivr.net/npm/@elevenlabs/client@1.36.1/+esm'); } catch (err) { mod = await import('https://esm.sh/@elevenlabs/client@1.36.1'); }
-    const tools = {}; for (const k of Object.keys(VT)) if (k[0] !== '_') tools[k] = async args => { let out; try { out = VT[k](args || {}); } catch (err) { out = {error: String(err && err.message || err)}; } return JSON.stringify(out); };
+    const activeVT = D.externalGardena ? Object.assign({}, VT, irrigationTools(D.externalGardena.readonly_answers,()=>{tab='gardena';history.replaceState(null,'','#gardena');render();})) : VT;
+    const tools = {}; for (const k of Object.keys(activeVT)) if (k[0] !== '_') tools[k] = async args => { let out; try { out = activeVT[k](args || {}); } catch (err) { out = {error: String(err && err.message || err)}; } return JSON.stringify(out); };
     call = await mod.Conversation.startSession({agentId: D.voiceAgent, connectionType: 'webrtc', clientTools: tools,
       onConnect: () => { st.textContent = 'Listening'; btn.textContent = 'End briefing'; btn.classList.add('live'); },
       onDisconnect: () => { call = null; talking = false; $('ptt').classList.remove('down'); $('ptt').disabled = true; btn.textContent = 'Voice briefing'; btn.classList.remove('live'); st.textContent = 'Voice ended'; setTimeout(() => { if (!call) box.className = ''; }, 2500); },

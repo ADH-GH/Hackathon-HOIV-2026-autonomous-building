@@ -332,3 +332,40 @@ Alf-David Heermann, <alfheermann@gmail.com>, team Alf & Friends, proximata Hacka
 ## Licence
 
 MIT, see [LICENSE](LICENSE).
+
+## Decision safety validation
+
+New decisions include `risk_context`, containing the five Boolean attributes
+`enters_occupied_room`, `water_shutoff`, `safety_relevant`, `notable_cost`, and
+`outside_comfort_band`. Additional metadata cannot overwrite declared or generated
+decision fields. Creation, file checking and mock execution share contract and
+minimum-oversight validation. These checks validate declared facts, not their truth.
+
+`python -m building_ops check decisions.jsonl` still accepts valid historical
+records without risk context, with a qualification warning. Add `--strict-safety`
+to require context. Mock execution always requires complete risk context and rejects
+invalid batches before producing a trail. Historical files remain audit evidence;
+they are not silently upgraded or qualified for execution. Execution remains
+simulated, and no operator identity or real-world outcome is verified.
+
+### Optional GARDENA water-management experience
+
+Run a complete read-only demonstration without Bluetooth hardware, credentials,
+a hotel dataset or optional dependencies (Python 3.11+):
+
+```sh
+python -m building_ops gardena doctor
+python -m building_ops gardena demo --out out/gardena-demo
+# Open out/gardena-demo/experience.html
+python -m building_ops gardena ask --evidence out/gardena-demo/decisions.evidence.json --question "Why was watering flagged?"
+```
+
+The standalone report shows synthetic observation history, device-state
+qualification, explainable findings, the exact policy and evidence records.
+[Setup and authorized native collection](docs/integrations/gardena-bluetooth.md),
+[independent-flow qualification](docs/integrations/gardena-flow-evidence.md) and
+[hardware acceptance gates](docs/integrations/gardena-hardware-qualification.md)
+keep software reproduction separate from physical testing. Optional voice is
+explicitly opt-in; offline text needs no subscription. No actuation is exposed.
+Valve state is not measured flow, hardware testing remains outstanding, and
+external records do not change the historical hotel autonomy denominator.

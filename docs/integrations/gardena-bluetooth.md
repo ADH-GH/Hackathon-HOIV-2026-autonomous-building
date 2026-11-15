@@ -1,0 +1,244 @@
+# Native GARDENA Bluetooth observations (1889-20)
+
+This optional adapter reads supported status characteristics through macOS
+CoreBluetooth. It does not require Home Assistant. It is separate from the
+fictional hotel's room meters, datasets and autonomy figures. No physical device
+has been scanned, connected or tested during development.
+
+## Install the isolated optional environment
+
+The application still supports Python 3.11 with no runtime dependencies. The
+optional BLE profile requires Python 3.12+ on macOS. The tested profile is Python
+3.12.8, gardena-bluetooth 3.1.0, Bleak 3.1.0 and the complete resolved versions in
+`requirements/gardena-macos-py312.txt`.
+
+```sh
+python3.12 -m venv .venv-gardena
+source .venv-gardena/bin/activate
+python -m pip install -r requirements/gardena-macos-py312.txt
+python -m pip install --no-deps -e .
+python -m unittest discover -s tests -t .
+```
+
+`pip install -e '.[gardena-ble]'` installs the optional top-level pins, but the
+macOS requirements file is the reproducibility profile for transitive versions.
+No upstream `cli` extra is needed. Importing or running ordinary PLATO commands
+never imports Bleak or initializes Bluetooth. The optional tests use fake scanners
+and GATT clients even with the profile installed.
+
+Source reviewed: the published 3.1.0 wheel (SHA256
+`69e43f4ef370d1ce9f6e7d98589e7662348ddc45b86f8aeafa8eb5e48680f062`).
+The adapter uses upstream characteristic decoders and advertisement parsing,
+not copied wire encodings. It intentionally avoids the upstream general Client,
+segmented reads, query/ack exchanges, notifications and clock synchronization.
+
+## Offline demonstration (no Bluetooth or optional packages)
+
+```sh
+python -m building_ops gardena replay \
+  --input tests/fixtures/gardena_ble/abnormal_duration.jsonl \
+  --watering-limit-seconds 60 --out out/gardena/demo-decisions.jsonl
+python -m building_ops check out/gardena/demo-decisions.jsonl --strict-safety
+```
+
+Use a new destination for each replay; existing evidence is not overwritten.
+The adjacent `.evidence.json` reports provenance, policy, hashes and unknown
+operational outcomes. The fixture limit is a synthetic monitoring policy, not a
+manufacturer fault threshold. Normal defaults are 3,600 seconds for prolonged
+watering, 20% for battery review and 180 seconds for freshness; CLI flags expose
+these policies. Missing data is never a closed valve, zero flow or completed task.
+
+## Optional static dashboard
+
+```sh
+python -m building_ops dashboard <hotel_dataset> decisions.jsonl \
+  --gardena-observations tests/fixtures/gardena_ble/watering.jsonl \
+  --gardena-as-of 2026-11-15T12:03:00Z --out out/gardena/dashboard.html
+```
+
+The external tab is hidden without the optional file. It shows exact UTC host
+observation times, provenance, state, diagnostics, stale data and findings. It is
+not live updating. External records are not added to the hotel episode log or
+classification percentages. Transport IDs and serial numbers are not accepted by
+the observation schema or embedded into the page. Choose a non-identifying alias.
+Reported valve bits do not prove physical valve movement or measured water flow.
+
+## Explicitly authorized hardware gates — not executed by this contribution
+
+1. Obtain the owner's explicit permission for this device, host and bounded reads.
+   Confirm macOS Bluetooth is enabled and Terminal/Python has Bluetooth access.
+2. Confirm no existing controller/app will be displaced. The upstream package
+   warns that prior pairing can require a reset for a new controller. **Stop** if
+   reset, unpairing, reconfiguration, firmware changes or unexpected writes would
+   be needed; never perform them automatically.
+3. Discover only after authorization:
+   `python -m building_ops gardena scan --authorize-hardware --seconds 12`.
+   The normal result uses a pseudonymous handle. To select the local peripheral,
+   the owner may rerun with `--show-device-ids`; do not publish that output.
+4. CoreBluetooth uses host-specific peripheral UUIDs, not ordinary MAC addresses.
+   Discovery filters by service `98bd0001-0b0e-421a-84e5-ddbf75dc6de4`, including
+   macOS 12.0–12.2's service-filter requirement. A water-computer advertisement
+   is not exact model identification.
+5. Read the selected device only:
+   `python -m building_ops gardena observe --authorize-hardware --device-id <LOCAL_UUID> --once --alias balcony_irrigation --out out/gardena/observations.jsonl`.
+   Exact readable model 1889-20/01889-20 is required. If model data is absent,
+   stop for owner identification; `--confirm-model 1889-20` records an explicit
+   owner assertion rather than pretending it was device-verified. A different
+   reported model is rejected. No automatic connect-to-all behavior exists.
+6. If permitted, use `--samples 3 --interval-seconds 60` for bounded repeated
+   observations. Each operation has a timeout, and cleanup runs on completion
+   or failure. Loss of connection records unknown current state and stops intake.
+   Protected reads may trigger macOS authorization. No explicit pair/unpair call
+   is made; OS-level pairing behavior is not represented as absent or bypassed.
+7. Replay and check the captured observations offline. Record host/runtime/library
+   versions, model identification basis, supported/missing fields, times and test
+   limits. Keep live reads distinct from synthetic fixtures and imported assertions.
+
+The adapter defines no operational write path. Its client rejects GATT writes,
+notification subscriptions, pairing and unpairing; reads are restricted to model
+and six simple status characteristics. This is not a sandbox against an operator
+modifying Python code. No valve control, schedule, pause, firmware or clock method
+is exposed. Never substitute the upstream diagnostic CLI without a separate review.
+
+## Observation schema and retention
+
+Version 1 records have a host UTC timestamp, alias/model/provenance, connection,
+quality (`VALID`, `PARTIAL`, `STALE`, `DISCONNECTED`, `UNAVAILABLE`, `INVALID`),
+reported valve state, active-watering flag, remaining/manual seconds, battery,
+activation reason and missing-field list. Unavailable measurements are null or
+`unknown`, never invented zero/false. Native valve observations always have null
+flow. The reader uses `physical_device_read`; injected test backends use
+`simulated_fixture`; imported observations retain their explicit source mode.
+Those labels are provenance declarations, not cryptographic authenticity.
+
+Collection appends only, deduplicates identical observations and rejects conflicts.
+Default limits are 10,000 observations and 8 MiB. Reaching retention limits stops
+collection; existing history is not pruned. A collector lock rejects concurrent
+writers. An interrupted process may leave its lock: confirm the collector is no
+longer running before an owner manually removes that lock, never the observations.
+
+## Optional independent flow evidence
+
+Replay accepts `--flow-input <jsonl> --flow-tolerance-l-min <configured_value>`.
+Each record requires device_alias, UTC timestamp, finite nonnegative L/min value
+(or null when unavailable), quality, independent source identifier, source_mode,
+hydraulic_scope_confirmed and calibration_reference. All values are declarations
+that require separate physical verification; a calibration-reference string is
+not proof of calibration. Mode, placement, freshness, persistence and settling
+must qualify before a discrepancy is proposed. No volume is inferred from valve
+duration. No meter hardware is selected or assumed compatible by this contribution.
+
+## Evidence and remaining gaps
+
+| Capability | Before | Implemented evidence | Remaining gap |
+|---|---|---|---|
+| BLE discovery | Absent | Mock scanner/service/manufacturer filtering | Authorized radio test |
+| Status reads | Absent | Installed pinned decoders + mocked GATT | Actual 1889-20 reads |
+| Telemetry ingestion | Absent | Schema/append/replay tests | Physical source authenticity |
+| Irrigation monitoring | Absent | Normal, duration, stale, disconnect, battery and independent-flow scenarios | Site policy calibration |
+| Dashboard | Hotel only | Optional isolated static view, JS renderer test | Authorized physical observation display |
+| Water measurement | Absent | Optional independently supplied evidence | Real calibrated sensor |
+| Valve actuation | Absent | Intentionally excluded; no-write guard tests | Out of scope |
+| Autonomous resolution | Unverified | Remains not_measured | Authenticated target/outcome evidence |
+
+References: [library](https://github.com/elupus/gardena-bluetooth),
+[PyPI](https://pypi.org/project/gardena-bluetooth/3.1.0/),
+[Bleak macOS](https://bleak.readthedocs.io/en/latest/backends/macos.html),
+[manufacturer](https://www.gardena.com/int/products/watering/water-controls/water-control-bluetooth/970481101.html).
+
+## Canonical assessments (policy-consistency follow-up)
+
+Replay now exports a self-contained version-2 `*.evidence.json`: validated
+observations, independent flow assertions, exact policy, fixed cutoff, decisions,
+input/record/output hashes, code revision, warnings and unverified hardware status.
+Old version-1 manifests remain historical records, not executable assessments;
+replay their original observations to create version 2. No source is overwritten.
+
+Use `dashboard ... --gardena-evidence out/gardena/decisions.evidence.json` to render
+that exact assessment. An optional `--gardena-observations` also binds the original
+file hash. A contradictory cutoff, policy, changed input or finding is rejected.
+Legacy observation-only dashboard input still performs a separate default-policy
+assessment; it is not the exported result of a customized replay. Prefer the
+manifest for demonstrations. The assessment is deterministic at a fixed cutoff;
+hashes establish internal consistency, not authenticated physical provenance.
+
+## One-command offline experience
+
+```sh
+python -m building_ops gardena doctor
+python -m building_ops gardena demo --out out/gardena-demo
+# Open out/gardena-demo/experience.html in a browser.
+python -m building_ops gardena report --evidence out/gardena-demo/decisions.evidence.json --out out/gardena-demo/another-report.html
+```
+
+No hotel dataset, optional BLE packages, credentials, network or microphone is
+needed. Packaged synthetic scenarios include normal/prolonged watering,
+disconnection/recovery, low battery, stale data, qualified flow discrepancy and
+an unqualified-flow negative control. The demo uses an explicitly recorded
+60-second monitoring limit, not a manufacturer threshold. It exports original
+fixtures, strict decisions, canonical evidence and responsive standalone HTML.
+
+Assessment/decision/fixture bytes are deterministic for a fixed code revision.
+HTML records its actual wall-clock generation time, so that metadata changes
+between renders; the underlying assessment and policy do not. No sample values
+are presented as physical reads. Existing destinations are refused, not replaced.
+
+`doctor` checks platform and installed package metadata only. It does not scan,
+verify Bluetooth permission, grant owner authorization or test a device. Python
+3.11 remains sufficient for offline use; native decoding uses the documented
+isolated Python 3.12+ profile. No daemon, server or startup service is installed.
+
+### If onboarding stops
+
+| Condition | Safe next step |
+|---|---|
+| Bluetooth off / permission denied | Enable Bluetooth and allow the actual Terminal/Python runtime in macOS settings; retry only with owner permission. |
+| No candidate found | Check range, power and advertisement availability; never connect to a neighbor's device. |
+| Model uncertain | Read identification if available; use owner-confirmed 1889-20 only when independently established. Otherwise stop. |
+| Pairing/app conflict | Ask the owner; do not reset, unpair or displace an active controller. |
+| Connection/read timeout | Check range and authorized availability; no automatic reconfiguration. |
+| Missing characteristic | Preserve null/unknown and inspect capability coverage; do not write to obtain a status. |
+| Disconnect | Preserve acquired records; current state becomes unknown. Explicitly start another bounded session if authorized. |
+
+`observe --samples 10 --interval-seconds 60` already provides a bounded selected-
+device session. It exits on connection loss and disconnects in `finally`; Ctrl-C
+cancels the foreground task. No authorization-failure reconnect loop is added.
+After collection, run replay then report explicitly to preserve previous outputs.
+The static report does not refresh itself or operate a valve.
+
+## Read-only questions and optional voice
+
+```sh
+python -m building_ops gardena ask --evidence out/gardena-demo/decisions.evidence.json --question "Has watering exceeded its configured duration?"
+python -m building_ops gardena report --evidence out/gardena-demo/decisions.evidence.json --out out/gardena-demo/voice.html --voice-agent YOUR_PUBLIC_ELEVENLABS_AGENT_ID
+```
+
+The standalone report offers the same fixed question intents offline. CLI, text
+and read-only client tools use precomputed responses from the canonical result;
+none runs another detector or applies another policy. Unknown questions fail with
+the supported intent list. Requests to start/stop/configure watering explain that
+physical actuation is unavailable.
+
+Optional voice reuses the existing ElevenLabs client pattern. Configure a public
+agent with `get_irrigation_status`, `get_irrigation_findings`,
+`get_irrigation_observation`, `explain_irrigation_finding` (optional `finding_id`),
+`open_irrigation_view`, `get_irrigation_flow` and `get_irrigation_consumption`.
+The tools return JSON strings. They receive alias-free summaries, timestamps,
+policy, reasons and integrity hashes, not raw device identifiers or credentials.
+Do not configure a control tool. A public agent ID is not a secret API key.
+
+No provider script loads without an explicit voice-enabled export, consent
+checkbox and Start click. Voice then needs network, microphone permission and
+usually HTTPS/localhost. Speech and status summaries go to the provider. This is
+not offline speech recognition, an authenticated approval channel or a physically
+verified session. Client handlers are tested; no paid/external voice session was
+performed. Spoken agent output must be checked against the deterministic text.
+The hotel dashboard's opt-in voice client also receives these shared read-only
+handlers when canonical GARDENA evidence is supplied.
+
+The final independent-flow profile is documented in
+[gardena-flow-evidence.md](gardena-flow-evidence.md). Legacy flow assertions are
+readable but cannot establish a discrepancy without version-2 timing, calibration
+and hydraulic relationship qualification. Physical acceptance is separately
+specified in [gardena-hardware-qualification.md](gardena-hardware-qualification.md).
+The current hardware result is NOT_TESTED, not a failed or successful device test.
