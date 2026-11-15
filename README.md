@@ -332,3 +332,18 @@ Alf-David Heermann, <alfheermann@gmail.com>, team Alf & Friends, proximata Hacka
 ## Licence
 
 MIT, see [LICENSE](LICENSE).
+
+## Decision safety validation
+
+New decisions include `risk_context`, containing the five Boolean attributes
+`enters_occupied_room`, `water_shutoff`, `safety_relevant`, `notable_cost`, and
+`outside_comfort_band`. Additional metadata cannot overwrite declared or generated
+decision fields. Creation, file checking and mock execution share contract and
+minimum-oversight validation. These checks validate declared facts, not their truth.
+
+`python -m building_ops check decisions.jsonl` still accepts valid historical
+records without risk context, with a qualification warning. Add `--strict-safety`
+to require context. Mock execution always requires complete risk context and rejects
+invalid batches before producing a trail. Historical files remain audit evidence;
+they are not silently upgraded or qualified for execution. Execution remains
+simulated, and no operator identity or real-world outcome is verified.
