@@ -41,3 +41,24 @@ class FlowEvidenceTest(unittest.TestCase):
         self.assertTrue(validate_flow(legacy[0])) # auditable, not promoted to qualified evidence
         self.assertEqual(analyze(self.rows,policy=self.policy,flow_observations=legacy),[])
         self.assertEqual(analyze(self.rows+ self.rows,policy=self.policy,flow_observations=self.flows+self.flows),analyze(self.rows,policy=self.policy,flow_observations=self.flows))
+
+    def test_disconnect_cutoff_then_recovery_uses_same_canonical_result(self):
+        import tempfile,json
+        from pathlib import Path
+        from building_ops.gardena_experience import demo
+        from building_ops.gardena_assessment import assess,load
+        from building_ops.external_dashboard import payload
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory)/'demo';demo(root)
+            report=load(root/'decisions.evidence.json')
+            rows=[r for r in report['observations'] if r['device_alias']=='Connection_recovery']
+            cutoff=rows[1]['observed_at_utc']
+            partial=assess(rows,as_of=cutoff)
+            path=root/'disconnected.json';path.write_text(json.dumps(partial))
+            device=payload(evidence=path)['devices'][0]
+            self.assertEqual(device['current_valve_state'],'unknown')
+            self.assertEqual(device['last_usable_valve_state'],'open')
+            recovered=payload(evidence=root/'decisions.evidence.json')
+            device=next(d for d in recovered['devices'] if d['device_alias']=='Connection_recovery')
+            self.assertEqual(device['current_valve_state'],'closed')
+            self.assertTrue(any(d['issue_type']=='irrigation_telemetry' and 'Connection_recovery' in d['affected_assets'] for d in recovered['findings']))
