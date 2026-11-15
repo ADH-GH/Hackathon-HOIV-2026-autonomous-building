@@ -6,5 +6,11 @@ requires-python = ">=3.11"
 license = "MIT"
 dependencies = []
 
+[project.optional-dependencies]
+gardena-ble = ["gardena-bluetooth==3.1.0", "bleak==3.1.0"]
+
 [tool.setuptools]
-packages = ["building_ops", "building_ops.detectors"]
+packages = ["building_ops", "building_ops.detectors", "building_ops.adapters"]
+
+[tool.setuptools.package-data]
+building_ops = ["data/gardena/*.jsonl"]
