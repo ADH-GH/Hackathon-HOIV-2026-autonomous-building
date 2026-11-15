@@ -93,6 +93,10 @@ def analyze(observations, *, policy=None, as_of=None, flow_observations=()):
     decisions, states = [], {}
 
     def finding(row, at, issue, reason, episode, evidence, priority='medium'):
+        if issue=='irrigation_duration':
+            evidence=[f'observation:{r["device_alias"]}:{r["observed_at_utc"]}:sha256:{fingerprint(r)}' for r in rows
+                      if r['device_alias']==row['device_alias'] and r['source_mode']==row['source_mode']
+                      and episode<=timestamp(r['observed_at_utc'])<=at]
         decisions.append(Decision(timestamp_utc=at, affected_assets=[row['device_alias']], issue_type=issue,
             action='flag_anomaly', priority=priority, reason=reason,
             episode_id=f'irrigation:{row["device_alias"]}:{row["source_mode"]}:{issue}:{utc(episode)}',

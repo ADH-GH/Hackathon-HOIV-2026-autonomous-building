@@ -49,9 +49,16 @@ class FlowEvidenceTest(unittest.TestCase):
         from building_ops.gardena_assessment import assess,load
         from building_ops.external_dashboard import payload
         with tempfile.TemporaryDirectory() as directory:
+            empty=Path(directory)/'empty.json';empty.write_text(json.dumps(assess([])))
+            self.assertIsNone(payload(evidence=empty)['as_of_utc'])
             root=Path(directory)/'demo';demo(root)
             report=load(root/'decisions.evidence.json')
             rows=[r for r in report['observations'] if r['device_alias']=='Connection_recovery']
+            session=next(s for s in report['activity'] if s['device_alias']=='Connection_recovery')
+            self.assertEqual(session['classification'],'unknown_gap')
+            self.assertEqual(session['observed_open_span_seconds'],0)
+            duration=next(d for d in report['decisions'] if d['issue_type']=='irrigation_duration')
+            self.assertEqual(len(duration['evidence']),3)
             cutoff=rows[1]['observed_at_utc']
             partial=assess(rows,as_of=cutoff)
             path=root/'disconnected.json';path.write_text(json.dumps(partial))

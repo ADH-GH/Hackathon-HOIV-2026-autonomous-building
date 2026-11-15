@@ -25,6 +25,32 @@ def revision():
     except (OSError,subprocess.SubprocessError):return None
 
 
+def activity(rows,policy,cutoff):
+    """Observed open spans only; neither flow nor unobserved closure is inferred."""
+    sessions=[];active={}
+    def finish(key,boundary,why):
+        item=active.pop(key,None)
+        if item:
+            item.update(end_boundary_utc=boundary,classification=why)
+            item['observed_open_span_seconds']=(timestamp(item['last_open_report_utc'])-timestamp(item['first_open_report_utc'])).total_seconds()
+            sessions.append(item)
+    for row in rows:
+        if cutoff and timestamp(row['observed_at_utc'])>timestamp(cutoff):continue
+        key=(row['device_alias'],row['source_mode']);now=row['observed_at_utc']
+        current=active.get(key)
+        if current and (timestamp(now)-timestamp(current['last_open_report_utc'])).total_seconds()>policy.max_gap_seconds:
+            finish(key,now,'unknown_gap')
+        usable=row['quality'] in ('VALID','PARTIAL') and row['connection_state']=='connected' and row['valve_state']!='unknown'
+        if not usable:finish(key,now,'unknown_gap');continue
+        if row['valve_state']=='closed':finish(key,now,'closed_boundary_observed');continue
+        item=active.setdefault(key,dict(device_alias=key[0],source_mode=key[1],first_open_report_utc=now,last_open_report_utc=now,observation_hashes=[]))
+        item['last_open_report_utc']=now;item['observation_hashes'].append(fingerprint(row))
+    for key in list(active):
+        stale=cutoff and (timestamp(cutoff)-timestamp(active[key]['last_open_report_utc'])).total_seconds()>policy.freshness_seconds
+        finish(key,cutoff,'stale_unknown' if stale else 'open_at_last_report')
+    return sorted(sessions,key=lambda s:(timestamp(s['first_open_report_utc']),s['device_alias'],s['source_mode']))
+
+
 def assess(rows, *, policy=None, as_of=None, flows=(), input_sha256=None, flow_input_sha256=None, code_revision=None):
     policy=policy or MonitoringPolicy()
     # Identity validation and order normalization also applies to in-memory callers.
@@ -51,7 +77,7 @@ def assess(rows, *, policy=None, as_of=None, flows=(), input_sha256=None, flow_i
                 observations_sha256=fingerprint(rows),flow_observations_sha256=fingerprint(flows),
                 decisions_sha256=digest(decision_bytes(decisions)),observation_count=len(rows),decision_count=len(decisions),
                 source_modes=modes,as_of_utc=cutoff,monitoring_policy=asdict(policy),observations=rows,flow_observations=flows,
-                decisions=decisions,observation_evidence=[{'sha256':fingerprint(r),'record':r} for r in rows],
+                decisions=decisions,activity=activity(rows,policy,cutoff),observation_evidence=[{'sha256':fingerprint(r),'record':r} for r in rows],
                 qualification_warnings=warnings,evidence_classification='synthetic_replay' if modes==['simulated_fixture'] else 'unverified_source_declarations',
                 verification_status='NOT_TESTED',hardware_connection_verified=False,flow_measurement_verified=False,
                 actuator_control_enabled=False,hotel_data_combined=False,physical_hardware_test='not_performed_by_replay',
