@@ -36,6 +36,10 @@ def payload(path=None, *, evidence=None, as_of=None, freshness_seconds=180):
         if (cutoff - timestamp(d['observed_at_utc'])).total_seconds() > freshness_seconds:
             d['quality'] = 'STALE'
         d['current_valve_state'] = d['valve_state'] if d['quality'] in ('VALID','PARTIAL') and d['connection_state']=='connected' else 'unknown'
-    return {'as_of_utc': utc(cutoff), 'static_report': True, 'devices': list(devices.values()),
+    view = {'as_of_utc': utc(cutoff), 'static_report': True, 'devices': list(devices.values()),
             'findings': findings, 'policy': asdict(policy), 'operational_outcome': 'not_measured',
             'flow_measurement': result['actual_flow_measurement'], 'assessment': result, 'qualification_warnings': result['qualification_warnings'] + ([] if evidence else ['Observation-only view is a separate default-policy assessment, not a replay export.'])}
+
+    from .gardena_interaction import answers
+    view["readonly_answers"] = answers(view)
+    return view

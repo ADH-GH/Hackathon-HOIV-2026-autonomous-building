@@ -975,6 +975,7 @@ function emergency(e, what) { const box = $('emg'), inn = el('div', 'e-in'); cle
   box.replaceChildren(inn); box.className = 'on'; box.scrollTop = 0; document.body.style.overflow = 'hidden'; }
 function endEmergency() { clearTimeout(emgTimer); $('emg').className = ''; $('emg').replaceChildren(); document.body.style.overflow = ''; }
 document.addEventListener('keydown', ev => { if (ev.key === 'Escape' && $('emg').className === 'on') endEmergency(); });
+__IRRIGATION_JS__
 const VT = {
   get_status() { const inc = E.filter(e => !e.routine), by = s => inc.filter(e => e.scenario === s).length, p = pending(), rank = {critical: 0, high: 1, medium: 2, low: 3};
     return {dataset: D.profile, decisions_total: all.length, cases: {turnaround: by('S01'), water: by('S02'), heating: by('S03'), maintenance: by('S04'), event_weekends: by('S05'), energy_plans: by('ENG'), logistics_orders: by('LOG')}, routine_guest_answers: E.length - inc.length,
@@ -1023,7 +1024,8 @@ async function briefing() {
     await navigator.mediaDevices.getUserMedia({audio: true});
     st.textContent = 'Connecting';
     let mod; try { mod = await import('https://cdn.jsdelivr.net/npm/@elevenlabs/client@1.36.1/+esm'); } catch (err) { mod = await import('https://esm.sh/@elevenlabs/client@1.36.1'); }
-    const tools = {}; for (const k of Object.keys(VT)) if (k[0] !== '_') tools[k] = async args => { let out; try { out = VT[k](args || {}); } catch (err) { out = {error: String(err && err.message || err)}; } return JSON.stringify(out); };
+    const activeVT = D.externalGardena ? Object.assign({}, VT, irrigationTools(D.externalGardena.readonly_answers,()=>{tab='gardena';history.replaceState(null,'','#gardena');render();})) : VT;
+    const tools = {}; for (const k of Object.keys(activeVT)) if (k[0] !== '_') tools[k] = async args => { let out; try { out = activeVT[k](args || {}); } catch (err) { out = {error: String(err && err.message || err)}; } return JSON.stringify(out); };
     call = await mod.Conversation.startSession({agentId: D.voiceAgent, connectionType: 'webrtc', clientTools: tools,
       onConnect: () => { st.textContent = 'Listening'; btn.textContent = 'End briefing'; btn.classList.add('live'); },
       onDisconnect: () => { call = null; talking = false; $('ptt').classList.remove('down'); $('ptt').disabled = true; btn.textContent = 'Voice briefing'; btn.classList.remove('live'); st.textContent = 'Voice ended'; setTimeout(() => { if (!call) box.className = ''; }, 2500); },

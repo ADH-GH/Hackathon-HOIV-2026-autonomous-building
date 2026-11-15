@@ -28,7 +28,7 @@ def doctor():
 def escape(value):return html.escape('unavailable' if value is None else str(value),quote=True)
 
 
-def render(evidence,out,*,generated_at=None):
+def render(evidence,out,*,generated_at=None,voice_agent=None):
     result=load(evidence);view=payload(evidence=evidence)
     output=Path(out)
     if output.exists() or output.resolve()==Path(evidence).resolve():raise TelemetryError('report output exists; choose a new destination')
@@ -47,7 +47,7 @@ def render(evidence,out,*,generated_at=None):
     timeline=[]
     for ref in result['observation_evidence']:
         r=ref['record']
-        if result['as_of_utc'] and r['observed_at_utc']>result['as_of_utc']:continue
+        if result['as_of_utc'] and timestamp(r['observed_at_utc'])>timestamp(result['as_of_utc']):continue
         timeline.append('<tr><td>'+escape(r['observed_at_utc'])+'</td><td>'+escape(r['device_alias'])+'</td><td>'+escape(r['connection_state'])+'</td><td>'+escape(r['valve_state'])+'</td><td>'+escape(r['quality'])+'</td><td><a href="#obs-'+ref['sha256']+'">record</a></td></tr>')
     findings=[]
     for d in result['decisions']:
@@ -65,7 +65,8 @@ def render(evidence,out,*,generated_at=None):
     page+='<section id="status"><h2>Device status</h2><div class="grid">'+''.join(cards)+'</div></section>'
     page+='<section id="activity"><h2>Observed activity timeline</h2><p>Rows are observations, not interpolated physical states. A disconnected or missing interval establishes neither continued watering nor closure. Reconnection starts a new observation interval. Duration findings compare qualifying observations with the recorded policy; no manufacturer schedule is assumed.</p><div class="scroll"><table><thead><tr><th>UTC</th><th>Alias</th><th>Connection</th><th>Reported valve</th><th>Quality</th><th>Evidence</th></tr></thead><tbody>'+''.join(timeline)+'</tbody></table></div></section>'
     page+='<section id="findings"><h2>Monitoring findings · '+str(len(findings))+'</h2>'+(''.join(findings) or '<p>No finding under this policy; flow and equipment health are not thereby verified.</p>')+'</section>'
-    page+='<!--READONLY_QUESTIONS-->'
+    from .gardena_interaction import section
+    page+=section(view,voice_agent=voice_agent)
     page+='<section id="evidence"><h2>Evidence and policy</h2><p>Export the adjacent decisions and evidence JSON files for replay. This HTML embeds the same validated assessment, not a second monitoring policy. Record hashes are integrity references, not authenticated physical proof.</p><details><summary>Exact policy, hashes and qualification</summary><pre>'+escape(json.dumps(metadata,sort_keys=True,indent=2))+'</pre></details><details><summary>Separate flow assertions</summary><pre>'+escape(json.dumps(result['flow_observations'],indent=2))+'</pre></details>'+records+'</section></main><footer>Read-only shadow monitoring · Water consumption and real-world incident resolution not measured.</footer></html>'
     output.parent.mkdir(parents=True,exist_ok=True)
     with output.open('x',encoding='utf-8') as stream:stream.write(page)

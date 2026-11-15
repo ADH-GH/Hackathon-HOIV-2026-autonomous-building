@@ -205,3 +205,33 @@ device session. It exits on connection loss and disconnects in `finally`; Ctrl-C
 cancels the foreground task. No authorization-failure reconnect loop is added.
 After collection, run replay then report explicitly to preserve previous outputs.
 The static report does not refresh itself or operate a valve.
+
+## Read-only questions and optional voice
+
+```sh
+python -m building_ops gardena ask --evidence out/gardena-demo/decisions.evidence.json --question "Has watering exceeded its configured duration?"
+python -m building_ops gardena report --evidence out/gardena-demo/decisions.evidence.json --out out/gardena-demo/voice.html --voice-agent YOUR_PUBLIC_ELEVENLABS_AGENT_ID
+```
+
+The standalone report offers the same fixed question intents offline. CLI, text
+and read-only client tools use precomputed responses from the canonical result;
+none runs another detector or applies another policy. Unknown questions fail with
+the supported intent list. Requests to start/stop/configure watering explain that
+physical actuation is unavailable.
+
+Optional voice reuses the existing ElevenLabs client pattern. Configure a public
+agent with `get_irrigation_status`, `get_irrigation_findings`,
+`get_irrigation_observation`, `explain_irrigation_finding` (optional `finding_id`),
+`open_irrigation_view`, `get_irrigation_flow` and `get_irrigation_consumption`.
+The tools return JSON strings. They receive alias-free summaries, timestamps,
+policy, reasons and integrity hashes, not raw device identifiers or credentials.
+Do not configure a control tool. A public agent ID is not a secret API key.
+
+No provider script loads without an explicit voice-enabled export, consent
+checkbox and Start click. Voice then needs network, microphone permission and
+usually HTTPS/localhost. Speech and status summaries go to the provider. This is
+not offline speech recognition, an authenticated approval channel or a physically
+verified session. Client handlers are tested; no paid/external voice session was
+performed. Spoken agent output must be checked against the deterministic text.
+The hotel dashboard's opt-in voice client also receives these shared read-only
+handlers when canonical GARDENA evidence is supplied.

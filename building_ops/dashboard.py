@@ -187,7 +187,8 @@ def build(data_dir: str | Path, decisions_path: str | Path, out: str | Path,
     # from Google Fonts, which is the only network request the page then makes (besides opt-in voice).
     fonts = ('<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600'
              '&family=IBM+Plex+Sans:wght@400;500;600&family=Sora:wght@500;600;700&display=swap">') if web_fonts else ""
-    out.write_text(PAGE.replace("__FONTS__", fonts).replace("__DATA__", data).replace("__TITLE__", title), encoding="utf-8")
+    from .gardena_interaction import TOOLS_JS
+    out.write_text(PAGE.replace("__IRRIGATION_JS__", TOOLS_JS).replace("__FONTS__", fonts).replace("__DATA__", data).replace("__TITLE__", title), encoding="utf-8")
     return out
 
 
