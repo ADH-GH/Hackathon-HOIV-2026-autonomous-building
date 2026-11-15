@@ -126,7 +126,7 @@ def _utc(ts: datetime | str) -> str:
         raise DecisionError("timestamp must be a datetime or ISO string")
     if ts.tzinfo is None:
         raise DecisionError("timestamp without timezone; all timestamps are UTC")
-    return ts.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    return ts.astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
 
 
 @dataclass
