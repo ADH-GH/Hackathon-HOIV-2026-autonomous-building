@@ -21,7 +21,9 @@ jobs:
       - run: python -m building_ops check decisions.jsonl
       - run: python -m building_ops check decisions_holdout.jsonl
   pinned-decoders:
-    runs-on: macos-14
+    # macOS 14 runners retired; retain a supported standard (not larger) runner.
+    # https://github.com/actions/runner-images/issues/15226
+    runs-on: macos-15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
