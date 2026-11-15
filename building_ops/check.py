@@ -10,16 +10,17 @@ from collections import Counter
 from pathlib import Path
 from typing import Any
 
-from .decisions import ACTIONS, APPROVAL_ACTIONS, AUTONOMOUS_SERVICES, PRIORITIES
+from .decisions import DecisionError, validate_decision
 
 REQUIRED = ("event_id", "timestamp_utc", "affected_assets", "issue_type", "action",
             "priority", "reason", "requires_human_approval")
 
 
-def check(path: str | Path) -> dict[str, Any]:
+def check(path: str | Path, *, strict_safety: bool = False) -> dict[str, Any]:
     errors: list[str] = []
     warnings: list[str] = []
     rows: list[dict[str, Any]] = []
+    missing = 0
     for n, line in enumerate(Path(path).read_text(encoding="utf-8").splitlines(), 1):
         if not line.strip():
             continue
@@ -28,29 +29,24 @@ def check(path: str | Path) -> dict[str, Any]:
         except json.JSONDecodeError as exc:
             errors.append(f"line {n}: not JSON ({exc.msg})")
             continue
+        where = f"line {n}" + (f" ({row.get('event_id', '?')})" if isinstance(row, dict) else "")
+        try:
+            validate_decision(row, require_risk_context=strict_safety)
+        except DecisionError as exc:
+            errors.append(f"{where}: {exc}")
+        if not isinstance(row, dict):
+            continue
+        # Safe projections retain diagnostics even for malformed object records.
+        missing += "risk_context" not in row
+        has_evidence = bool(row.get("evidence"))
+        row = {k: v for k, v in row.items() if isinstance(v, (str, bool)) or
+               (k == "affected_assets" and isinstance(v, list) and all(isinstance(x, str) for x in v))}
         rows.append(row)
-        where = f"line {n} ({row.get('event_id', '?')})"
-        for key in REQUIRED:
-            if key not in row or row[key] in (None, "", []):
-                errors.append(f"{where}: missing {key}")
-        if row.get("action") not in ACTIONS:
-            warnings.append(f"{where}: action {row.get('action')!r} is outside the vocabulary; document it")
-        if row.get("priority") not in PRIORITIES:
-            errors.append(f"{where}: priority {row.get('priority')!r}")
-        if not isinstance(row.get("requires_human_approval"), bool):
-            errors.append(f"{where}: requires_human_approval must be true or false")
-        if not str(row.get("timestamp_utc", "")).endswith("Z"):
-            errors.append(f"{where}: timestamp_utc must be UTC ending in Z")
-        action = row.get("action")
-        needs_approval = action in APPROVAL_ACTIONS or (
-            action == "order_service" and row.get("service_kind") not in AUTONOMOUS_SERVICES)
-        if needs_approval and row.get("requires_human_approval") is not True:
-            errors.append(f"{where}: {action} without human approval breaks the autonomy rules")
-        if row.get("requires_guest_consent") and row.get("requires_human_approval") is not True:
-            errors.append(f"{where}: guest consent without human approval")
-        if not row.get("evidence"):
+        if not has_evidence:
             warnings.append(f"{where}: no evidence")
 
+    if missing and not strict_safety:
+        warnings.append(f"{missing} legacy records lack risk_context; action risks cannot be fully revalidated")
     ids = Counter(r.get("event_id") for r in rows)
     errors += [f"duplicate event_id {i}" for i, c in ids.items() if c > 1]
     spam = Counter((r.get("episode_id"), r.get("action"), tuple(r.get("affected_assets") or []), r.get("stage"))

@@ -112,7 +112,8 @@ def _building(ds) -> dict | None:
 
 def build(data_dir: str | Path, decisions_path: str | Path, out: str | Path,
           actions_path: str | Path | None = None, title: str = "PLATO-40 Autonomous Operations Board",
-          voice_agent: str | None = None, web_fonts: bool = False, api_docs: str | None = None, switch: list[str] | None = None) -> Path:
+          voice_agent: str | None = None, web_fonts: bool = False, api_docs: str | None = None, switch: list[str] | None = None,
+          gardena_observations: str | Path | None = None, gardena_as_of: str | None = None, gardena_evidence: str | Path | None = None) -> Path:
     ds = Dataset(data_dir)
     decisions = _read(decisions_path)
     actions = {a["event_id"]: a for a in _read(actions_path)}
@@ -176,6 +177,9 @@ def build(data_dir: str | Path, decisions_path: str | Path, out: str | Path,
              "start": _ms(ep["start"]), "end": _ms(ep["end"])}
             for ep in sorted(episodes.values(), key=lambda e: e["start"])],
     }
+    if gardena_observations is not None or gardena_evidence is not None:
+        from .external_dashboard import payload as external_payload
+        payload["externalGardena"] = external_payload(gardena_observations, evidence=gardena_evidence, as_of=gardena_as_of)
     data = json.dumps(payload, ensure_ascii=False).replace("</", "<\\/")
     out = Path(out)
     out.parent.mkdir(parents=True, exist_ok=True)
