@@ -29,7 +29,7 @@ class FlowEvidenceTest(unittest.TestCase):
         self.assertEqual(analyze(self.rows,policy=MonitoringPolicy(flow_tolerance_l_min=.1),flow_observations=self.flows),[])
 
     def test_invalid_units_time_calibration_and_conflicts_fail(self):
-        for changes in ({'units':'m3/h'},{'calibration_reference':''},{'timestamp_utc':'tomorrow'},
+        for changes in ({'units':'m3/h'},{'source':' '},{'calibration_reference':' '},{'calibration_reference':''},{'timestamp_utc':'tomorrow'},
                         {'timestamp_uncertainty_seconds':float('nan')},{'time_sync_reference':''},{'schema_version':True}):
             with self.subTest(changes=changes),self.assertRaises(TelemetryError):validate_flow(dict(self.flows[0],**changes))
         with self.assertRaises(TelemetryError):analyze(self.rows,policy=self.policy,flow_observations=self.flows+[dict(self.flows[0],flow_liters_per_minute=9)])

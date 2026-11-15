@@ -58,7 +58,7 @@ def validate_flow(row):
     timestamp(row['timestamp_utc'])
     from ..telemetry import alias, MODES, QUALITIES
     alias(row['device_alias'])
-    if not isinstance(row['source'], str) or not row['source'] or row['source'] == 'gardena_ble':
+    if not isinstance(row['source'], str) or not row['source'].strip() or len(row['source'])>128 or row['source'] == 'gardena_ble':
         raise TelemetryError('independent flow source must be identified')
     if not isinstance(row['source_mode'], str) or not isinstance(row['quality'], str):
         raise TelemetryError('flow mode and quality must be strings')
@@ -67,7 +67,7 @@ def validate_flow(row):
     v = row['flow_liters_per_minute']
     if v is not None and (type(v) not in (int, float) or v < 0 or (type(v) is float and not math.isfinite(v))):
         raise TelemetryError('invalid flow measurement')
-    if row['quality'] == 'VALID' and (v is None or not isinstance(row['calibration_reference'], str) or not row['calibration_reference']):
+    if row['quality'] == 'VALID' and (v is None or not isinstance(row['calibration_reference'], str) or not row['calibration_reference'].strip() or len(row['calibration_reference'])>200):
         raise TelemetryError('qualified measured flow requires a value and calibration reference')
     return row
 
