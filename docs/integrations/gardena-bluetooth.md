@@ -235,3 +235,10 @@ verified session. Client handlers are tested; no paid/external voice session was
 performed. Spoken agent output must be checked against the deterministic text.
 The hotel dashboard's opt-in voice client also receives these shared read-only
 handlers when canonical GARDENA evidence is supplied.
+
+The final independent-flow profile is documented in
+[gardena-flow-evidence.md](gardena-flow-evidence.md). Legacy flow assertions are
+readable but cannot establish a discrepancy without version-2 timing, calibration
+and hydraulic relationship qualification. Physical acceptance is separately
+specified in [gardena-hardware-qualification.md](gardena-hardware-qualification.md).
+The current hardware result is NOT_TESTED, not a failed or successful device test.

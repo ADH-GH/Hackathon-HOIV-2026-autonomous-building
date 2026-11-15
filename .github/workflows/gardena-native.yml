@@ -1,9 +1,12 @@
-name: Native GARDENA offline qualification
+name: GARDENA experience offline qualification
 on: [push, pull_request]
 permissions:
   contents: read
 jobs:
   base:
+    strategy:
+      matrix:
+        python: ['3.11', '3.13']
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
@@ -12,13 +15,15 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
         with:
-          python-version: '3.11'
+          python-version: ${{ matrix.python }}
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
         with:
           node-version: '24'
       - run: python -m unittest discover -s tests -t .
+      - run: python -m building_ops gardena doctor
       - run: python -m building_ops gardena demo --out out/ci-gardena-demo
       - run: python -m building_ops check out/ci-gardena-demo/decisions.jsonl --strict-safety
+      - run: python -m building_ops gardena ask --evidence out/ci-gardena-demo/decisions.evidence.json --question consumption
       - run: python -m compileall -q building_ops tests
       - run: python -m building_ops check decisions.jsonl
       - run: python -m building_ops check decisions_holdout.jsonl
@@ -41,5 +46,7 @@ jobs:
       - run: python -m pip install --no-deps -e .
       # Tests inject fake scanners/GATT clients; never authorize a real scan.
       - run: python -m unittest discover -s tests -t .
+      - run: python -m building_ops gardena doctor
       - run: python -m building_ops gardena demo --out out/ci-gardena-demo
       - run: python -m building_ops check out/ci-gardena-demo/decisions.jsonl --strict-safety
+      - run: python -m building_ops gardena ask --evidence out/ci-gardena-demo/decisions.evidence.json --question consumption
