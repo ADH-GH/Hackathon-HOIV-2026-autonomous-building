@@ -132,3 +132,8 @@ report completeness only; the first cumulative baseline therefore makes its
 report partial. Sources and hashes, code revision and implementation hashes are
 recorded. `physical_state_verified` remains false and real-world resolution
 remains `not_measured`. Synthetic replay never establishes live integration.
+
+## Qualification evidence
+
+See [the contribution evidence report](gardena-ha-evidence.md) for exact local
+commands, test profiles, preserved artifacts and remaining physical gates.

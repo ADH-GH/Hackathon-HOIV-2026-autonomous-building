@@ -63,7 +63,7 @@ class NoRedirect(HTTPRedirectHandler):
 
 
 class Reader:
-    def __init__(self, url, *, authorized=False, attempts=3, timeout=5, token_env=None, media_type="application/senml+json"):
+    def __init__(self, url, *, authorized=False, attempts=3, timeout=5, token_env=None, media_type="application/json"):
         if not isinstance(url,str) or any(ord(c)<33 or ord(c)>126 for c in url):
             raise TelemetryError("feed URL must be printable ASCII without whitespace")
         try:
