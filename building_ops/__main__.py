@@ -35,6 +35,7 @@ def main() -> None:
     i.add_argument("data_dir")
     c = sub.add_parser("check", help="check a decisions file against the contract and the autonomy rules")
     c.add_argument("decisions")
+    c.add_argument("--strict-safety", action="store_true", help="require explicit risk context")
     p = sub.add_parser("report", help="write the decision viewer as one HTML file")
     p.add_argument("decisions")
     p.add_argument("--actions", default=None)
@@ -58,7 +59,7 @@ def main() -> None:
     if args.cmd == "run":
         run(args.data_dir, args.out, args.actions)
     elif args.cmd == "check":
-        result = check(args.decisions)
+        result = check(args.decisions, strict_safety=args.strict_safety)
         print(json.dumps(result, indent=1, ensure_ascii=False))
         sys.exit(0 if result["ok"] else 1)
     elif args.cmd == "report":
