@@ -899,6 +899,7 @@ function gardenaView(root) {
   const Dg = D.externalGardena, card = el('div', 'card');
   card.append(el('h2', null, 'External Telemetry / GARDENA Water Control'),
     el('p', 'note', 'Static snapshot assessed at ' + Dg.as_of_utc + '. No live updates, no valve control. External observations are excluded from hotel autonomy metrics.'));
+  for (const warning of (Dg.qualification_warnings || [])) card.append(el('p', 'note', warning));
   if (!Dg.devices.length) card.append(el('p', null, 'No observations available at this cutoff.'));
   const field = (box, title, value) => box.append(el('p', null, title + ': ' + (value === null || value === undefined ? 'unavailable' : String(value))));
   for (const d of Dg.devices) {

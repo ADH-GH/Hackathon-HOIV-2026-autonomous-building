@@ -42,6 +42,7 @@ def main() -> None:
     p.add_argument("--out", default="out/report.html")
     d = sub.add_parser("dashboard", help="write the dashboard with every case and its evidence as one HTML file")
     d.add_argument("--gardena-observations", help="optional isolated external telemetry JSONL")
+    d.add_argument("--gardena-evidence", help="canonical replay manifest; exact policy/inputs/findings")
     d.add_argument("--gardena-as-of", help="fixed UTC assessment time for the static external view")
     d.add_argument("data_dir")
     d.add_argument("decisions")
@@ -73,7 +74,7 @@ def main() -> None:
     elif args.cmd == "report":
         print(build(args.decisions, args.out, args.actions))
     elif args.cmd == "dashboard":
-        print(build_dashboard(args.data_dir, args.decisions, args.out, args.actions, voice_agent=args.voice_agent, web_fonts=args.web_fonts, api_docs=args.api_docs, switch=args.switch, gardena_observations=args.gardena_observations, gardena_as_of=args.gardena_as_of))
+        print(build_dashboard(args.data_dir, args.decisions, args.out, args.actions, voice_agent=args.voice_agent, web_fonts=args.web_fonts, api_docs=args.api_docs, switch=args.switch, gardena_observations=args.gardena_observations, gardena_as_of=args.gardena_as_of, gardena_evidence=args.gardena_evidence))
     elif args.cmd == "insights":
         measured = write_insights(args.data_dir, args.out, args.decisions, str(args.out).replace(".md", ".jsonl"))
         print(json.dumps(measured, indent=1, ensure_ascii=False, default=str))

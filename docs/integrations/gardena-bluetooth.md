@@ -145,3 +145,19 @@ References: [library](https://github.com/elupus/gardena-bluetooth),
 [PyPI](https://pypi.org/project/gardena-bluetooth/3.1.0/),
 [Bleak macOS](https://bleak.readthedocs.io/en/latest/backends/macos.html),
 [manufacturer](https://www.gardena.com/int/products/watering/water-controls/water-control-bluetooth/970481101.html).
+
+## Canonical assessments (policy-consistency follow-up)
+
+Replay now exports a self-contained version-2 `*.evidence.json`: validated
+observations, independent flow assertions, exact policy, fixed cutoff, decisions,
+input/record/output hashes, code revision, warnings and unverified hardware status.
+Old version-1 manifests remain historical records, not executable assessments;
+replay their original observations to create version 2. No source is overwritten.
+
+Use `dashboard ... --gardena-evidence out/gardena/decisions.evidence.json` to render
+that exact assessment. An optional `--gardena-observations` also binds the original
+file hash. A contradictory cutoff, policy, changed input or finding is rejected.
+Legacy observation-only dashboard input still performs a separate default-policy
+assessment; it is not the exported result of a customized replay. Prefer the
+manifest for demonstrations. The assessment is deterministic at a fixed cutoff;
+hashes establish internal consistency, not authenticated physical provenance.
