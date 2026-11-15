@@ -7,8 +7,16 @@ from __future__ import annotations
 
 from typing import Any
 
+from .decisions import DecisionError, validate_decision
+
 
 def execute(decisions: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    seen = set()
+    for d in decisions:
+        validate_decision(d, require_risk_context=True)
+        if d["event_id"] in seen:
+            raise DecisionError("duplicate event_id before simulated execution")
+        seen.add(d["event_id"])
     trail = []
     for d in decisions:
         if d["requires_human_approval"]:

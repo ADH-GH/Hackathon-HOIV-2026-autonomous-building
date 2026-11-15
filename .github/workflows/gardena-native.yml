@@ -1,0 +1,45 @@
+name: Native GARDENA offline qualification
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  base:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.11'
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: '24'
+      - run: python -m unittest discover -s tests -t .
+      - run: python -m building_ops gardena demo --out out/ci-gardena-demo
+      - run: python -m building_ops check out/ci-gardena-demo/decisions.jsonl --strict-safety
+      - run: python -m compileall -q building_ops tests
+      - run: python -m building_ops check decisions.jsonl
+      - run: python -m building_ops check decisions_holdout.jsonl
+  pinned-decoders:
+    # macOS 14 runners retired; retain a supported standard (not larger) runner.
+    # https://github.com/actions/runner-images/issues/15226
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: '24'
+      - run: python -m pip install -r requirements/gardena-macos-py312.txt
+      - run: python -m pip install --no-deps -e .
+      # Tests inject fake scanners/GATT clients; never authorize a real scan.
+      - run: python -m unittest discover -s tests -t .
+      - run: python -m building_ops gardena demo --out out/ci-gardena-demo
+      - run: python -m building_ops check out/ci-gardena-demo/decisions.jsonl --strict-safety
