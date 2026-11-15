@@ -41,6 +41,8 @@ def main() -> None:
     p.add_argument("--actions", default=None)
     p.add_argument("--out", default="out/report.html")
     d = sub.add_parser("dashboard", help="write the dashboard with every case and its evidence as one HTML file")
+    d.add_argument("--gardena-observations", help="optional isolated external telemetry JSONL")
+    d.add_argument("--gardena-as-of", help="fixed UTC assessment time for the static external view")
     d.add_argument("data_dir")
     d.add_argument("decisions")
     d.add_argument("--actions", default=None)
@@ -55,7 +57,13 @@ def main() -> None:
     n.add_argument("--out", default="insights.md")
     s = sub.add_parser("sample", help="write hand-made sample decisions and their viewer, labelled as sample")
     s.add_argument("--out", default="out/sample")
+    from .gardena_cli import add_parser as add_gardena_parser
+    add_gardena_parser(sub)
     args = ap.parse_args()
+    if args.cmd == "gardena":
+        from .gardena_cli import run as run_gardena
+        print(json.dumps(run_gardena(args), indent=2))
+        return
     if args.cmd == "run":
         run(args.data_dir, args.out, args.actions)
     elif args.cmd == "check":
@@ -65,7 +73,7 @@ def main() -> None:
     elif args.cmd == "report":
         print(build(args.decisions, args.out, args.actions))
     elif args.cmd == "dashboard":
-        print(build_dashboard(args.data_dir, args.decisions, args.out, args.actions, voice_agent=args.voice_agent, web_fonts=args.web_fonts, api_docs=args.api_docs, switch=args.switch))
+        print(build_dashboard(args.data_dir, args.decisions, args.out, args.actions, voice_agent=args.voice_agent, web_fonts=args.web_fonts, api_docs=args.api_docs, switch=args.switch, gardena_observations=args.gardena_observations, gardena_as_of=args.gardena_as_of))
     elif args.cmd == "insights":
         measured = write_insights(args.data_dir, args.out, args.decisions, str(args.out).replace(".md", ".jsonl"))
         print(json.dumps(measured, indent=1, ensure_ascii=False, default=str))
@@ -76,4 +84,10 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    from .telemetry import TelemetryError
+    from .decisions import DecisionError
+    try:
+        main()
+    except (OSError, TelemetryError, DecisionError) as exc:
+        print(f"building_ops: {exc}", file=sys.stderr)
+        sys.exit(1)
